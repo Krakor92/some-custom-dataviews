@@ -1,0 +1,97 @@
+/*
+Complètement pompé sur https://github.com/kepano/obsidian-minimal/blob/master/src/scss/features/cards.scss
+et je l'assume
+*/
+
+:root {
+	--cards-min-width: 180px;
+	--cards-max-width: 1fr;
+	--cards-mobile-width: 120px;
+	--cards-image-height: 400px;
+	--cards-padding: 1.2em;
+	--cards-image-fit: contain;
+	--cards-background: transparent;
+	--cards-border-width: 1px;
+	--cards-aspect-ratio: auto;
+	--cards-columns: repeat(auto-fit, minmax(var(--cards-min-width), var(--cards-max-width)));
+	--background-modifier-border: hsl(0, 0%, calc(15% + 6%))
+	--background-modifier-border-hover: hsl(0, 0%, calc(15% + 12%))
+}
+
+@media (max-width:400pt) {
+	:root {
+		--cards-min-width: var(--cards-mobile-width);
+	}
+}
+
+/* .jukebox {
+} */
+
+.jukebox span {
+	display: contents;
+}
+
+.jukebox .grid {
+	/* clear: both; */
+	padding: 0.5rem 0;
+	display: grid;
+	grid-template-columns: var(--cards-columns);
+	grid-column-gap: 0.75rem;
+	grid-row-gap: 0.75rem;
+}
+
+.jukebox article {
+	position: relative;
+	background-color: var(--cards-background);
+	border: var(--cards-border-width) solid var(--background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0 0 calc(var(--cards-padding)/3) 0;
+	border-radius: 6px;
+	overflow: hidden;
+	transition: box-shadow 0.15s linear;
+	max-width: var(--cards-max-width);
+}
+
+.jukebox article:hover {
+	border: var(--cards-border-width) solid var(--background-modifier-border-hover);
+	box-shadow:
+	0 4px 6px 0px rgba(0, 0, 0, 0.05),
+	0 1px 3px 1px rgba(0, 0, 0, 0.025);
+	transition: box-shadow 0.15s linear;
+}
+
+.jukebox img {
+	margin-bottom: calc(var(--cards-padding)/3);
+}
+
+.jukebox span.file-link {
+	display: inline-block;
+	padding: calc(var(--cards-padding)/3) 0;
+	border-bottom: none;
+	font-size: var(--table-text-size);
+	font-weight: 600;
+	line-height: 1.2;
+	width: calc(100% - var(--cards-padding));
+	margin: 0 auto;
+	overflow: visible !important;
+	max-width: 100%;
+	display: flex;
+}
+
+.jukebox span.url-link a {
+	position: absolute;
+	top: 4px;
+	right: 8px;
+}
+
+.jukebox audio {
+	justify-self: center;
+	align-self: center;
+}
+
+/* .jukebox a[data-service="youtube"] > svg {
+	color: #aa0000;
+} 
+*/
