@@ -2,19 +2,16 @@
 
 Pour la pagination faudra que je regarde comment fait le fileClass view du plugin Metadata menu
 
-A améliorer
----
-
-Pouvoir définir la requête en option de la vue
-Pouvoir définir en option la possibilité de retirer les mp3 (sur mobile notamment)
-
-
-Il faudrait que le disableAudioPlayer soit automatiquement intégré sur Android uniquement même si le paramètre n'est pas défini
-
 */
 
-
-let { from, tags, linkedProperty, disableAudioPlayer, /*disableFilters*/ } = input || {};
+const {
+	from,
+	tags,
+	linkedProperty,
+	disableAudioPlayer,
+	shuffle,
+	/*disableFilters*/
+} = input || {};
 
 
 const youtubeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aa0000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19c-2.3 0-6.4-.2-8.1-.6-.7-.2-1.2-.7-1.4-1.4-.3-1.1-.5-3.4-.5-5s.2-3.9.5-5c.2-.7.7-1.2 1.4-1.4C5.6 5.2 9.7 5 12 5s6.4.2 8.1.6c.7.2 1.2.7 1.4 1.4.3 1.1.5 3.4.5 5s-.2 3.9-.5 5c-.2.7-.7 1.2-1.4 1.4-1.7.4-5.8.6-8.1.6 0 0 0 0 0 0z"></path><polygon points="10 15 15 12 10 9"></polygon></svg>'
@@ -59,6 +56,21 @@ const tid = (new Date()).getTime();
 const rootNode = dv.el("div", "", { cls: "jukebox", attr: { id: "jukebox" + tid, style: 'position:relative;-webkit-user-select:none!important' } });
 
 // - Utils functions
+/**
+ * from https://stackoverflow.com/a/6274381
+ * Shuffles array in place. (Modify it)
+ * @param {Array} a items An array containing the items.
+ */
+function shuffleArray(a) {
+	var j, x, i;
+	for (i = a.length - 1; i > 0; i--) {
+		j = Math.floor(Math.random() * (i + 1));
+		x = a[i];
+		a[i] = a[j];
+		a[j] = x;
+	}
+}
+
 const renderThumbnailFromUrl = (url) => {
 	if (!url) return null
 
@@ -131,7 +143,12 @@ if (tags) {
 
 const pages = qs
 	.query()
-	.sort(p => p.file.name, 'asc')
+
+if (!!shuffle) {
+	shuffleArray(pages)
+} else {
+	pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
+}
 
 
 // - Build the grid of score
@@ -145,7 +162,6 @@ pages.forEach(p => {
 	let thumbTag = ""
 	let urlTag = ""
 	let soundTag = ""
-
 
 	if (!p.thumbnail) {
 		thumbTag = renderThumbnailFromUrl(p.url)
