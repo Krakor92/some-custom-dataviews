@@ -3,17 +3,30 @@
 Pour la pagination faudra que je regarde comment fait le fileClass view du plugin Metadata menu
 
 */
-
 const {
 	from,
 	tags,
 	linkedProperty,
 	disableAudioPlayer,
 	shuffle,
+	voice,
 	/*disableFilters*/
 } = input || {};
 
 
+const tid = (new Date()).getTime();
+const rootNode = dv.el("div", "", {
+	cls: "jukebox",
+	attr: {
+		id: "jukebox" + tid,
+		style: 'position:relative;-webkit-user-select:none!important'
+	}
+});
+
+
+// ------------------------
+// - Company/Service icons
+// ------------------------
 const youtubeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aa0000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19c-2.3 0-6.4-.2-8.1-.6-.7-.2-1.2-.7-1.4-1.4-.3-1.1-.5-3.4-.5-5s.2-3.9.5-5c.2-.7.7-1.2 1.4-1.4C5.6 5.2 9.7 5 12 5s6.4.2 8.1.6c.7.2 1.2.7 1.4 1.4.3 1.1.5 3.4.5 5s-.2 3.9-.5 5c-.2.7-.7 1.2-1.4 1.4-1.7.4-5.8.6-8.1.6 0 0 0 0 0 0z"></path><polygon points="10 15 15 12 10 9"></polygon></svg>'
 const soundcloudIcon = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 width="24" height="24" viewBox="0 0 317.531 317.531" stroke-width="4" stroke="#ff5400" fill="#ff5400" style="enable-background:new 0 0 317.531 317.531;" xml:space="preserve">
@@ -52,10 +65,11 @@ const dropboxIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="
 
 const linkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`
 
-const tid = (new Date()).getTime();
-const rootNode = dv.el("div", "", { cls: "jukebox", attr: { id: "jukebox" + tid, style: 'position:relative;-webkit-user-select:none!important' } });
-
 // - Utils functions
+function isObject(o) {
+	return o !== null && typeof o === 'object' && Array.isArray(o) === false;
+}
+
 /**
  * from https://stackoverflow.com/a/6274381
  * Shuffles array in place. (Modify it)
@@ -71,6 +85,10 @@ function shuffleArray(a) {
 	}
 }
 
+/**
+ * 
+ * @param {string} url 
+ */
 const renderThumbnailFromUrl = (url) => {
 	if (!url) return null
 
@@ -85,6 +103,12 @@ const renderThumbnailFromUrl = (url) => {
 		const startOfId = url.lastIndexOf('/') + 1
 		const id = url.substring(startOfId)
 		return `<img src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
+	}
+
+	// Embed de la miniature dans le document
+	if (url[0] === '!') {
+		const startOfUrl = url.lastIndexOf('(') + 1
+		url = url.substring(startOfUrl, url.length - 1)
 	}
 
 	return `<img src="${url}" referrerpolicy="no-referrer">`
@@ -115,7 +139,9 @@ const getOS = () => {
 	return "Unknown OS";
 }
 
-// - Build the query
+// --------------------------------------
+// - Build the query based on parameters
+// --------------------------------------
 await forceLoadCustomJS();
 const { CustomJs } = customJS
 const QueryService = new CustomJs.Query(dv)
@@ -141,6 +167,53 @@ if (tags) {
 	}
 }
 
+/**
+ * Pour l'instant, {{voice}} ne peut être qu'un objet de type
+ * {yes: true, chorus: true, few: false, no: true}
+ */ 
+if (voice && isObject(voice)) {
+	console.log("Filter on voice")
+	console.log({voice})
+	/**
+	 * CAS 1
+	 * En gros si sur les valeurs données, il y a ne serait ce que un false, alors toutes les autres valeurs seront affiché
+	 * Donc {yes: false} équivaut à {yes: false, chorus: true, few: true, no: true}
+	 * 
+	 * CAS 2
+ * Au contraire, s'il n'y a qu'un true, c'est l'inverse:
+ * {yes: true} équivaut à {yes: true, chorus: false, few: false, no: false}
+ * 
+	 */
+	
+	let defaultValue = Object.values(voice).some(v => !v);
+	console.log({defaultValue})
+	
+	let voiceFilters = {
+		yes: defaultValue,
+		chorus: defaultValue,
+		few: defaultValue,
+		no: defaultValue,
+		...voice
+	}
+	console.log({voiceFilters})
+
+
+	if (defaultValue) {
+		for (const [key, value] of Object.entries(voiceFilters)) {
+			if (!value) {
+				console.log({key, value})
+				qs.withoutFieldOfValue({ name: "voice", value: key })
+			}
+		}
+	} else {
+		for (const [key, value] of Object.entries(voiceFilters)) {
+			if (value) {
+				qs.withFieldOfValue({ name: "voice", value: key })
+			}
+		}
+	}
+}
+
 const pages = qs
 	.query()
 
@@ -150,8 +223,9 @@ if (!!shuffle) {
 	pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
 }
 
-
+// -------------------------
 // - Build the grid of score
+// -------------------------
 const os = getOS();
 let gridContent = ""
 pages.forEach(p => {
