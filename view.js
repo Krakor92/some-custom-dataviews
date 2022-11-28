@@ -63,6 +63,9 @@ const dropboxIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="
 // #0061fe
 
 
+// ----------------
+// - Other icons
+// ----------------
 const linkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`
 
 // - Utils functions
@@ -96,13 +99,13 @@ const renderThumbnailFromUrl = (url) => {
 	if (url.includes("youtu.be")) {
 		const startOfId = url.indexOf("youtu.be/") + 9
 		const id = url.substring(startOfId, startOfId + 11)
-		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
+		return `<img class="lazyload" data-src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
 	}
 
 	if (url.includes("dailymotion")) {
 		const startOfId = url.lastIndexOf('/') + 1
 		const id = url.substring(startOfId)
-		return `<img src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
+		return `<img class="lazyload" data-src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
 	}
 
 	// Embed de la miniature dans le document
@@ -111,19 +114,19 @@ const renderThumbnailFromUrl = (url) => {
 		url = url.substring(startOfUrl, url.length - 1)
 	}
 
-	return `<img src="${url}" referrerpolicy="no-referrer">`
+	return `<img class="lazyload" data-src="${url}" referrerpolicy="no-referrer">`
 }
 
 const renderMP3Audio = (mp3File) => {
 	if (!mp3File) return null
 
-	return `<audio controls src="${window.app.vault.adapter.getResourcePath(mp3File.path)}">`
+	return `<audio controls class="lazyload" data-src="${window.app.vault.adapter.getResourcePath(mp3File.path)}">`
 }
 
 const renderThumbnailFromVault = (thumb) => {
 	if (!thumb) return null
 
-	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
+	return `<img class="lazyload" data-src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
 }
 
 const getOS = () => {
@@ -281,7 +284,31 @@ pages.forEach(p => {
 	`
 })
 
-rootNode.querySelector("span").appendChild(dv.el("div", gridContent, { cls: "grid" }));
+// - Remove the span inside the root tag
+const rootSpan = rootNode.querySelector("span")
+rootSpan.outerHTML = rootSpan.innerHTML
+
+const grid = dv.el("div", gridContent, { cls: "grid" })
+
+
+// Lazyload implementation of medias (images and mp3)
+// Based on https://medium.com/@ryanfinni/the-intersection-observer-api-practical-examples-7844dfa429e9
+// Don't know if it's really useful in my case, but I think when I have more than 500 tunes, it will make a difference.
+function handleMediaIntersection(entries) {
+	entries.map((entry) => {
+		if (entry.isIntersecting) {
+			entry.target.src = entry.target.dataset.src;
+			entry.target.classList.add("loaded")
+			observer.unobserve(entry.target);
+		}
+	});
+}
+const observer = new IntersectionObserver(handleMediaIntersection);
+const medias = grid.querySelectorAll('.lazyload');
+medias.forEach(image => observer.observe(image));
+
+// rootNode.appendChild(dv.el("div", fab, { cls: "fab" }));
+rootNode.appendChild(grid);
 
 
 // dv.table(["Thumb", "Music", "MP3", "🏷️"],
