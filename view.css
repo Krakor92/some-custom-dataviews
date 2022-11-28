@@ -76,6 +76,7 @@ et je l'assume
 }
 
 .jukebox img {
+	pointer-events: none;
 	margin-bottom: calc(var(--cards-padding)/3);
 }
 
