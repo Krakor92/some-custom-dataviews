@@ -7,12 +7,16 @@ const {
 	from,
 	tags,
 	linkedProperty,
-	disableAudioPlayer,
 	shuffle,
 	voice,
+	media,
+	mp3Only,
+	mp3Autoplay = true,
+	disableAudioPlayer = false,
+	// voir ce post https://stackoverflow.com/a/18939803 pour avoir un système de debug robuste
+	debug = false
 	/*disableFilters*/
 } = input || {};
-
 
 const tid = (new Date()).getTime();
 const rootNode = dv.el("div", "", {
@@ -28,6 +32,8 @@ const rootNode = dv.el("div", "", {
 // - Company/Service icons
 // ------------------------
 const youtubeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aa0000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19c-2.3 0-6.4-.2-8.1-.6-.7-.2-1.2-.7-1.4-1.4-.3-1.1-.5-3.4-.5-5s.2-3.9.5-5c.2-.7.7-1.2 1.4-1.4C5.6 5.2 9.7 5 12 5s6.4.2 8.1.6c.7.2 1.2.7 1.4 1.4.3 1.1.5 3.4.5 5s-.2 3.9-.5 5c-.2.7-.7 1.2-1.4 1.4-1.7.4-5.8.6-8.1.6 0 0 0 0 0 0z"></path><polygon points="10 15 15 12 10 9"></polygon></svg>'
+
+// from: https://www.svgrepo.com/svg/89412/soundcloud-logo
 const soundcloudIcon = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 width="24" height="24" viewBox="0 0 317.531 317.531" stroke-width="4" stroke="#ff5400" fill="#ff5400" style="enable-background:new 0 0 317.531 317.531;" xml:space="preserve">
 <g>
@@ -68,7 +74,11 @@ const dropboxIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="
 // ----------------
 const linkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`
 
+const mediaIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-5a8 8 0 0 0-5 2 8 8 0 0 0-5-2H2Z"></path><path d="M6 11c1.5 0 3 .5 3 2-2 0-3 0-3-2Z"></path><path d="M18 11c-1.5 0-3 .5-3 2 2 0 3 0 3-2Z"></path></svg>`
+
+// ------------------
 // - Utils functions
+// ------------------
 function isObject(o) {
 	return o !== null && typeof o === 'object' && Array.isArray(o) === false;
 }
@@ -87,6 +97,24 @@ function shuffleArray(a) {
 		a[j] = x;
 	}
 }
+
+const getOS = () => {
+	const { isMobile } = this.app
+	const { platform } = navigator
+
+	if (platform.indexOf("Win") !== -1) return "Windows";
+	// if (platform.indexOf("Mac") !== -1) return "MacOS";
+	if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux";
+	if (platform.indexOf("Linux") !== -1 && isMobile) return "Android";
+	if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS";
+
+	return "Unknown OS";
+}
+
+
+// ------------------
+// - Render functions
+// ------------------
 
 /**
  * 
@@ -129,17 +157,22 @@ const renderThumbnailFromVault = (thumb) => {
 	return `<img class="lazyload" data-src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
 }
 
-const getOS = () => {
-	const { isMobile } = this.app
-	const { platform } = navigator
+const renderExternalUrlAnchor = (url) => {
 
-	if (platform.indexOf("Win") !== -1) return "Windows";
-	// if (platform.indexOf("Mac") !== -1) return "MacOS";
-	if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux";
-	if (platform.indexOf("Linux") !== -1 && isMobile) return "Android";
-	if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS";
+	if (url.includes("youtu")) return `<a href="${url}" rel="noopener target="_blank" data-service="youtube">${youtubeIcon}</a>`
+	if (url.includes("dailymotion")) return `<a href="${url}" rel="noopener target="_blank" data-service="dailymotion">${dailymotionIcon}</a>`
+	if (url.includes("dropbox")) return `<a href="${url}" rel="noopener target="_blank" data-service="dropbox">${dropboxIcon}</a>`
+	if (url.includes("soundcloud")) return `<a href="${url}" rel="noopener target="_blank" data-service="soundcloud">${soundcloudIcon}</a>`
+	
+	return `<a href="${url}" rel="noopener target="_blank" data-service="unknown">${linkIcon}</a>`
+}
 
-	return "Unknown OS";
+const renderInternalFileAnchor = (file) => {
+	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${file.path}" data-href="${file.path}" href="${file.path}">${file.name}</a>`
+}
+
+const renderMediaTag = (media) => {
+	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${media.path}" data-href="${media.path}" href="${media.path}">${mediaIcon}</a>`
 }
 
 // --------------------------------------
@@ -154,19 +187,34 @@ const fromQuery = from ?? '#🎼 AND -"_templates"'
 const qs = QueryService
 	.from(fromQuery);
 
+if (mp3Only) {
+	qs.withExistingField("mp3")
+}
+
 if (linkedProperty) {
 	const currentPath = dv.current().file.path;
 	qs.withLinkFieldOfPath({ field: linkedProperty, path: currentPath })
 }
 
 if (tags) {
+	console.log("%cFilter on tags 🏷️", 'color: #7f6df2; font-size: 14px')
+
 	if (Array.isArray(tags)) {
 		tags.forEach(t => {
 			qs.withFieldOfValue({ name: "tags_", value: t })
 		})
 	}
 	else {
+		console.log(`%c=> ${tags}`, 'color: #7f6df2')
+
 		qs.withFieldOfValue({ name: "tags_", value: tags })
+	}
+}
+
+if (media) {
+	// Right now it don't support OR query so you can't make a ['👺', '🎮'] for example
+	if (!Array.isArray(media)) {
+		qs.withFieldOfValue({ name: "media", value: media })
 	}
 }
 
@@ -175,8 +223,6 @@ if (tags) {
  * {yes: true, chorus: true, few: false, no: true}
  */ 
 if (voice && isObject(voice)) {
-	console.log("Filter on voice")
-	console.log({voice})
 	/**
 	 * CAS 1
 	 * En gros si sur les valeurs données, il y a ne serait ce que un false, alors toutes les autres valeurs seront affiché
@@ -189,7 +235,6 @@ if (voice && isObject(voice)) {
 	 */
 	
 	let defaultValue = Object.values(voice).some(v => !v);
-	console.log({defaultValue})
 	
 	let voiceFilters = {
 		yes: defaultValue,
@@ -198,13 +243,12 @@ if (voice && isObject(voice)) {
 		no: defaultValue,
 		...voice
 	}
-	console.log({voiceFilters})
+
 
 
 	if (defaultValue) {
 		for (const [key, value] of Object.entries(voiceFilters)) {
 			if (!value) {
-				console.log({key, value})
 				qs.withoutFieldOfValue({ name: "voice", value: key })
 			}
 		}
@@ -229,57 +273,50 @@ if (!!shuffle) {
 // -------------------------
 // - Build the grid of score
 // -------------------------
-const os = getOS();
+// const os = getOS();
 let gridContent = ""
 pages.forEach(p => {
-
 	let fileTag = `<span class="file-link">
-	<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${p.file.path}" data-href="${p.file.path}" href="${p.file.path}">${p.file.name}</a>
+		${renderInternalFileAnchor(p.file)}
 	</span>`
 	let thumbTag = ""
-	let urlTag = ""
+	let imgTag = ""
 	let soundTag = ""
+	let urlTag = ""
+	let mediaTag = ""
 
 	if (!p.thumbnail) {
-		thumbTag = renderThumbnailFromUrl(p.url)
+		imgTag = renderThumbnailFromUrl(p.url)
 	} else if (typeof p.thumbnail === "string") {
 		// Thumbnail is an url (for non youtube music)
-		thumbTag = renderThumbnailFromUrl(p.thumbnail)
+		imgTag = renderThumbnailFromUrl(p.thumbnail)
 	} else {
-		thumbTag = renderThumbnailFromVault(p.thumbnail)
+		imgTag = renderThumbnailFromVault(p.thumbnail)
 	}
 
 	if (p.url) {
-		let aTag = ""
-		if (p.url.includes("youtu")) {
-			aTag = `<a href="${p.url}" rel="noopener target="_blank" data-service="youtube">${youtubeIcon}</a>`
-		} else if (p.url.includes("dailymotion")) {
-			aTag = `<a href="${p.url}" rel="noopener target="_blank" data-service="dailymotion">${dailymotionIcon}</a>`
-		} else if (p.url.includes("dropbox")) {
-			aTag = `<a href="${p.url}" rel="noopener target="_blank" data-service="dropbox">${dropboxIcon}</a>`
-		} else if (p.url.includes("soundcloud")) {
-			aTag = `<a href="${p.url}" rel="noopener target="_blank" data-service="soundcloud">${soundcloudIcon}</a>`
-		} else {
-			aTag = `<a href="${p.url}" rel="noopener target="_blank" data-service="unknown">${linkIcon}</a>`
-		}
-
 		urlTag = `<span class="url-link">
-			${aTag}
+			${renderExternalUrlAnchor(p.url)}
 		</span>`
 	}
 
-	// MP3 player bug on Android unfortunatelly :/
-	if (os !== "Android" && !disableAudioPlayer && p.mp3) {
+	if (!disableAudioPlayer && p.mp3) {
 		soundTag = `<span class="file-link">
 			${renderMP3Audio(p.mp3)}
 		</span>`
 	}
 
+	thumbTag = `<div class="img-container">
+		${imgTag}
+		${soundTag ?? null}
+	</div>
+	`
+
 	gridContent += `<article>
 	${thumbTag ?? ""}
 	${fileTag}
 	${urlTag ?? ""}
-	${soundTag}
+	${mediaTag ?? ""}
 	</article>
 	`
 })
@@ -290,15 +327,23 @@ rootSpan.outerHTML = rootSpan.innerHTML
 
 const grid = dv.el("div", gridContent, { cls: "grid" })
 
+function loadAudio(audio) {
+	if (!audio.hasClass('loaded')) {
+		audio.src = audio.dataset.src;
+		audio.classList.add("loaded")
+	}
+}
 
+// ---------------------------------------------------
 // Lazyload implementation of medias (images and mp3)
+// Make a huge difference as soon as you start having a lot of mp3 in your vault
 // Based on https://medium.com/@ryanfinni/the-intersection-observer-api-practical-examples-7844dfa429e9
-// Don't know if it's really useful in my case, but I think when I have more than 500 tunes, it will make a difference.
+// ---------------------------------------------------
 function handleMediaIntersection(entries) {
 	entries.map((entry) => {
 		if (entry.isIntersecting) {
-			entry.target.src = entry.target.dataset.src;
-			entry.target.classList.add("loaded")
+			// It could already be loaded before we reach it because of autoplay
+			loadAudio(entry.target);
 			observer.unobserve(entry.target);
 		}
 	});
@@ -311,14 +356,23 @@ medias.forEach(image => observer.observe(image));
 rootNode.appendChild(grid);
 
 
-// dv.table(["Thumb", "Music", "MP3", "🏷️"],
-// 	pages
-// 		.map(p => {
-// 			return [
-// 				p.thumbnail || renderThumbnailFromUrl(p.url),
-// 				p.file.link,
-// 				renderMP3Audio(p.mp3) || p.url,
-// 				p.tags_,
-// 			]
-// 		})
-// );
+// --------------------------------------------------------
+// Add the autoplay functionality on every mp3 on the page
+// --------------------------------------------------------
+if (mp3Autoplay) {
+	const audios = document.querySelectorAll(`#jukebox${tid} audio`);
+	console.log(`Audio tags find in file: ${audios.length}`)
+	if (audios.length > 1) {
+		for (let i = 0; i < audios.length; i++) {
+			console.log(audios[i].dataset.src)
+			audios[i].onended = function () {
+				if (i + 1 === audios.length) {
+					audios[0].play()
+				} else {
+					loadAudio(audios[i + 1])
+					audios[i + 1].play()
+				}
+			};
+		}
+	}
+}
