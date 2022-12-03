@@ -18,6 +18,10 @@ const {
 	/*disableFilters*/
 } = input || {};
 
+
+const enableSimultaneousMp3Playing = false
+
+
 const tid = (new Date()).getTime();
 const rootNode = dv.el("div", "", {
 	cls: "jukebox",
@@ -131,7 +135,7 @@ const getOS = () => {
  * @param {string} url 
  */
 const renderThumbnailFromUrl = (url) => {
-	if (!url) return null
+	if (!url) return ""
 
 	//flemme de faire youtube.com pour l'instant
 	if (url.includes("youtu.be")) {
@@ -156,7 +160,7 @@ const renderThumbnailFromUrl = (url) => {
 }
 
 const renderMP3Audio = (mp3File) => {
-	if (!mp3File) return null
+	if (!mp3File) return ""
 
 	return `
 	<div class="audio-player">
@@ -168,7 +172,7 @@ const renderMP3Audio = (mp3File) => {
 }
 
 const renderThumbnailFromVault = (thumb) => {
-	if (!thumb) return null
+	if (!thumb) return ""
 
 	return `<img class="lazyload" data-src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
 }
@@ -395,6 +399,8 @@ const audios = rootNode.querySelectorAll(`audio`);
 const playButtons = rootNode.querySelectorAll('.audio-player button')
 const trackTimelines = rootNode.querySelectorAll('input.timeline')
 
+let currentMP3Playing = -1;
+
 // console.log(`Audio tags find in file: ${audios.length}`)
 
 const changeTimelinePosition = (timeline, audio) => {
@@ -408,13 +414,28 @@ const changeSeek = (timeline, audio) => {
 	audio.currentTime = time;
 }
 
-const handlePlayButtonClick = (playButton, audio) => {
-	if (audio.paused) {
-		audio.play();
-		playButton.innerHTML = pauseIcon;
+function playAudio({ index, audios, playButtons }) {
+	if (!enableSimultaneousMp3Playing && currentMP3Playing !== -1) {
+		pauseAudio({ audio: audios[currentMP3Playing], playButton: playButtons[currentMP3Playing] })
+	}
+
+	currentMP3Playing = index;
+	audios[index].play()
+	playButtons[index].innerHTML = pauseIcon;
+
+}
+
+function pauseAudio({ playButton, audio }) {
+	currentMP3Playing = -1;
+	audio.pause();
+	playButton.innerHTML = playIcon;
+}
+
+const handlePlayButtonClick = ({ index, audios, playButtons }) => {
+	if (audios[index].paused) {
+		playAudio({playButtons, audios, index})
 	} else {
-		audio.pause();
-		playButton.innerHTML = playIcon;
+		pauseAudio({ playButton: playButtons[index], audio: audios[index] })
 	}
 }
 
@@ -427,7 +448,7 @@ for (let i = 0; i < audios.length; i++) {
 
 	audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
 
-	playButtons[i].addEventListener('click', handlePlayButtonClick.bind(this, playButtons[i], audios[i]))
+	playButtons[i].addEventListener('click', handlePlayButtonClick.bind(this, {index: i, audios, playButtons}))
 
 	trackTimelines[i].addEventListener('change', changeSeek.bind(this, trackTimelines[i], audios[i]));
 
