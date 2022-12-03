@@ -2,7 +2,21 @@
 
 Pour la pagination faudra que je regarde comment fait le fileClass view du plugin Metadata menu
 
+
 */
+
+let inceptionTime = performance.now()
+let startTime = performance.now()
+let perfTime = null;
+
+const logPerf = (label) => {
+	perfTime = performance.now()
+	console.info(`${label} took ${(perfTime - startTime).toPrecision(3)} milliseconds`)
+	startTime = perfTime
+}
+
+console.log("=----------------------=")
+
 const {
 	from,
 	tags,
@@ -201,6 +215,8 @@ const renderTimelineTrack = () => {
 
 //#endregion
 
+logPerf("Declaration of variables and util functions")
+
 //#region Build the query based on parameters
 await forceLoadCustomJS();
 const { CustomJs } = customJS
@@ -295,9 +311,14 @@ if (!!shuffle) {
 }
 //#endregion
 
+logPerf("Dataview js query, filtering and sorting")
+
+console.info(`Number of page to insert in the DOM: ${pages.length}`)
+
 //#region Build the grid of score
 const os = getOS();
 let gridContent = ""
+const gridArticles = []
 pages.forEach(p => {
 	let fileTag = `<span class="file-link">
 		${renderInternalFileAnchor(p.file)}
@@ -344,22 +365,31 @@ pages.forEach(p => {
 	</div>
 	`
 
-	gridContent += `<article>
+	const article = `<article>
 	${thumbTag ?? ""}
 	${fileTag}
 	${urlTag ?? ""}
 	${mediaTag ?? ""}
 	</article>
 	`
+	gridContent += article
+	gridArticles.push(article)
 })
+
+logPerf("Building the actual grid")
 
 // - Remove the span inside the root tag
 const rootSpan = rootNode.querySelector("span")
 rootSpan.outerHTML = rootSpan.innerHTML
 
 const grid = dv.el("div", gridContent, { cls: "grid" })
+logPerf("Convert string gridContent to DOM object")
+
 rootNode.appendChild(grid);
 //#endregion
+
+logPerf("Appending the previously built grid to the DOM")
+
 
 //#region Media lazyloading
 
@@ -379,6 +409,7 @@ function loadMedia(media) {
 function handleMediaIntersection(entries) {
 	entries.map((entry) => {
 		if (entry.isIntersecting) {
+			console.info(`First loading of img on window took ${(performance.now() - inceptionTime).toPrecision(3)} milliseconds`)
 			loadMedia(entry.target.querySelector("img"));
 			loadMedia(entry.target.querySelector("audio"));
 			observer.unobserve(entry.target);
@@ -469,3 +500,5 @@ for (let i = 0; i < audios.length; i++) {
 	};
 }
 //#endregion
+
+logPerf("Handling all the mp3 relating thing")
