@@ -5,7 +5,6 @@ Pour la pagination faudra que je regarde comment fait le fileClass view du plugi
 
 */
 
-let inceptionTime = performance.now()
 let startTime = performance.now()
 let perfTime = null;
 
@@ -33,6 +32,7 @@ const {
 } = input || {};
 
 
+const scorePerPageBatch = 20
 const enableSimultaneousMp3Playing = false
 
 
@@ -103,7 +103,6 @@ const pauseIcon = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
 </svg>`
-
 //#endregion
 
 //#region Utils functions
@@ -141,6 +140,11 @@ const getOS = () => {
 
 	return "Unknown OS";
 }
+
+function removeTagChildDVSpan(tag) {
+	const span = tag.querySelector("span")
+	span.outerHTML = span.innerHTML
+}
 //#endregion
 
 //#region Rendering functions
@@ -155,13 +159,13 @@ const renderThumbnailFromUrl = (url) => {
 	if (url.includes("youtu.be")) {
 		const startOfId = url.indexOf("youtu.be/") + 9
 		const id = url.substring(startOfId, startOfId + 11)
-		return `<img class="lazyload" data-src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
+		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
 	}
 
 	if (url.includes("dailymotion")) {
 		const startOfId = url.lastIndexOf('/') + 1
 		const id = url.substring(startOfId)
-		return `<img class="lazyload" data-src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
+		return `<img src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
 	}
 
 	// Embed de la miniature dans le document
@@ -170,7 +174,7 @@ const renderThumbnailFromUrl = (url) => {
 		url = url.substring(startOfUrl, url.length - 1)
 	}
 
-	return `<img class="lazyload" data-src="${url}" referrerpolicy="no-referrer">`
+	return `<img src="${url}" referrerpolicy="no-referrer">`
 }
 
 const renderMP3Audio = (mp3File) => {
@@ -181,14 +185,14 @@ const renderMP3Audio = (mp3File) => {
 		<button class="player-button">
 			${playIcon}
 		</button>
-		<audio data-src="${window.app.vault.adapter.getResourcePath(mp3File.path)}"></audio>
+		<audio src="${window.app.vault.adapter.getResourcePath(mp3File.path)}"></audio>
 	</div>`;
 }
 
 const renderThumbnailFromVault = (thumb) => {
 	if (!thumb) return ""
 
-	return `<img class="lazyload" data-src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
+	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
 }
 
 const renderExternalUrlAnchor = (url) => {
@@ -212,7 +216,6 @@ const renderMediaTag = (media) => {
 const renderTimelineTrack = () => {
 	return `<input type="range" class="timeline" max="100" value="0">`
 }
-
 //#endregion
 
 logPerf("Declaration of variables and util functions")
@@ -309,15 +312,15 @@ if (!!shuffle) {
 } else {
 	pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
 }
+
+const numberOfPagesFetched = pages.length
 //#endregion
 
 logPerf("Dataview js query, filtering and sorting")
 
-console.info(`Number of page to insert in the DOM: ${pages.length}`)
 
 //#region Build the grid of score
 const os = getOS();
-let gridContent = ""
 const gridArticles = []
 pages.forEach(p => {
 	let fileTag = `<span class="file-link">
@@ -358,7 +361,7 @@ pages.forEach(p => {
 		trackTag = renderTimelineTrack()
 	}
 
-	thumbTag = `<div class="thumb-stack lazyload">
+	thumbTag = `<div class="thumb-stack">
 		${imgTag}
 		${soundTag}
 		${soundTag ? trackTag : ""}
@@ -372,68 +375,56 @@ pages.forEach(p => {
 	${mediaTag ?? ""}
 	</article>
 	`
-	gridContent += article
 	gridArticles.push(article)
 })
 
 logPerf("Building the actual grid")
 
-// - Remove the span inside the root tag
-const rootSpan = rootNode.querySelector("span")
-rootSpan.outerHTML = rootSpan.innerHTML
+removeTagChildDVSpan(rootNode)
 
-const grid = dv.el("div", gridContent, { cls: "grid" })
+let nbPageBatchesFetched = 1
+
+const grid = dv.el("div", gridArticles.slice(0, scorePerPageBatch).join(""), { cls: "grid" })
+
 logPerf("Convert string gridContent to DOM object")
 
 rootNode.appendChild(grid);
 //#endregion
 
-logPerf("Appending the previously built grid to the DOM")
+logPerf("Appending the first built grid to the DOM")
 
-
-//#region Media lazyloading
-
-function loadMedia(media) {
-	// It could already be loaded before we reach it because of autoplay
-	if (!media || media.hasClass('loaded') || media.src !== "") return;
-
-	media.src = media.dataset.src;
-	media.classList.add("loaded")
-}
-
-// ---------------------------------------------------
-// Lazyload implementation of medias (images and mp3)
-// Make a huge difference as soon as you start having a lot of mp3 in your vault
-// Based on https://medium.com/@ryanfinni/the-intersection-observer-api-practical-examples-7844dfa429e9
-// ---------------------------------------------------
-function handleMediaIntersection(entries) {
+//#region Infinite scroll custom implementation
+function handleLastScoreIntersection(entries) {
 	entries.map((entry) => {
 		if (entry.isIntersecting) {
-			console.info(`First loading of img on window took ${(performance.now() - inceptionTime).toPrecision(3)} milliseconds`)
-			loadMedia(entry.target.querySelector("img"));
-			loadMedia(entry.target.querySelector("audio"));
-			observer.unobserve(entry.target);
+			startTime = performance.now();
+
+			scoreObserver.unobserve(entries[0].target);
+			grid.querySelector("span").insertAdjacentHTML('beforeend', gridArticles.slice(
+				nbPageBatchesFetched * scorePerPageBatch,
+				(nbPageBatchesFetched + 1) * scorePerPageBatch).join(""));
+			nbPageBatchesFetched++
+
+			manageMp3Scores();
+
+			if (nbPageBatchesFetched * scorePerPageBatch < numberOfPagesFetched) {
+				console.log(`Batch to load next: ${nbPageBatchesFetched * scorePerPageBatch}`)
+				lastScore = grid.querySelector('article:last-of-type')
+				scoreObserver.observe(lastScore)
+			} else {
+				console.log(`Finish to load: ${nbPageBatchesFetched * scorePerPageBatch}`)
+			}
+
+			logPerf("Appended new scores at the end of the grid")
 		}
 	});
 }
-const observer = new IntersectionObserver(handleMediaIntersection);
-const medias = grid.querySelectorAll('.thumb-stack');
-// console.log(`There are ${medias.length} medias that are lazyloaded`)
-medias.forEach(media => observer.observe(media));
+const scoreObserver = new IntersectionObserver(handleLastScoreIntersection);
+let lastScore = grid.querySelector('article:last-of-type');
+scoreObserver.observe(lastScore)
 //#endregion
 
-//#region Custom audio player
-// -------------------------------------------------------------------------------------
-// Add the autoplay functionality for every mp3 on the page + custom button and timeline
-// -------------------------------------------------------------------------------------
-const audios = rootNode.querySelectorAll(`audio`);
-const playButtons = rootNode.querySelectorAll('.audio-player button')
-const trackTimelines = rootNode.querySelectorAll('input.timeline')
-
-let currentMP3Playing = -1;
-
-// console.log(`Audio tags find in file: ${audios.length}`)
-
+//#region MP3 audio player (custom button, timeline, autoplay)
 const changeTimelinePosition = (timeline, audio) => {
 	const percentagePosition = (100 * audio.currentTime) / audio.duration;
 	timeline.style.backgroundSize = `${percentagePosition}% 100%`;
@@ -445,7 +436,7 @@ const changeSeek = (timeline, audio) => {
 	audio.currentTime = time;
 }
 
-function playAudio({ index, audios, playButtons }) {
+const playAudio = ({ index, audios, playButtons }) => {
 	if (!enableSimultaneousMp3Playing && currentMP3Playing !== -1) {
 		pauseAudio({ audio: audios[currentMP3Playing], playButton: playButtons[currentMP3Playing] })
 	}
@@ -456,7 +447,7 @@ function playAudio({ index, audios, playButtons }) {
 
 }
 
-function pauseAudio({ playButton, audio }) {
+const pauseAudio = ({ playButton, audio }) => {
 	currentMP3Playing = -1;
 	audio.pause();
 	playButton.innerHTML = playIcon;
@@ -464,41 +455,69 @@ function pauseAudio({ playButton, audio }) {
 
 const handlePlayButtonClick = ({ index, audios, playButtons }) => {
 	if (audios[index].paused) {
-		playAudio({playButtons, audios, index})
+		playAudio({ playButtons, audios, index })
 	} else {
 		pauseAudio({ playButton: playButtons[index], audio: audios[index] })
 	}
 }
 
-// Must never happen
-if (audios.length !== playButtons.length) {
-	console.warn("The number of play buttons doesn't match the number of audios")
-}
+let audios = grid.querySelectorAll(`audio`)
+let playButtons = grid.querySelectorAll('.audio-player button')
+let trackTimelines = grid.querySelectorAll('input.timeline')
 
-for (let i = 0; i < audios.length; i++) {
+let currentMP3Playing = -1;
+let numberOfAudiosLoaded = -1;
 
-	audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
+manageMp3Scores()
 
-	playButtons[i].addEventListener('click', handlePlayButtonClick.bind(this, {index: i, audios, playButtons}))
+/**
+ * This function should be called every time new scores are added at the end of the grid (because of scroll)
+ * It:
+ * - Binds the update of the audio to the progress of the timeline
+ * - Handle what happened when you click on the custom button
+ * - Make possible to drag the timeline to change the audio timecode
+ * - Supports automatic playback of the next found mp3 (which is already loaded in the grid of course)
+ */
+function manageMp3Scores() {
+	startTime = performance.now();
 
-	trackTimelines[i].addEventListener('change', changeSeek.bind(this, trackTimelines[i], audios[i]));
+	// - Update these core variables with new scores (eventually)
+	audios = grid.querySelectorAll(`audio`)
+	playButtons = grid.querySelectorAll('.audio-player button')
+	trackTimelines = grid.querySelectorAll('input.timeline')
 
-	audios[i].onended = () => {
-		// console.log(`Audio nb ${i} ended`)
-		playButtons[i].innerHTML = playIcon;
-		if (!mp3Autoplay || audios.length === 1) return;
+	if (numberOfAudiosLoaded === audios.length) return;
+	numberOfAudiosLoaded = audios.length
 
-		if (i + 1 === audios.length) {
-			loadMedia(audios[0])
-			playButtons[0].innerHTML = pauseIcon;
-			audios[0].play()
-		} else {
-			loadMedia(audios[i + 1])
-			playButtons[i + 1].innerHTML = pauseIcon;
-			audios[i + 1].play()
-		}
-	};
+
+	// Must never happen
+	if (audios.length !== playButtons.length) {
+		console.warn("The number of play buttons doesn't match the number of audios")
+	}
+
+
+	for (let i = 0; i < audios.length; i++) {
+
+		audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
+
+		playButtons[i].addEventListener('click', handlePlayButtonClick.bind(this, { index: i, audios, playButtons }))
+
+		trackTimelines[i].addEventListener('change', changeSeek.bind(this, trackTimelines[i], audios[i]));
+
+		audios[i].onended = () => {
+			playButtons[i].innerHTML = playIcon;
+			if (!mp3Autoplay || audios.length === 1) return;
+
+			if (i + 1 === audios.length) {
+				playButtons[0].innerHTML = pauseIcon;
+				audios[0].play()
+			} else {
+				playButtons[i + 1].innerHTML = pauseIcon;
+				audios[i + 1].play()
+			}
+		};
+	}
+
+	logPerf("Reloading all the mp3 management")
 }
 //#endregion
-
-logPerf("Handling all the mp3 relating thing")

@@ -42,17 +42,20 @@ et je l'assume
 	justify-self: center;
 }
 
-
-.jukebox img.lazyload {
-	opacity: 0;
-	width: 100%;
-	height: 100px;
-	transition: opacity 0.4s ease;
+.jukebox img {
+	animation: fadeInAnimation ease 0.4s;
+	animation-iteration-count: 1;
+	animation-fill-mode: forwards;
 }
 
-.jukebox img.lazyload.loaded {
-	opacity: 1;
-	height: auto;
+@keyframes fadeInAnimation {
+	0% {
+		opacity: 0;
+	}
+
+	100% {
+		opacity: 1;
+	}
 }
 
 .jukebox span {
