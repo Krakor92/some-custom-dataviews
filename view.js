@@ -27,7 +27,7 @@ const rootNode = dv.el("div", "", {
 	}
 });
 
-
+//#region Icons
 // ------------------------
 // - Company/Service icons
 // ------------------------
@@ -76,9 +76,22 @@ const linkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
 
 const mediaIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-5a8 8 0 0 0-5 2 8 8 0 0 0-5-2H2Z"></path><path d="M6 11c1.5 0 3 .5 3 2-2 0-3 0-3-2Z"></path><path d="M18 11c-1.5 0-3 .5-3 2 2 0 3 0 3-2Z"></path></svg>`
 
-// ------------------
-// - Utils functions
-// ------------------
+const playIcon = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+</svg>`
+
+const pauseIcon = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+</svg>`
+
+//#endregion
+
+//#region Utils functions
+const delay = async (time) => new Promise((resolve) => setTimeout(resolve, time));
+
+
 function isObject(o) {
 	return o !== null && typeof o === 'object' && Array.isArray(o) === false;
 }
@@ -110,12 +123,9 @@ const getOS = () => {
 
 	return "Unknown OS";
 }
+//#endregion
 
-
-// ------------------
-// - Render functions
-// ------------------
-
+//#region Rendering functions
 /**
  * 
  * @param {string} url 
@@ -148,7 +158,13 @@ const renderThumbnailFromUrl = (url) => {
 const renderMP3Audio = (mp3File) => {
 	if (!mp3File) return null
 
-	return `<audio controls class="lazyload" data-src="${window.app.vault.adapter.getResourcePath(mp3File.path)}">`
+	return `
+	<div class="audio-player">
+		<button class="player-button">
+			${playIcon}
+		</button>
+		<audio data-src="${window.app.vault.adapter.getResourcePath(mp3File.path)}"></audio>
+	</div>`;
 }
 
 const renderThumbnailFromVault = (thumb) => {
@@ -163,7 +179,7 @@ const renderExternalUrlAnchor = (url) => {
 	if (url.includes("dailymotion")) return `<a href="${url}" rel="noopener target="_blank" data-service="dailymotion">${dailymotionIcon}</a>`
 	if (url.includes("dropbox")) return `<a href="${url}" rel="noopener target="_blank" data-service="dropbox">${dropboxIcon}</a>`
 	if (url.includes("soundcloud")) return `<a href="${url}" rel="noopener target="_blank" data-service="soundcloud">${soundcloudIcon}</a>`
-	
+
 	return `<a href="${url}" rel="noopener target="_blank" data-service="unknown">${linkIcon}</a>`
 }
 
@@ -174,10 +190,9 @@ const renderInternalFileAnchor = (file) => {
 const renderMediaTag = (media) => {
 	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${media.path}" data-href="${media.path}" href="${media.path}">${mediaIcon}</a>`
 }
+//#endregion
 
-// --------------------------------------
-// - Build the query based on parameters
-// --------------------------------------
+//#region Build the query based on parameters
 await forceLoadCustomJS();
 const { CustomJs } = customJS
 const QueryService = new CustomJs.Query(dv)
@@ -221,7 +236,7 @@ if (media) {
 /**
  * Pour l'instant, {{voice}} ne peut être qu'un objet de type
  * {yes: true, chorus: true, few: false, no: true}
- */ 
+ */
 if (voice && isObject(voice)) {
 	/**
 	 * CAS 1
@@ -233,9 +248,9 @@ if (voice && isObject(voice)) {
  * {yes: true} équivaut à {yes: true, chorus: false, few: false, no: false}
  * 
 	 */
-	
+
 	let defaultValue = Object.values(voice).some(v => !v);
-	
+
 	let voiceFilters = {
 		yes: defaultValue,
 		chorus: defaultValue,
@@ -269,11 +284,10 @@ if (!!shuffle) {
 } else {
 	pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
 }
+//#endregion
 
-// -------------------------
-// - Build the grid of score
-// -------------------------
-// const os = getOS();
+//#region Build the grid of score
+const os = getOS();
 let gridContent = ""
 pages.forEach(p => {
 	let fileTag = `<span class="file-link">
@@ -300,13 +314,19 @@ pages.forEach(p => {
 		</span>`
 	}
 
-	if (!disableAudioPlayer && p.mp3) {
-		soundTag = `<span class="file-link">
-			${renderMP3Audio(p.mp3)}
-		</span>`
+	/*
+	MP3 player bugs on Android unfortunately 😩 (at least on my personal android phone which runs on Android 13)
+	Some music might load and play entirely without any issue
+	while other have an incorrect duration in the timestamp and freeze at some point when played
+
+	This strange behaviour simply make the mp3 players on Android unreliable thus unusable (since you can't predict it)
+	So i prefer disabling it completely rather than having a buggy feature
+	*/
+	if (os !== "Android" && !disableAudioPlayer && p.mp3) {
+		soundTag = renderMP3Audio(p.mp3)
 	}
 
-	thumbTag = `<div class="img-container">
+	thumbTag = `<div class="thumb-stack lazyload">
 		${imgTag}
 		${soundTag ?? null}
 	</div>
@@ -326,12 +346,17 @@ const rootSpan = rootNode.querySelector("span")
 rootSpan.outerHTML = rootSpan.innerHTML
 
 const grid = dv.el("div", gridContent, { cls: "grid" })
+rootNode.appendChild(grid);
+//#endregion
 
-function loadAudio(audio) {
-	if (!audio.hasClass('loaded')) {
-		audio.src = audio.dataset.src;
-		audio.classList.add("loaded")
-	}
+//#region Extra features
+
+function loadMedia(media) {
+	// It could already be loaded before we reach it because of autoplay
+	if (!media || media.hasClass('loaded') || media.src !== "") return;
+
+	media.src = media.dataset.src;
+	media.classList.add("loaded")
 }
 
 // ---------------------------------------------------
@@ -342,37 +367,55 @@ function loadAudio(audio) {
 function handleMediaIntersection(entries) {
 	entries.map((entry) => {
 		if (entry.isIntersecting) {
-			// It could already be loaded before we reach it because of autoplay
-			loadAudio(entry.target);
+			loadMedia(entry.target.querySelector("img"));
+			loadMedia(entry.target.querySelector("audio"));
 			observer.unobserve(entry.target);
 		}
 	});
 }
 const observer = new IntersectionObserver(handleMediaIntersection);
-const medias = grid.querySelectorAll('.lazyload');
-medias.forEach(image => observer.observe(image));
-
-// rootNode.appendChild(dv.el("div", fab, { cls: "fab" }));
-rootNode.appendChild(grid);
-
+const medias = grid.querySelectorAll('.thumb-stack');
+// console.log(`There are ${medias.length} medias that are lazyloaded`)
+medias.forEach(media => observer.observe(media));
 
 // --------------------------------------------------------
 // Add the autoplay functionality on every mp3 on the page
 // --------------------------------------------------------
-if (mp3Autoplay) {
-	const audios = document.querySelectorAll(`#jukebox${tid} audio`);
-	console.log(`Audio tags find in file: ${audios.length}`)
-	if (audios.length > 1) {
-		for (let i = 0; i < audios.length; i++) {
-			console.log(audios[i].dataset.src)
-			audios[i].onended = function () {
-				if (i + 1 === audios.length) {
-					audios[0].play()
-				} else {
-					loadAudio(audios[i + 1])
-					audios[i + 1].play()
-				}
-			};
-		}
+const audios = rootNode.querySelectorAll(`audio`);
+const playButtons = rootNode.querySelectorAll('.audio-player button')
+
+// console.log(`Audio tags find in file: ${audios.length}`)
+
+// Must never happen
+if (audios.length !== playButtons.length) {
+	console.warn("The number of play buttons doesn't match the number of audios")
+}
+
+if (audios.length > 1) {
+	for (let i = 0; i < audios.length; i++) {
+		playButtons[i].addEventListener('click', () => {
+			if (audios[i].paused) {
+				audios[i].play();
+				playButtons[i].innerHTML = pauseIcon;
+			} else {
+				audios[i].pause();
+				playButtons[i].innerHTML = playIcon;
+			}
+		})
+
+		if (!mp3Autoplay) continue
+		audios[i].onended = () => {
+			// console.log(`Audio nb ${i} ended`)
+			playButtons[i].innerHTML = playIcon;
+			if (i + 1 === audios.length) {
+				playButtons[0].innerHTML = pauseIcon;
+				audios[0].play()
+			} else {
+				loadMedia(audios[i + 1])
+				playButtons[i + 1].innerHTML = pauseIcon;
+				audios[i + 1].play()
+			}
+		};
 	}
 }
+//#endregion

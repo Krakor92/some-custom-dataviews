@@ -28,6 +28,21 @@ et je l'assume
 	position: relative;
 }
 
+.jukebox .thumb-stack {
+	display: grid;
+}
+
+.jukebox img
+{
+	pointer-events: none;
+	z-index: -1;
+	grid-column: 1;
+	grid-row: 1;
+	align-self: center;
+	justify-self: center;
+}
+
+
 .jukebox img.lazyload {
 	opacity: 0;
 	width: 100%;
@@ -45,7 +60,6 @@ et je l'assume
 }
 
 .jukebox .grid {
-	/* clear: both; */
 	padding: 0.5rem 0;
 	display: grid;
 	grid-template-columns: var(--cards-columns);
@@ -54,6 +68,7 @@ et je l'assume
 }
 
 .jukebox article {
+	z-index: 0;/* needed for mobile ?*/
 	position: relative;
 	background-color: var(--cards-background);
 	border: var(--cards-border-width) solid var(--background-modifier-border);
@@ -75,14 +90,48 @@ et je l'assume
 	transition: box-shadow 0.15s linear;
 }
 
-.jukebox img {
+/* build from: https://blog.shahednasser.com/how-to-style-an-audio-element/ */
+.jukebox .audio-player {
+	opacity: 0.8;
+	transition: opacity 0.3s ease;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
 	pointer-events: none;
-	margin-bottom: calc(var(--cards-padding)/3);
+	aspect-ratio: 1/1;
+	height: auto;
+	width: auto;
+
+	grid-column: 1;
+	grid-row: 1;
+	align-self: center;
+	justify-self: center;
+}
+
+@media (hover: hover) {
+.jukebox .audio-player:hover {
+	opacity: 1;
+}}
+
+.jukebox button.player-button {
+	color: var(--ax1);
+	background-color: transparent;
+	box-shadow: none;
+	cursor: pointer;
+	pointer-events: auto;
+	padding: 0 !important;
+}
+
+.jukebox .player-button svg {
+	width: 48px;
+	height: 48px;
 }
 
 .jukebox span.file-link {
 	display: inline-block;
-	padding: calc(var(--cards-padding)/3) 0;
+	padding: calc(var(--cards-padding)/2) 0;
 	border-bottom: none;
 	font-size: var(--table-text-size);
 	font-weight: 600;
