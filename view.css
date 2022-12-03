@@ -129,6 +129,42 @@ et je l'assume
 	height: 48px;
 }
 
+
+.jukebox .timeline {
+	/* Strange behaviour, all inputs don't respond equally to this ?_? some are smaller than others */
+	height: 2px;
+	width: auto;
+	border-radius: 5px;
+	background-size: 0% 100%;
+	background-image: linear-gradient(var(--ax1), var(--ax1));
+	background-repeat: no-repeat;
+}
+
+.jukebox .timeline::-webkit-slider-thumb {
+	width: 1em;
+	height: 1em;
+	border-radius: 50%;
+	border-color: transparent;
+	cursor: pointer;
+	opacity: 0;
+	transition: all .1s;
+	background-color: var(--ax1);
+}
+
+.jukebox .timeline::-webkit-slider-thumb:hover {
+	background-color: var(--ax1);
+}
+
+.jukebox .timeline:hover::-webkit-slider-thumb {
+	opacity: 1;
+}
+
+.jukebox .timeline::-webkit-slider-runnable-track {
+	box-shadow: none;
+	border: none;
+	background: transparent;
+}
+
 .jukebox span.file-link {
 	display: inline-block;
 	padding: calc(var(--cards-padding)/2) 0;

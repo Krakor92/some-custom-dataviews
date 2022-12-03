@@ -190,6 +190,11 @@ const renderInternalFileAnchor = (file) => {
 const renderMediaTag = (media) => {
 	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${media.path}" data-href="${media.path}" href="${media.path}">${mediaIcon}</a>`
 }
+
+const renderTimelineTrack = () => {
+	return `<input type="range" class="timeline" max="100" value="0">`
+}
+
 //#endregion
 
 //#region Build the query based on parameters
@@ -296,6 +301,7 @@ pages.forEach(p => {
 	let thumbTag = ""
 	let imgTag = ""
 	let soundTag = ""
+	let trackTag = ""
 	let urlTag = ""
 	let mediaTag = ""
 
@@ -324,11 +330,13 @@ pages.forEach(p => {
 	*/
 	if (os !== "Android" && !disableAudioPlayer && p.mp3) {
 		soundTag = renderMP3Audio(p.mp3)
+		trackTag = renderTimelineTrack()
 	}
 
 	thumbTag = `<div class="thumb-stack lazyload">
 		${imgTag}
-		${soundTag ?? null}
+		${soundTag}
+		${soundTag ? trackTag : ""}
 	</div>
 	`
 
@@ -349,7 +357,7 @@ const grid = dv.el("div", gridContent, { cls: "grid" })
 rootNode.appendChild(grid);
 //#endregion
 
-//#region Extra features
+//#region Media lazyloading
 
 function loadMedia(media) {
 	// It could already be loaded before we reach it because of autoplay
@@ -377,45 +385,66 @@ const observer = new IntersectionObserver(handleMediaIntersection);
 const medias = grid.querySelectorAll('.thumb-stack');
 // console.log(`There are ${medias.length} medias that are lazyloaded`)
 medias.forEach(media => observer.observe(media));
+//#endregion
 
-// --------------------------------------------------------
-// Add the autoplay functionality on every mp3 on the page
-// --------------------------------------------------------
+//#region Custom audio player
+// -------------------------------------------------------------------------------------
+// Add the autoplay functionality for every mp3 on the page + custom button and timeline
+// -------------------------------------------------------------------------------------
 const audios = rootNode.querySelectorAll(`audio`);
 const playButtons = rootNode.querySelectorAll('.audio-player button')
+const trackTimelines = rootNode.querySelectorAll('input.timeline')
 
 // console.log(`Audio tags find in file: ${audios.length}`)
+
+const changeTimelinePosition = (timeline, audio) => {
+	const percentagePosition = (100 * audio.currentTime) / audio.duration;
+	timeline.style.backgroundSize = `${percentagePosition}% 100%`;
+	timeline.value = percentagePosition;
+}
+
+const changeSeek = (timeline, audio) => {
+	const time = (timeline.value * audio.duration) / 100;
+	audio.currentTime = time;
+}
+
+const handlePlayButtonClick = (playButton, audio) => {
+	if (audio.paused) {
+		audio.play();
+		playButton.innerHTML = pauseIcon;
+	} else {
+		audio.pause();
+		playButton.innerHTML = playIcon;
+	}
+}
 
 // Must never happen
 if (audios.length !== playButtons.length) {
 	console.warn("The number of play buttons doesn't match the number of audios")
 }
 
-if (audios.length > 1) {
-	for (let i = 0; i < audios.length; i++) {
-		playButtons[i].addEventListener('click', () => {
-			if (audios[i].paused) {
-				audios[i].play();
-				playButtons[i].innerHTML = pauseIcon;
-			} else {
-				audios[i].pause();
-				playButtons[i].innerHTML = playIcon;
-			}
-		})
+for (let i = 0; i < audios.length; i++) {
 
-		if (!mp3Autoplay) continue
-		audios[i].onended = () => {
-			// console.log(`Audio nb ${i} ended`)
-			playButtons[i].innerHTML = playIcon;
-			if (i + 1 === audios.length) {
-				playButtons[0].innerHTML = pauseIcon;
-				audios[0].play()
-			} else {
-				loadMedia(audios[i + 1])
-				playButtons[i + 1].innerHTML = pauseIcon;
-				audios[i + 1].play()
-			}
-		};
-	}
+	audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
+
+	playButtons[i].addEventListener('click', handlePlayButtonClick.bind(this, playButtons[i], audios[i]))
+
+	trackTimelines[i].addEventListener('change', changeSeek.bind(this, trackTimelines[i], audios[i]));
+
+	audios[i].onended = () => {
+		// console.log(`Audio nb ${i} ended`)
+		playButtons[i].innerHTML = playIcon;
+		if (!mp3Autoplay || audios.length === 1) return;
+
+		if (i + 1 === audios.length) {
+			loadMedia(audios[0])
+			playButtons[0].innerHTML = pauseIcon;
+			audios[0].play()
+		} else {
+			loadMedia(audios[i + 1])
+			playButtons[i + 1].innerHTML = pauseIcon;
+			audios[i + 1].play()
+		}
+	};
 }
 //#endregion
