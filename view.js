@@ -405,6 +405,8 @@ function handleLastScoreIntersection(entries) {
 				(nbPageBatchesFetched + 1) * scorePerPageBatch).join(""));
 			nbPageBatchesFetched++
 
+			logPerf("Appended new scores at the end of the grid")
+
 			manageMp3Scores();
 
 			if (nbPageBatchesFetched * scorePerPageBatch < numberOfPagesFetched) {
@@ -415,7 +417,6 @@ function handleLastScoreIntersection(entries) {
 				console.log(`Finish to load: ${nbPageBatchesFetched * scorePerPageBatch}`)
 			}
 
-			logPerf("Appended new scores at the end of the grid")
 		}
 	});
 }
@@ -500,9 +501,9 @@ function manageMp3Scores() {
 
 		audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
 
-		playButtons[i].addEventListener('click', handlePlayButtonClick.bind(this, { index: i, audios, playButtons }))
+		playButtons[i].onclick = handlePlayButtonClick.bind(this, { index: i, audios, playButtons })
 
-		trackTimelines[i].addEventListener('change', changeSeek.bind(this, trackTimelines[i], audios[i]));
+		trackTimelines[i].onchange = changeSeek.bind(this, trackTimelines[i], audios[i])
 
 		audios[i].onended = () => {
 			playButtons[i].innerHTML = playIcon;
