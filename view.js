@@ -1,10 +1,4 @@
-/*
-
-Pour la pagination faudra que je regarde comment fait le fileClass view du plugin Metadata menu
-
-
-*/
-
+// @ts-check
 let startTime = performance.now()
 let perfTime = null;
 
@@ -17,22 +11,18 @@ const logPerf = (label) => {
 console.log("=----------------------=")
 
 const {
-	from,
-	tags,
-	linkedProperty,
-	shuffle,
-	voice,
-	media,
-	mp3Only,
-	mp3Autoplay = true,
-	disableAudioPlayer = false,
+	filter,
+	sort,
+	disable = "",
+
 	// voir ce post https://stackoverflow.com/a/18939803 pour avoir un système de debug robuste
 	debug = false
 	/*disableFilters*/
-} = input || {};
+} = input || { };
 
+const disableSet = new Set(disable.split(' ').map(v => v.toLowerCase()))
 
-const scorePerPageBatch = 20
+const SCORE_PER_PAGE_BATCH = 20
 const enableSimultaneousMp3Playing = false
 
 
@@ -52,25 +42,25 @@ const rootNode = dv.el("div", "", {
 const youtubeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aa0000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19c-2.3 0-6.4-.2-8.1-.6-.7-.2-1.2-.7-1.4-1.4-.3-1.1-.5-3.4-.5-5s.2-3.9.5-5c.2-.7.7-1.2 1.4-1.4C5.6 5.2 9.7 5 12 5s6.4.2 8.1.6c.7.2 1.2.7 1.4 1.4.3 1.1.5 3.4.5 5s-.2 3.9-.5 5c-.2.7-.7 1.2-1.4 1.4-1.7.4-5.8.6-8.1.6 0 0 0 0 0 0z"></path><polygon points="10 15 15 12 10 9"></polygon></svg>'
 
 // from: https://www.svgrepo.com/svg/89412/soundcloud-logo
-const soundcloudIcon = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 width="24" height="24" viewBox="0 0 317.531 317.531" stroke-width="4" stroke="#ff5400" fill="#ff5400" style="enable-background:new 0 0 317.531 317.531;" xml:space="preserve">
-<g>
-	<path d="M270.275,141.93c-3.134,0-6.223,0.302-9.246,0.903c-3.289-15.779-11.423-30.182-23.436-41.249
-		c-14.363-13.231-33.037-20.518-52.582-20.518c-9.533,0-19.263,1.818-28.139,5.256c-3.862,1.497-5.78,5.841-4.284,9.703
-		c1.496,3.863,5.838,5.781,9.703,4.284c7.165-2.776,15.022-4.244,22.72-4.244c32.701,0,59.532,24.553,62.411,57.112
-		c0.211,2.386,1.548,4.527,3.6,5.763c2.052,1.236,4.571,1.419,6.778,0.49c3.948-1.66,8.146-2.501,12.476-2.501
-		c17.786,0,32.256,14.475,32.256,32.267c0,17.792-14.473,32.268-32.263,32.268c-1.002,0-106.599-0.048-110.086-0.061
-		c-3.841-0.084-7.154,2.778-7.591,6.659c-0.464,4.116,2.497,7.829,6.613,8.292c0.958,0.108,109.962,0.109,111.064,0.109
-		c26.061,0,47.263-21.205,47.263-47.268C317.531,163.134,296.332,141.93,270.275,141.93z"/>
-	<path d="M7.5,153.918c-4.142,0-7.5,3.358-7.5,7.5v60.039c0,4.142,3.358,7.5,7.5,7.5s7.5-3.358,7.5-7.5v-60.039
-		C15,157.276,11.642,153.918,7.5,153.918z"/>
-	<path d="M45.917,142.037c-4.142,0-7.5,3.358-7.5,7.5v71.07c0,4.142,3.358,7.5,7.5,7.5s7.5-3.358,7.5-7.5v-71.07
-		C53.417,145.395,50.059,142.037,45.917,142.037z"/>
-	<path d="M85.264,110.21c-4.142,0-7.5,3.358-7.5,7.5v111c0,4.142,3.358,7.5,7.5,7.5c4.142,0,7.5-3.358,7.5-7.5v-111
-		C92.764,113.568,89.406,110.21,85.264,110.21z"/>
-	<path d="M125.551,111.481c-4.142,0-7.5,3.358-7.5,7.5v109.826c0,4.142,3.358,7.5,7.5,7.5c4.142,0,7.5-3.358,7.5-7.5V118.981
-		C133.051,114.839,129.693,111.481,125.551,111.481z"/>
-</g>
+const soundcloudIcon = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" 
+width="24" height="24" viewBox="0 0 317.531 317.531" stroke-width="4" stroke="#ff5400" fill="#ff5400" style="enable-background:new 0 0 317.531 317.531;" xml:space="preserve">
+	<g>
+		<path d="M270.275,141.93c-3.134,0-6.223,0.302-9.246,0.903c-3.289-15.779-11.423-30.182-23.436-41.249
+			c-14.363-13.231-33.037-20.518-52.582-20.518c-9.533,0-19.263,1.818-28.139,5.256c-3.862,1.497-5.78,5.841-4.284,9.703
+			c1.496,3.863,5.838,5.781,9.703,4.284c7.165-2.776,15.022-4.244,22.72-4.244c32.701,0,59.532,24.553,62.411,57.112
+			c0.211,2.386,1.548,4.527,3.6,5.763c2.052,1.236,4.571,1.419,6.778,0.49c3.948-1.66,8.146-2.501,12.476-2.501
+			c17.786,0,32.256,14.475,32.256,32.267c0,17.792-14.473,32.268-32.263,32.268c-1.002,0-106.599-0.048-110.086-0.061
+			c-3.841-0.084-7.154,2.778-7.591,6.659c-0.464,4.116,2.497,7.829,6.613,8.292c0.958,0.108,109.962,0.109,111.064,0.109
+			c26.061,0,47.263-21.205,47.263-47.268C317.531,163.134,296.332,141.93,270.275,141.93z"/>
+		<path d="M7.5,153.918c-4.142,0-7.5,3.358-7.5,7.5v60.039c0,4.142,3.358,7.5,7.5,7.5s7.5-3.358,7.5-7.5v-60.039
+			C15,157.276,11.642,153.918,7.5,153.918z"/>
+		<path d="M45.917,142.037c-4.142,0-7.5,3.358-7.5,7.5v71.07c0,4.142,3.358,7.5,7.5,7.5s7.5-3.358,7.5-7.5v-71.07
+			C53.417,145.395,50.059,142.037,45.917,142.037z"/>
+		<path d="M85.264,110.21c-4.142,0-7.5,3.358-7.5,7.5v111c0,4.142,3.358,7.5,7.5,7.5c4.142,0,7.5-3.358,7.5-7.5v-111
+			C92.764,113.568,89.406,110.21,85.264,110.21z"/>
+		<path d="M125.551,111.481c-4.142,0-7.5,3.358-7.5,7.5v109.826c0,4.142,3.358,7.5,7.5,7.5c4.142,0,7.5-3.358,7.5-7.5V118.981
+			C133.051,114.839,129.693,111.481,125.551,111.481z"/>
+	</g>
 </svg>
 `
 const dailymotionIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 1024 1024">
@@ -220,44 +210,50 @@ const renderTimelineTrack = () => {
 
 logPerf("Declaration of variables and util functions")
 
-//#region Build the query based on parameters
+//#region Construct the filters based on parameters
 await forceLoadCustomJS();
 const { CustomJs } = customJS
 const QueryService = new CustomJs.Query(dv)
 
-const fromQuery = from ?? '#🎼 AND -"_templates"'
+const fromQuery = filter?.from ?? '#🎼 AND -"_templates"'
 
 const qs = QueryService
 	.from(fromQuery);
 
-if (mp3Only) {
+
+
+if (filter?.mp3Only) {
+	console.log(`%cFilter on mp3Only 🔊`, 'color: #7f6df2; font-size: 13px')
+
 	qs.withExistingField("mp3")
 }
 
-if (linkedProperty) {
+if (filter?.current) {
+	console.log(`%cFilter on current ↩️ (${filter.current})`, 'color: #7f6df2; font-size: 13px')
+
 	const currentPath = dv.current().file.path;
-	qs.withLinkFieldOfPath({ field: linkedProperty, path: currentPath })
+	qs.withLinkFieldOfPath({ field: filter.current, path: currentPath })
 }
 
-if (tags) {
+if (filter?.tags) {
 	console.log("%cFilter on tags 🏷️", 'color: #7f6df2; font-size: 14px')
 
-	if (Array.isArray(tags)) {
-		tags.forEach(t => {
+	if (Array.isArray(filter.tags)) {
+		filter.tags.forEach(t => {
 			qs.withFieldOfValue({ name: "tags_", value: t })
 		})
 	}
 	else {
-		console.log(`%c=> ${tags}`, 'color: #7f6df2')
+		console.log(`%c=> ${filter.tags}`, 'color: #7f6df2')
 
-		qs.withFieldOfValue({ name: "tags_", value: tags })
+		qs.withFieldOfValue({ name: "tags_", value: filter.tags })
 	}
 }
 
-if (media) {
+if (filter?.media) {
 	// Right now it don't support OR query so you can't make a ['👺', '🎮'] for example
-	if (!Array.isArray(media)) {
-		qs.withFieldOfValue({ name: "media", value: media })
+	if (!Array.isArray(filter.media)) {
+		qs.withFieldOfValue({ name: "media", value: filter.media })
 	}
 }
 
@@ -265,26 +261,26 @@ if (media) {
  * Pour l'instant, {{voice}} ne peut être qu'un objet de type
  * {yes: true, chorus: true, few: false, no: true}
  */
-if (voice && isObject(voice)) {
+if (filter?.voice && isObject(filter.voice)) {
 	/**
 	 * CAS 1
 	 * En gros si sur les valeurs données, il y a ne serait ce que un false, alors toutes les autres valeurs seront affiché
 	 * Donc {yes: false} équivaut à {yes: false, chorus: true, few: true, no: true}
 	 * 
 	 * CAS 2
- * Au contraire, s'il n'y a qu'un true, c'est l'inverse:
- * {yes: true} équivaut à {yes: true, chorus: false, few: false, no: false}
- * 
+	 * Au contraire, s'il n'y a qu'un true, c'est l'inverse:
+	 * {yes: true} équivaut à {yes: true, chorus: false, few: false, no: false}
+	 * 
 	 */
 
-	let defaultValue = Object.values(voice).some(v => !v);
+	let defaultValue = Object.values(filter.voice).some(v => !v);
 
 	let voiceFilters = {
 		yes: defaultValue,
 		chorus: defaultValue,
 		few: defaultValue,
 		no: defaultValue,
-		...voice
+		...filter.voice
 	}
 
 
@@ -303,80 +299,126 @@ if (voice && isObject(voice)) {
 		}
 	}
 }
-
-const pages = qs
-	.query()
-
-if (!!shuffle) {
-	shuffleArray(pages)
-} else {
-	pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
-}
-
-const numberOfPagesFetched = pages.length
 //#endregion
 
-logPerf("Dataview js query, filtering and sorting")
+logPerf("Dataview js query: filtering")
+
+
+const pages = qs.query()
+console.log({pages})
+
+const numberOfPagesFetched = pages.length
+
+//#region Sort pages options
+const sortPages = ({sort, pages}) => {
+
+	// - Alphabetical order by default
+	if (!sort) return pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
+
+
+	if (sort.manual) {
+		console.log(dv.current())
+		const sortingPages = dv.current()[sort.manual]
+		if (!sortingPages) return
+
+		/* https://stackoverflow.com/a/44063445 + https://gomakethings.com/how-to-get-the-index-of-an-object-in-an-array-with-vanilla-js/ */
+		return pages.sort((a, b) => {
+			return sortingPages.findIndex((spage) => spage.path === a.file.path)
+				- sortingPages.findIndex((spage) => spage.path === b.file.path)
+		});
+	}
+
+	if (sort.recentlyAdded === true) {
+		return pages.sort((a, b) => b.file.ctime - a.file.ctime)
+	}
+	if (sort.recentlyAdded === false) {
+		return pages.sort((a, b) => {
+			return a.file.ctime - b.file.ctime
+		})
+	}
+
+	if (sort.shuffle) {
+		return shuffleArray(pages)
+	}
+}
+
+sortPages({pages, sort})
+//#endregion
+
+logPerf("Dataview js query: sorting")
 
 
 //#region Build the grid of score
 const os = getOS();
-const gridArticles = []
-pages.forEach(p => {
-	let fileTag = `<span class="file-link">
-		${renderInternalFileAnchor(p.file)}
-	</span>`
-	let thumbTag = ""
-	let imgTag = ""
-	let soundTag = ""
-	let trackTag = ""
-	let urlTag = ""
-	let mediaTag = ""
 
-	if (!p.thumbnail) {
-		imgTag = renderThumbnailFromUrl(p.url)
-	} else if (typeof p.thumbnail === "string") {
-		// Thumbnail is an url (for non youtube music)
-		imgTag = renderThumbnailFromUrl(p.thumbnail)
-	} else {
-		imgTag = renderThumbnailFromVault(p.thumbnail)
-	}
+/**
+ * Build the complete list of score that will eventually be rendered on the screen
+ * (if you scroll all the way down)
+ * @param {any[]} pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
+ * @returns {string[]} Each value of the array contains some HTML equivalent to a cell on the grid
+ */
+const buildGridArticles = (pages) => {
+	const gridArticles = []
 
-	if (p.url) {
-		urlTag = `<span class="url-link">
-			${renderExternalUrlAnchor(p.url)}
+	pages.forEach(p => {
+		let fileTag = `<span class="file-link">
+			${renderInternalFileAnchor(p.file)}
 		</span>`
-	}
+		let thumbTag = ""
+		let imgTag = ""
+		let soundTag = ""
+		let trackTag = ""
+		let urlTag = ""
+		let mediaTag = ""
+	
+		if (!p.thumbnail) {
+			imgTag = renderThumbnailFromUrl(p.url)
+		} else if (typeof p.thumbnail === "string") {
+			// Thumbnail is an url (for non youtube music)
+			imgTag = renderThumbnailFromUrl(p.thumbnail)
+		} else {
+			imgTag = renderThumbnailFromVault(p.thumbnail)
+		}
+	
+		if (p.url && !disableSet.has("urlicon")) {
+			urlTag = `<span class="url-link">
+				${renderExternalUrlAnchor(p.url)}
+			</span>`
+		}
+	
+		/*
+		MP3 player bugs on Android unfortunately 😩 (at least on my personal android phone which runs on Android 13)
+		Some music might load and play entirely without any issue
+		while other have an incorrect duration in the timestamp and freeze at some point when played
+	
+		This strange behaviour simply make the mp3 players on Android unreliable thus unusable (since you can't predict it)
+		So i prefer disabling it completely rather than having a buggy feature
+		Remove the `os !== "Android"` if you want to try it on yours
+		*/
+		if (os !== "Android" && !disableSet.has("audioplayer") && p.mp3) {
+			soundTag = renderMP3Audio(p.mp3)
+			trackTag = renderTimelineTrack()
+		}
+	
+		thumbTag = `<div class="thumb-stack">
+			${imgTag}
+			${soundTag}
+			${soundTag ? trackTag : ""}
+		</div>`
 
-	/*
-	MP3 player bugs on Android unfortunately 😩 (at least on my personal android phone which runs on Android 13)
-	Some music might load and play entirely without any issue
-	while other have an incorrect duration in the timestamp and freeze at some point when played
+		const article = `<article>
+		${thumbTag ?? ""}
+		${fileTag}
+		${urlTag ?? ""}
+		${mediaTag ?? ""}
+		</article>
+		`
+		gridArticles.push(article)
+	})
 
-	This strange behaviour simply make the mp3 players on Android unreliable thus unusable (since you can't predict it)
-	So i prefer disabling it completely rather than having a buggy feature
-	*/
-	if (os !== "Android" && !disableAudioPlayer && p.mp3) {
-		soundTag = renderMP3Audio(p.mp3)
-		trackTag = renderTimelineTrack()
-	}
-
-	thumbTag = `<div class="thumb-stack">
-		${imgTag}
-		${soundTag}
-		${soundTag ? trackTag : ""}
-	</div>
-	`
-
-	const article = `<article>
-	${thumbTag ?? ""}
-	${fileTag}
-	${urlTag ?? ""}
-	${mediaTag ?? ""}
-	</article>
-	`
-	gridArticles.push(article)
-})
+	return gridArticles
+}
+const gridArticles = buildGridArticles(pages)
 
 logPerf("Building the actual grid")
 
@@ -384,7 +426,7 @@ removeTagChildDVSpan(rootNode)
 
 let nbPageBatchesFetched = 1
 
-const grid = dv.el("div", gridArticles.slice(0, scorePerPageBatch).join(""), { cls: "grid" })
+const grid = dv.el("div", gridArticles.slice(0, SCORE_PER_PAGE_BATCH).join(""), { cls: "grid" })
 
 logPerf("Convert string gridContent to DOM object")
 
@@ -401,20 +443,20 @@ function handleLastScoreIntersection(entries) {
 
 			scoreObserver.unobserve(entries[0].target);
 			grid.querySelector("span").insertAdjacentHTML('beforeend', gridArticles.slice(
-				nbPageBatchesFetched * scorePerPageBatch,
-				(nbPageBatchesFetched + 1) * scorePerPageBatch).join(""));
+				nbPageBatchesFetched * SCORE_PER_PAGE_BATCH,
+				(nbPageBatchesFetched + 1) * SCORE_PER_PAGE_BATCH).join(""));
 			nbPageBatchesFetched++
 
 			logPerf("Appended new scores at the end of the grid")
 
 			manageMp3Scores();
 
-			if (nbPageBatchesFetched * scorePerPageBatch < numberOfPagesFetched) {
-				console.log(`Batch to load next: ${nbPageBatchesFetched * scorePerPageBatch}`)
+			if (nbPageBatchesFetched * SCORE_PER_PAGE_BATCH < numberOfPagesFetched) {
+				console.log(`Batch to load next: ${nbPageBatchesFetched * SCORE_PER_PAGE_BATCH}`)
 				lastScore = grid.querySelector('article:last-of-type')
 				scoreObserver.observe(lastScore)
 			} else {
-				console.log(`Finish to load: ${nbPageBatchesFetched * scorePerPageBatch}`)
+				console.log(`Finish to load: ${nbPageBatchesFetched * SCORE_PER_PAGE_BATCH}`)
 			}
 
 		}
@@ -422,7 +464,9 @@ function handleLastScoreIntersection(entries) {
 }
 const scoreObserver = new IntersectionObserver(handleLastScoreIntersection);
 let lastScore = grid.querySelector('article:last-of-type');
-scoreObserver.observe(lastScore)
+if (lastScore) {
+	scoreObserver.observe(lastScore)
+}
 //#endregion
 
 //#region MP3 audio player (custom button, timeline, autoplay)
@@ -507,7 +551,7 @@ function manageMp3Scores() {
 
 		audios[i].onended = () => {
 			playButtons[i].innerHTML = playIcon;
-			if (!mp3Autoplay || audios.length === 1) return;
+			if (disableSet.has("autoplay") || audios.length === 1) return;
 
 			if (i + 1 === audios.length) {
 				playButtons[0].innerHTML = pauseIcon;
