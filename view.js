@@ -311,35 +311,33 @@ const numberOfPagesFetched = pages.length
 
 //#region Sort pages options
 const sortPages = ({sort, pages}) => {
-
-	// - Alphabetical order by default
-	if (!sort) return pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
-
-
-	if (sort.manual) {
+	if (sort?.manual) {
 		console.log(dv.current())
 		const sortingPages = dv.current()[sort.manual]
 		if (!sortingPages) return
-
+		
 		/* https://stackoverflow.com/a/44063445 + https://gomakethings.com/how-to-get-the-index-of-an-object-in-an-array-with-vanilla-js/ */
 		return pages.sort((a, b) => {
 			return sortingPages.findIndex((spage) => spage.path === a.file.path)
-				- sortingPages.findIndex((spage) => spage.path === b.file.path)
+			- sortingPages.findIndex((spage) => spage.path === b.file.path)
 		});
 	}
-
-	if (sort.recentlyAdded === true) {
+	
+	if (sort?.recentlyAdded === true) {
 		return pages.sort((a, b) => b.file.ctime - a.file.ctime)
 	}
-	if (sort.recentlyAdded === false) {
+	if (sort?.recentlyAdded === false) {
 		return pages.sort((a, b) => {
 			return a.file.ctime - b.file.ctime
 		})
 	}
 
-	if (sort.shuffle) {
+	if (sort?.shuffle) {
 		return shuffleArray(pages)
 	}
+
+	// - Alphabetical order by default
+	return pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
 }
 
 sortPages({pages, sort})
@@ -348,7 +346,7 @@ sortPages({pages, sort})
 logPerf("Dataview js query: sorting")
 
 
-//#region Build the grid of score
+//#region Build the grid of score for the DOM
 const os = getOS();
 
 /**
