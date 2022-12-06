@@ -235,6 +235,24 @@ if (filter?.current) {
 	qs.withLinkFieldOfPath({ field: filter.current, path: currentPath })
 }
 
+if (filter?.in) {
+	const inLink = dv.parse(filter.in);
+
+	console.log({ inLink })
+
+	if (isObject(inLink)) {
+		const page = dv.page(inLink.path)
+		console.log({ page })
+		if (!page) {
+			qs.withLinkFieldOfPath({ field: "in", path: inLink.path })
+		} else {
+			qs.withLinkFieldOfPath({ field: "in", path: page.file.path })
+		}
+	} else {
+		qs.withLinkFieldOfPath({ field: "in", path: filter.in })
+	}
+}
+
 if (filter?.tags) {
 	console.log("%cFilter on tags 🏷️", 'color: #7f6df2; font-size: 14px')
 
