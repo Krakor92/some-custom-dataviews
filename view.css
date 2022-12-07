@@ -7,7 +7,7 @@ et je l'assume
 	--cards-min-width: 180px;
 	--cards-max-width: 1fr;
 	--cards-mobile-width: 120px;
-	--cards-image-height: 400px;
+	--cards-image-height: 140px;
 	--cards-padding: 1.2em;
 	--cards-image-fit: contain;
 	--cards-background: transparent;
@@ -92,6 +92,20 @@ et je l'assume
 	0 1px 3px 1px rgba(0, 0, 0, 0.025);
 	transition: box-shadow 0.15s linear;
 }
+
+.jukebox article.add-file {
+	min-height: var(--cards-image-height);
+	cursor: pointer;
+	padding: 0;
+	justify-content: center;
+	align-items: center;
+	color: var(--background-modifier-border);
+}
+
+.jukebox article.add-file:hover {
+	color: var(--background-modifier-border-hover);
+}
+
 
 /* build from: https://blog.shahednasser.com/how-to-style-an-audio-element/ */
 .jukebox .audio-player {

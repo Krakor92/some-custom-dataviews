@@ -20,12 +20,13 @@ const {
 	/*disableFilters*/
 } = input || { };
 
-const disableSet = new Set(disable.split(' ').map(v => v.toLowerCase()))
+//#region Constants
 
+const DEFAULT_SCORE_DIRECTORY = "/DB/🎼"
 const SCORE_PER_PAGE_BATCH = 20
 const enableSimultaneousMp3Playing = false
 
-
+const disableSet = new Set(disable.split(' ').map(v => v.toLowerCase()))
 const tid = (new Date()).getTime();
 const rootNode = dv.el("div", "", {
 	cls: "jukebox",
@@ -93,6 +94,8 @@ const pauseIcon = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
 </svg>`
+
+const filePlusIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`
 //#endregion
 
 //#region Utils functions
@@ -134,6 +137,42 @@ const getOS = () => {
 function removeTagChildDVSpan(tag) {
 	const span = tag.querySelector("span")
 	span.outerHTML = span.innerHTML
+}
+
+// /**
+//  * from there : https://github.com/vanadium23/obsidian-advanced-new-file/blob/master/src/CreateNoteModal.ts
+//  * Handles creating the new note
+//  * A new markdown file will be created at the given file path (`input`)
+//  * @param {string} input 
+//  * @param {string} mode - current-pane / new-pane / new-tab
+//  */
+const createNewNote = async (input, mode = "new-tab") => {
+	const { vault } = this.app;
+	const { adapter } = vault;
+	const filePath = `${input}.md`;
+
+	try {
+		const fileExists = await adapter.exists(filePath);
+		if (fileExists) {
+			// If the file already exists, respond with error
+			throw new Error(`${filePath} already exists`);
+		}
+		const file = await vault.create(filePath, '');
+		// Create the file and open it in the active leaf
+		let leaf = this.app.workspace.getLeaf(false);
+		if (mode === "new-pane") {
+			leaf = this.app.workspace.splitLeafOrActive();
+		} else if (mode === "new-tab") {
+			leaf = this.app.workspace.getLeaf(true);
+		} else if (!leaf) {
+			// default for active pane
+			leaf = this.app.workspace.getLeaf(true);
+		}
+		await leaf.openFile(file);
+		console.log({ file, leaf })
+	} catch (error) {
+		alert(error.toString());
+	}
 }
 //#endregion
 
@@ -473,6 +512,14 @@ function handleLastScoreIntersection(entries) {
 				scoreObserver.observe(lastScore)
 			} else {
 				console.log(`Finish to load: ${nbPageBatchesFetched * SCORE_PER_PAGE_BATCH}`)
+				if (disableSet.has("addscore")) return;
+
+				const addScoreCellDOM = dv.el("article", filePlusIcon, { cls: "add-file" })
+				grid.querySelector("span").appendChild(addScoreCellDOM);
+
+				addScoreCellDOM.onclick = async () => {
+					createNewNote(`${DEFAULT_SCORE_DIRECTORY}/Untitled`)
+				}
 			}
 
 		}
