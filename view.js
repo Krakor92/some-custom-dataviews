@@ -1,4 +1,3 @@
-// @ts-check
 let startTime = performance.now()
 let perfTime = null;
 
@@ -98,7 +97,7 @@ const pauseIcon = `
 const filePlusIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`
 //#endregion
 
-//#region Utils functions
+//#region Utils
 const delay = async (time) => new Promise((resolve) => setTimeout(resolve, time));
 
 
@@ -139,41 +138,7 @@ function removeTagChildDVSpan(tag) {
 	span.outerHTML = span.innerHTML
 }
 
-// /**
-//  * from there : https://github.com/vanadium23/obsidian-advanced-new-file/blob/master/src/CreateNoteModal.ts
-//  * Handles creating the new note
-//  * A new markdown file will be created at the given file path (`input`)
-//  * @param {string} input 
-//  * @param {string} mode - current-pane / new-pane / new-tab
-//  */
-const createNewNote = async (input, mode = "new-tab") => {
-	const { vault } = this.app;
-	const { adapter } = vault;
-	const filePath = `${input}.md`;
-
-	try {
-		const fileExists = await adapter.exists(filePath);
-		if (fileExists) {
-			// If the file already exists, respond with error
-			throw new Error(`${filePath} already exists`);
-		}
-		const file = await vault.create(filePath, '');
-		// Create the file and open it in the active leaf
-		let leaf = this.app.workspace.getLeaf(false);
-		if (mode === "new-pane") {
-			leaf = this.app.workspace.splitLeafOrActive();
-		} else if (mode === "new-tab") {
-			leaf = this.app.workspace.getLeaf(true);
-		} else if (!leaf) {
-			// default for active pane
-			leaf = this.app.workspace.getLeaf(true);
-		}
-		await leaf.openFile(file);
-		console.log({ file, leaf })
-	} catch (error) {
-		alert(error.toString());
-	}
-}
+const httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
 //#endregion
 
 //#region Rendering functions
@@ -490,6 +455,93 @@ rootNode.appendChild(grid);
 
 logPerf("Appending the first built grid to the DOM")
 
+//#region Handle the add class button
+// /**
+//  * from there : https://github.com/vanadium23/obsidian-advanced-new-file/blob/master/src/CreateNoteModal.ts
+//  * Handles creating the new note
+//  * A new markdown file will be created at the given file path (`input`)
+//  * @param {string} input 
+//  * @param {string} mode - current-pane / new-pane / new-tab
+//  * @returns {TFile}
+//  */
+const createNewNote = async (input, mode = "new-tab") => {
+	const { vault } = this.app;
+	const { adapter } = vault;
+	const filePath = `${input}.md`;
+
+	try {
+		const fileExists = await adapter.exists(filePath);
+		if (fileExists) {
+			// If the file already exists, respond with error
+			throw new Error(`${filePath} already exists`);
+		}
+		const file = await vault.create(filePath, '');
+		// Create the file and open it in the active leaf
+		let leaf = this.app.workspace.getLeaf(false);
+		if (mode === "new-pane") {
+			leaf = this.app.workspace.splitLeafOrActive();
+		} else if (mode === "new-tab") {
+			leaf = this.app.workspace.getLeaf(true);
+		} else if (!leaf) {
+			// default for active pane
+			leaf = this.app.workspace.getLeaf(true);
+		}
+		await leaf.openFile(file);
+		console.log({ file, leaf })
+		return file;
+	} catch (error) {
+		alert(error.toString());
+	}
+}
+
+/**
+ * Didn't find a better way for now to wait until the metadata are loaded inside a newly created file
+ * @param {string} pathToFile 
+ */
+const waitUntilFileMetadataAreLoaded = async (pathToFile) => {
+	let dvFile = null
+	while (!dvFile) {
+		await delay(20); // very important to wait a little to not overload the cpu
+		console.log("Metadata in the newly created file hasn't been loaded yet")
+		dvFile = dv.page(pathToFile)
+		if (!dvFile) continue; // the file isn't even referenced by dataview api yet
+		if (Object.keys(dvFile).length === 1) { // metadata hasn't been loaded yet in the page, so we continue
+			dvFile = null
+		}
+	}
+}
+
+/**
+ * 
+ * @param {object} _
+ * @param {object[]} _.filters
+ * @param {string} _.os
+ */
+const handleAddScoreButtonClick = async ({filters, os}) => {
+	const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
+	const newFile = await createNewNote(newFilePath)
+
+	const mmenuPlugin = dv.app.plugins.plugins["metadata-menu"]?.api
+	if (!mmenuPlugin) {
+		return console.warn("You don't have metadata-menu enabled so you can't benefit from the smart tag completion")
+	}
+
+	await waitUntilFileMetadataAreLoaded(newFilePath)
+
+	// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
+	await delay(2000)
+
+	const textInClipboard = await navigator.clipboard.readText();
+	if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
+		mmenuPlugin.replaceValues(newFile.path, "url", textInClipboard)
+	}
+
+	if (filters?.current) { mmenuPlugin.replaceValues(newFile.path, filters.current, `[[${dv.current().file.name}]]`) }
+	if (filters?.tags) { mmenuPlugin.replaceValues(newFile.path, "tags_", filters.tags) }
+	
+}
+//#endregion
+
 //#region Infinite scroll custom implementation
 function handleLastScoreIntersection(entries) {
 	entries.map((entry) => {
@@ -517,9 +569,7 @@ function handleLastScoreIntersection(entries) {
 				const addScoreCellDOM = dv.el("article", filePlusIcon, { cls: "add-file" })
 				grid.querySelector("span").appendChild(addScoreCellDOM);
 
-				addScoreCellDOM.onclick = async () => {
-					createNewNote(`${DEFAULT_SCORE_DIRECTORY}/Untitled`)
-				}
+				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, {filters: filter, os})
 			}
 
 		}
