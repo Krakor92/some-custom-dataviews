@@ -17,7 +17,7 @@ const {
 	// voir ce post https://stackoverflow.com/a/18939803 pour avoir un système de debug robuste
 	debug = false
 	/*disableFilters*/
-} = input || { };
+} = input || {};
 
 //#region Constants
 
@@ -147,6 +147,35 @@ function removeTagChildDVSpan(tag) {
 }
 
 const httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
+
+/**
+ * @param {string} timecode 
+ * @returns {number} The timecode converted to seconds
+*/
+const convertTimecodeToDuration = (timecode) => {
+	const timeArray = timecode.split(':');
+	if (timeArray.length < 2 || timeArray.length > 3) { // It only supports 00:00 or 00:00:00
+		return NaN;
+	}
+
+	let i = 0
+	let total = 0
+	if (timeArray.length === 3) {
+		const hours = parseInt(timeArray[i++], 10)
+		if (isNaN(hours)) return NaN
+		total += hours * 3600
+	}
+
+	const minutes = parseInt(timeArray[i++], 10)
+	if (isNaN(minutes)) return NaN
+	total += minutes * 60
+
+	const seconds = parseInt(timeArray[i], 10)
+	if (isNaN(seconds)) return NaN
+
+	return total + seconds
+}
+
 //#endregion
 
 //#region Rendering functions
@@ -218,6 +247,11 @@ const renderMediaTag = (media) => {
 const renderTimelineTrack = () => {
 	return `<input type="range" class="timeline" max="100" value="0">`
 }
+
+const renderTimecode = (length) => {
+	return `<div class="timecode"><span>${length}</span></div>`
+}
+
 //#endregion
 
 logPerf("Declaration of variables and util functions")
@@ -335,24 +369,24 @@ logPerf("Dataview js query: filtering")
 
 
 const pages = qs.query()
-console.log({pages})
+console.log({ pages })
 
 const numberOfPagesFetched = pages.length
 
 //#region Sort pages options
-const sortPages = ({sort, pages}) => {
+const sortPages = ({ sort, pages }) => {
 	if (sort?.manual) {
 		console.log(dv.current())
 		const sortingPages = dv.current()[sort.manual]
 		if (!sortingPages) return
-		
+
 		/* https://stackoverflow.com/a/44063445 + https://gomakethings.com/how-to-get-the-index-of-an-object-in-an-array-with-vanilla-js/ */
 		return pages.sort((a, b) => {
 			return sortingPages.findIndex((spage) => spage.path === a.file.path)
-			- sortingPages.findIndex((spage) => spage.path === b.file.path)
+				- sortingPages.findIndex((spage) => spage.path === b.file.path)
 		});
 	}
-	
+
 	if (sort?.recentlyAdded === true) {
 		return pages.sort((a, b) => b.file.ctime - a.file.ctime)
 	}
@@ -370,7 +404,7 @@ const sortPages = ({sort, pages}) => {
 	return pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
 }
 
-sortPages({pages, sort})
+sortPages({ pages, sort })
 //#endregion
 
 logPerf("Dataview js query: sorting")
@@ -396,9 +430,10 @@ const buildGridArticles = (pages) => {
 		let imgTag = ""
 		let soundTag = ""
 		let trackTag = ""
+		let timecodeTag = ""
 		let urlTag = ""
 		let mediaTag = ""
-	
+
 		if (!p.thumbnail) {
 			imgTag = renderThumbnailFromUrl(p.url)
 		} else if (typeof p.thumbnail === "string") {
@@ -407,13 +442,17 @@ const buildGridArticles = (pages) => {
 		} else {
 			imgTag = renderThumbnailFromVault(p.thumbnail)
 		}
-	
+
 		if (p.url && !disableSet.has("urlicon")) {
 			urlTag = `<span class="url-link">
 				${renderExternalUrlAnchor(p.url)}
 			</span>`
 		}
-	
+
+		if (p.length && !disableSet.has("timecode")) {
+			timecodeTag = renderTimecode(p.length)
+		}
+
 		/*
 		MP3 player bugs on Android unfortunately 😩 (at least on my personal android phone which runs on Android 13)
 		Some music might load and play entirely without any issue
@@ -427,11 +466,12 @@ const buildGridArticles = (pages) => {
 			soundTag = renderMP3Audio(p.mp3)
 			trackTag = renderTimelineTrack()
 		}
-	
+
 		thumbTag = `<div class="thumb-stack">
 			${imgTag}
 			${soundTag}
 			${soundTag ? trackTag : ""}
+			${timecodeTag}
 		</div>`
 
 		const article = `<article>
@@ -525,7 +565,7 @@ const waitUntilFileMetadataAreLoaded = async (pathToFile) => {
  * @param {object[]} _.filters
  * @param {string} _.os
  */
-const handleAddScoreButtonClick = async ({filters, os}) => {
+const handleAddScoreButtonClick = async ({ filters, os }) => {
 	const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
 	const newFile = await createNewNote(newFilePath)
 
@@ -537,16 +577,22 @@ const handleAddScoreButtonClick = async ({filters, os}) => {
 	await waitUntilFileMetadataAreLoaded(newFilePath)
 
 	// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
-	await delay(2000)
+	await delay(2500)
 
 	const textInClipboard = await navigator.clipboard.readText();
 	if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
 		mmenuPlugin.replaceValues(newFile.path, "url", textInClipboard)
 	}
 
-	if (filters?.current) { mmenuPlugin.replaceValues(newFile.path, filters.current, `[[${dv.current().file.name}]]`) }
+	const current = dv.current()
+	const etags = current.file.etags
+	if (etags.length !== 0) {
+		mmenuPlugin.replaceValues(newFile.path, "media", etags[0].slice(1))
+
+	}
+
+	if (filters?.current) { mmenuPlugin.replaceValues(newFile.path, filters.current, `[[${current.file.name}]]`) }
 	if (filters?.tags) { mmenuPlugin.replaceValues(newFile.path, "tags_", filters.tags) }
-	
 }
 //#endregion
 
@@ -577,7 +623,7 @@ function handleLastScoreIntersection(entries) {
 				const addScoreCellDOM = dv.el("article", filePlusIcon, { cls: "add-file" })
 				grid.querySelector("span").appendChild(addScoreCellDOM);
 
-				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, {filters: filter, os})
+				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, { filters: filter, os })
 			}
 
 		}
@@ -613,6 +659,12 @@ const playAudio = ({ index, audios, playButtons }) => {
 
 }
 
+/**
+ * 
+ * @param {object} _ 
+ * @param {HTMLButtonElement} _.playButton 
+ * @param {HTMLAudioElement} _.audio 
+ */
 const pauseAudio = ({ playButton, audio }) => {
 	currentMP3Playing = -1;
 	audio.pause();
@@ -626,10 +678,6 @@ const handlePlayButtonClick = ({ index, audios, playButtons }) => {
 		pauseAudio({ playButton: playButtons[index], audio: audios[index] })
 	}
 }
-
-let audios = grid.querySelectorAll(`audio`)
-let playButtons = grid.querySelectorAll('.audio-player button')
-let trackTimelines = grid.querySelectorAll('input.timeline')
 
 let currentMP3Playing = -1;
 let numberOfAudiosLoaded = -1;
@@ -647,10 +695,14 @@ manageMp3Scores()
 function manageMp3Scores() {
 	startTime = performance.now();
 
-	// - Update these core variables with new scores (eventually)
-	audios = grid.querySelectorAll(`audio`)
-	playButtons = grid.querySelectorAll('.audio-player button')
-	trackTimelines = grid.querySelectorAll('input.timeline')
+	/** @type {HTMLAudioElement[]} */
+	const audios = grid.querySelectorAll(`audio`)
+
+	/** @type {HTMLButtonElement[]} */
+	const playButtons = grid.querySelectorAll('.audio-player button')
+
+	/** @type {HTMLInputElement[]} */
+	const trackTimelines = grid.querySelectorAll('input.timeline')
 
 	if (numberOfAudiosLoaded === audios.length) return;
 	numberOfAudiosLoaded = audios.length

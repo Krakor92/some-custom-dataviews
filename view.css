@@ -211,3 +211,25 @@ et je l'assume
 	color: #aa0000;
 } 
 */
+
+.jukebox .timecode {
+	background-color: rgba(0, 0, 0, .8);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	grid-column: 1;
+	grid-row: 1;
+	align-self: flex-end;
+	justify-self: end;
+
+	border-radius: 5px;
+	padding: 0 4px;
+	margin: 2px;
+}
+
+.jukebox .timecode span {
+	display: inline-block;
+	font-size: 0.8em;
+	font-weight: 600;
+}
