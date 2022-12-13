@@ -216,7 +216,9 @@ const renderMP3Audio = (mp3File) => {
 		<button class="player-button">
 			${playIcon}
 		</button>
-		<audio src="${window.app.vault.adapter.getResourcePath(mp3File.path)}"></audio>
+		<audio>
+			<source src="${window.app.vault.adapter.getResourcePath(mp3File.path)}"/>
+		</audio>
 	</div>`;
 }
 
@@ -462,7 +464,8 @@ const buildGridArticles = (pages) => {
 		So i prefer disabling it completely rather than having a buggy feature
 		Remove the `os !== "Android"` if you want to try it on yours
 		*/
-		if (os !== "Android" && !disableSet.has("audioplayer") && p.mp3) {
+		// if (os !== "Android" && !disableSet.has("audioplayer") && p.mp3) {
+		if (p.mp3 && !disableSet.has("audioplayer")) {
 			soundTag = renderMP3Audio(p.mp3)
 			trackTag = renderTimelineTrack()
 		}
@@ -715,6 +718,9 @@ function manageMp3Scores() {
 
 
 	for (let i = 0; i < audios.length; i++) {
+		audios[i].onloadedmetadata = checkLoadedMp3Status.bind(this, audios[i])
+
+		// audios[i].onplay = reloadMp3IfCorrupt.bind(this, audios[i])
 
 		audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
 
@@ -726,16 +732,67 @@ function manageMp3Scores() {
 			playButtons[i].innerHTML = playIcon;
 			if (disableSet.has("autoplay") || audios.length === 1) return;
 
-			if (i + 1 === audios.length) {
-				playButtons[0].innerHTML = pauseIcon;
-				audios[0].play()
-			} else {
-				playButtons[i + 1].innerHTML = pauseIcon;
-				audios[i + 1].play()
+			let j = 0
+			if (i + 1 != audios.length) j = i + 1
+
+			// To skip "corrupt" audio on Android
+			while (audios[j].classList.contains("corrupt")) {
+				j++;
+				if (j === audios.length) j = 0
 			}
+
+			playButtons[j].innerHTML = pauseIcon;
+			audios[j].play()
 		};
 	}
 
 	logPerf("Reloading all the mp3 management")
+}
+
+/**
+ * @description Since Android audios are corrupt for no reasons, this function only flag the ones that failed to load to:
+ *  - Skip them on autoplay
+ *  - Visually mark them so that the user know they didn't load correctly
+ * @param {HTMLAudioElement} audio
+ */
+function checkLoadedMp3Status(audio) {
+	const timecodeTag = audio.parentNode.parentNode.querySelector(".timecode")
+	if (!timecodeTag) return;
+
+	const timecodeDuration = convertTimecodeToDuration(timecodeTag.querySelector("span").innerText)
+
+	if (Math.abs(timecodeDuration - audio.duration) <= 1) {
+		timecodeTag.style.backgroundColor = "#060D"
+		return true;
+	}
+
+	if (audio.classList.contains("corrupt")) {
+		timecodeTag.style.backgroundColor = "#600D"
+		return
+	}
+
+	// Modifying the src property after is has been loaded doesn't do anything (https://stackoverflow.com/a/68797896)
+	audio.classList.add("corrupt")
+	timecodeTag.style.backgroundColor = "#F808"
+
+	return false;
+}
+
+/**
+ * @description I don't know why but most of the time, audios fail to load on Android for no specific reasons
+ * I tried to:
+ *  - Remove the <source> and replace it with a new one but it doesn't load it
+ *  - Set the src of the audio tag to the one of the source to override it but that doesn't work either
+ * 
+ * I guess it can't be patched like that 😕, so i should report this bug on obsidian forum
+ * @param {HTMLAudioElement} audio
+ */
+function reloadMp3IfCorrupt(audio) {
+
+	if (!audio.classList.contains("corrupt")) return;
+
+	audio.pause()
+
+	audio.src = audio.querySelector("source").src
 }
 //#endregion
