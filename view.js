@@ -35,6 +35,14 @@ const rootNode = dv.el("div", "", {
 	}
 });
 
+// Hide the edit button so it doesn't trigger anymore in preview mode
+const rootParentNode = rootNode.parentNode
+const editBlockNode = rootParentNode.nextSibling
+if (editBlockNode) {
+	editBlockNode.style.visibility = "hidden"
+}
+
+
 //#region Icons
 // ------------------------
 // - Company/Service icons
