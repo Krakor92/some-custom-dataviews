@@ -264,33 +264,21 @@ const renderTimecode = (length) => {
 logPerf("Declaration of variables and util functions")
 
 //#region Construct the filters based on parameters
-await forceLoadCustomJS();
-const { CustomJs } = customJS
-const QueryService = new CustomJs.Query(dv)
 
-const fromQuery = filter?.from ?? '#🎼 AND -"_templates"'
-
-const qs = QueryService
-	.from(fromQuery);
-
-
-
-if (filter?.mp3Only) {
+const scoreQueryFilterFunctionsMap = new Map()
+scoreQueryFilterFunctionsMap.set('mp3Only', (qs) => {
 	console.log(`%cFilter on mp3Only 🔊`, 'color: #7f6df2; font-size: 13px')
-
 	qs.withExistingField("mp3")
-}
+})
 
-if (filter?.current) {
-	console.log(`%cFilter on current ↩️ (${filter.current})`, 'color: #7f6df2; font-size: 13px')
-
+scoreQueryFilterFunctionsMap.set('current', (qs, value) => {
+	console.log(`%cFilter on current ↩️ (${value})`, 'color: #7f6df2; font-size: 13px')
 	const currentPath = dv.current().file.path;
-	qs.withLinkFieldOfPath({ field: filter.current, path: currentPath })
-}
+	qs.withLinkFieldOfPath({ field: value, path: currentPath })
+})
 
-if (filter?.in) {
-	const inLink = dv.parse(filter.in);
-
+scoreQueryFilterFunctionsMap.set('in', (qs, value) => {
+	const inLink = dv.parse(value);
 	console.log({ inLink })
 
 	if (isObject(inLink)) {
@@ -302,37 +290,30 @@ if (filter?.in) {
 			qs.withLinkFieldOfPath({ field: "in", path: page.file.path })
 		}
 	} else {
-		qs.withLinkFieldOfPath({ field: "in", path: filter.in })
+		qs.withLinkFieldOfPath({ field: "in", path: value })
 	}
-}
+})
 
-if (filter?.tags) {
+scoreQueryFilterFunctionsMap.set('tags', (qs, value) => {
 	console.log("%cFilter on tags 🏷️", 'color: #7f6df2; font-size: 14px')
 
-	if (Array.isArray(filter.tags)) {
-		filter.tags.forEach(t => {
+	if (Array.isArray(value)) {
+		value.forEach(t => {
 			qs.withFieldOfValue({ name: "tags_", value: t })
 		})
 	}
 	else {
-		console.log(`%c=> ${filter.tags}`, 'color: #7f6df2')
+		console.log(`%c=> ${value}`, 'color: #7f6df2')
 
-		qs.withFieldOfValue({ name: "tags_", value: filter.tags })
+		qs.withFieldOfValue({ name: "tags_", value })
 	}
-}
-
-if (filter?.media) {
-	// Right now it don't support OR query so you can't make a ['👺', '🎮'] for example
-	if (!Array.isArray(filter.media)) {
-		qs.withFieldOfValue({ name: "media", value: filter.media })
-	}
-}
+})
 
 /**
  * Pour l'instant, {{voice}} ne peut être qu'un objet de type
  * {yes: true, chorus: true, few: false, no: true}
  */
-if (filter?.voice && isObject(filter.voice)) {
+scoreQueryFilterFunctionsMap.set('voice', (qs, value) => {
 	/**
 	 * CAS 1
 	 * En gros si sur les valeurs données, il y a ne serait ce que un false, alors toutes les autres valeurs seront affiché
@@ -344,17 +325,15 @@ if (filter?.voice && isObject(filter.voice)) {
 	 * 
 	 */
 
-	let defaultValue = Object.values(filter.voice).some(v => !v);
+	let defaultValue = Object.values(value).some(v => !v);
 
 	let voiceFilters = {
 		yes: defaultValue,
 		chorus: defaultValue,
 		few: defaultValue,
 		no: defaultValue,
-		...filter.voice
+		...value
 	}
-
-
 
 	if (defaultValue) {
 		for (const [key, value] of Object.entries(voiceFilters)) {
@@ -369,13 +348,46 @@ if (filter?.voice && isObject(filter.voice)) {
 			}
 		}
 	}
+})
+
+/**
+ * Build and query the score pages from your vault based on some filters
+ * @param {object} [filter]
+ * @returns {Array}
+ */
+const buildAndRunScoreQuery = async (filter) => {
+	await forceLoadCustomJS();
+	const { CustomJs } = customJS
+	const QueryService = new CustomJs.Query(dv)
+
+	const fromQuery = filter?.from ?? '#🎼 AND -"_templates"'
+
+	const qs = QueryService
+		.from(fromQuery);
+
+	for (const prop in filter) {
+		console.log(`filter.${prop} = ${filter[prop]}`)
+
+		if (prop === "from") continue;
+
+		const propFilterFunc = scoreQueryFilterFunctionsMap.get(prop)
+		if (!propFilterFunc && !Array.isArray(filter[prop])) {
+			// Default filter
+			qs.withFieldOfValue({ name: prop, value: filter[prop] })
+		} else {
+			// The queryService and the value
+			propFilterFunc(qs, filter[prop])
+		}
+	}
+
+	logPerf("Dataview js query: filtering")
+
+	return qs.query()
 }
+
 //#endregion
 
-logPerf("Dataview js query: filtering")
-
-
-const pages = qs.query()
+const pages = await buildAndRunScoreQuery(filter)
 console.log({ pages })
 
 const numberOfPagesFetched = pages.length
@@ -820,6 +832,7 @@ function checkLoadedMp3Status(audio) {
  * 
  * I guess it can't be patched like that 😕, so i should report this bug on obsidian forum
  * Edit: Here is the link to the issue i've created : https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684
+ * Edit 2: Hahaha nobody cares (as expected 😅)
  * @param {HTMLAudioElement} audio
  */
 function reloadMp3IfCorrupt(audio) {
