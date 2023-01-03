@@ -28,6 +28,7 @@ et je l'assume
 	position: relative;
 }
 
+/* #region thumbnail */
 .jukebox .thumb-stack {
 	display: grid;
 }
@@ -57,6 +58,7 @@ et je l'assume
 		opacity: 1;
 	}
 }
+/* #endregion */
 
 .jukebox span {
 	display: contents;
@@ -70,6 +72,7 @@ et je l'assume
 	grid-row-gap: 0.75rem;
 }
 
+/*#region .article*/
 .jukebox article {
 	z-index: 0;/* needed for mobile ?*/
 	position: relative;
@@ -105,8 +108,9 @@ et je l'assume
 .jukebox article.add-file:hover {
 	color: var(--background-modifier-border-hover);
 }
+/*#endregion*/
 
-
+/*#region .audio-player*/
 /* build from: https://blog.shahednasser.com/how-to-style-an-audio-element/ */
 .jukebox .audio-player {
 	opacity: 0.8;
@@ -135,6 +139,7 @@ et je l'assume
 .jukebox button.player-button {
 	color: var(--ax1);
 	background-color: transparent;
+	border: 0;
 	box-shadow: none;
 	cursor: pointer;
 	pointer-events: auto;
@@ -147,6 +152,7 @@ et je l'assume
 }
 
 
+/* #region .timeline */
 .jukebox .timeline {
 	/* Strange behaviour, all inputs don't respond equally to this ?_? some are smaller than others */
 	height: 2px;
@@ -181,6 +187,7 @@ et je l'assume
 	border: none;
 	background: transparent;
 }
+/* #endregion */
 
 .jukebox span.file-link {
 	display: inline-block;
@@ -202,16 +209,7 @@ et je l'assume
 	right: 8px;
 }
 
-.jukebox audio {
-	justify-self: center;
-	align-self: center;
-}
-
-/* .jukebox a[data-service="youtube"] > svg {
-	color: #aa0000;
-} 
-*/
-
+/*#region .timecode*/
 .jukebox .timecode {
 	background-color: rgba(0, 0, 0, .8);
 	display: flex;
@@ -233,3 +231,4 @@ et je l'assume
 	font-size: 0.8em;
 	font-weight: 600;
 }
+/* #endregion */

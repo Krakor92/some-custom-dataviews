@@ -9,6 +9,7 @@ const logPerf = (label) => {
 
 console.log("=----------------------=")
 
+//#region Constants
 const {
 	filter,
 	sort,
@@ -16,17 +17,17 @@ const {
 
 	// voir ce post https://stackoverflow.com/a/18939803 pour avoir un système de debug robuste
 	debug = false
-	/*disableFilters*/
 } = input || {};
-
-//#region Constants
 
 const DEFAULT_SCORE_DIRECTORY = "/DB/🎼"
 const SCORE_PER_PAGE_BATCH = 20
 const enableSimultaneousMp3Playing = false
 
+/** @type {Set<string>} */
 const disableSet = new Set(disable.split(' ').map(v => v.toLowerCase()))
 const tid = (new Date()).getTime();
+
+/** @type {HTMLDivElement} */
 const rootNode = dv.el("div", "", {
 	cls: "jukebox",
 	attr: {
@@ -42,6 +43,7 @@ if (editBlockNode) {
 	editBlockNode.style.visibility = "hidden"
 }
 
+//#endregion
 
 //#region Icons
 // ------------------------
@@ -102,7 +104,7 @@ const pauseIcon = `
   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
 </svg>`
 
-const filePlusIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`
+const filePlusIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`
 //#endregion
 
 //#region Utils
@@ -141,6 +143,9 @@ const getOS = () => {
 	return "Unknown OS";
 }
 
+/**
+ * @param {HTMLElement} tag 
+ */
 function removeTagChildDVSpan(tag) {
 	const span = tag.querySelector("span")
 	span.outerHTML = span.innerHTML
@@ -436,13 +441,15 @@ const buildGridArticles = (pages) => {
 		let urlTag = ""
 		let mediaTag = ""
 
-		if (!p.thumbnail) {
-			imgTag = renderThumbnailFromUrl(p.url)
-		} else if (typeof p.thumbnail === "string") {
-			// Thumbnail is an url (for non youtube music)
-			imgTag = renderThumbnailFromUrl(p.thumbnail)
-		} else {
-			imgTag = renderThumbnailFromVault(p.thumbnail)
+		if (!disableSet.has("thumbnail")) {
+			if (!p.thumbnail) {
+				imgTag = renderThumbnailFromUrl(p.url)
+			} else if (typeof p.thumbnail === "string") {
+				// Thumbnail is an url (for non youtube music)
+				imgTag = renderThumbnailFromUrl(p.thumbnail)
+			} else {
+				imgTag = renderThumbnailFromVault(p.thumbnail)
+			}
 		}
 
 		if (p.url && !disableSet.has("urlicon")) {
@@ -497,6 +504,7 @@ removeTagChildDVSpan(rootNode)
 
 let nbPageBatchesFetched = 1
 
+/** @type {HTMLDivElement} */
 const grid = dv.el("div", gridArticles.slice(0, SCORE_PER_PAGE_BATCH).join(""), { cls: "grid" })
 
 logPerf("Convert string gridContent to DOM object")
@@ -507,14 +515,14 @@ rootNode.appendChild(grid);
 logPerf("Appending the first built grid to the DOM")
 
 //#region Handle the add class button
-// /**
-//  * from there : https://github.com/vanadium23/obsidian-advanced-new-file/blob/master/src/CreateNoteModal.ts
-//  * Handles creating the new note
-//  * A new markdown file will be created at the given file path (`input`)
-//  * @param {string} input 
-//  * @param {string} mode - current-pane / new-pane / new-tab
-//  * @returns {TFile}
-//  */
+/**
+ * from there : https://github.com/vanadium23/obsidian-advanced-new-file/blob/master/src/CreateNoteModal.ts
+ * Handles creating the new note
+ * A new markdown file will be created at the given file path (`input`)
+ * @param {string} input 
+ * @param {string} mode - current-pane / new-pane / new-tab
+ * @returns {TFile}
+ */
 const createNewNote = async (input, mode = "new-tab") => {
 	const { vault } = this.app;
 	const { adapter } = vault;
@@ -568,7 +576,7 @@ const waitUntilFileMetadataAreLoaded = async (pathToFile) => {
  * @param {object[]} _.filters
  * @param {string} _.os
  */
-const handleAddScoreButtonClick = async ({ filters, os }) => {
+async function handleAddScoreButtonClick ({ filters, os }) {
 	const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
 	const newFile = await createNewNote(newFilePath)
 
@@ -623,7 +631,7 @@ function handleLastScoreIntersection(entries) {
 				console.log(`Finish to load: ${nbPageBatchesFetched * SCORE_PER_PAGE_BATCH}`)
 				if (disableSet.has("addscore")) return;
 
-				const addScoreCellDOM = dv.el("article", filePlusIcon, { cls: "add-file" })
+				const addScoreCellDOM = dv.el("article", filePlusIcon(24), { cls: "add-file" })
 				grid.querySelector("span").appendChild(addScoreCellDOM);
 
 				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, { filters: filter, os })
@@ -640,17 +648,32 @@ if (lastScore) {
 //#endregion
 
 //#region MP3 audio player (custom button, timeline, autoplay)
+
+/**
+ * @param {HTMLInputElement} timeline
+ * @param {HTMLAudioElement} audio
+ */
 const changeTimelinePosition = (timeline, audio) => {
 	const percentagePosition = (100 * audio.currentTime) / audio.duration;
 	timeline.style.backgroundSize = `${percentagePosition}% 100%`;
 	timeline.value = percentagePosition;
 }
 
+/**
+ * @param {HTMLInputElement} timeline
+ * @param {HTMLAudioElement} audio
+ */
 const changeSeek = (timeline, audio) => {
 	const time = (timeline.value * audio.duration) / 100;
 	audio.currentTime = time;
 }
 
+/**
+ * @param {object} _
+ * @param {number} _.index
+ * @param {HTMLAudioElement[]} _.audios
+ * @param {HTMLButtonElement[]} _.playButtons 
+ */
 const playAudio = ({ index, audios, playButtons }) => {
 	if (!enableSimultaneousMp3Playing && currentMP3Playing !== -1) {
 		pauseAudio({ audio: audios[currentMP3Playing], playButton: playButtons[currentMP3Playing] })
@@ -659,7 +682,6 @@ const playAudio = ({ index, audios, playButtons }) => {
 	currentMP3Playing = index;
 	audios[index].play()
 	playButtons[index].innerHTML = pauseIcon;
-
 }
 
 /**
@@ -674,6 +696,12 @@ const pauseAudio = ({ playButton, audio }) => {
 	playButton.innerHTML = playIcon;
 }
 
+/**
+ * @param {object} _
+ * @param {number} _.index
+ * @param {HTMLAudioElement[]} _.audios
+ * @param {HTMLButtonElement[]} _.playButtons 
+ */
 const handlePlayButtonClick = ({ index, audios, playButtons }) => {
 	if (audios[index].paused) {
 		playAudio({ playButtons, audios, index })
@@ -729,7 +757,10 @@ function manageMp3Scores() {
 		trackTimelines[i].onchange = changeSeek.bind(this, trackTimelines[i], audios[i])
 
 		audios[i].onended = () => {
-			playButtons[i].innerHTML = playIcon;
+			playButtons[i].innerHTML = playIcon
+			trackTimelines[i].value = 0
+			trackTimelines[i].style.backgroundSize = "0% 100%"
+
 			if (disableSet.has("autoplay") || audios.length === 1) return;
 
 			let j = 0
@@ -740,6 +771,9 @@ function manageMp3Scores() {
 				j++;
 				if (j === audios.length) j = 0
 			}
+
+			// Tricky situation: It means there are multiple audio files in the view but only one loaded correctly 
+			if (audios[j] === audios[i]) return;
 
 			playButtons[j].innerHTML = pauseIcon;
 			audios[j].play()
@@ -785,6 +819,7 @@ function checkLoadedMp3Status(audio) {
  *  - Set the src of the audio tag to the one of the source to override it but that doesn't work either
  * 
  * I guess it can't be patched like that 😕, so i should report this bug on obsidian forum
+ * Edit: Here is the link to the issue i've created : https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684
  * @param {HTMLAudioElement} audio
  */
 function reloadMp3IfCorrupt(audio) {
