@@ -39,7 +39,7 @@ const rootNode = dv.el("div", "", {
 // Hide the edit button so it doesn't trigger anymore in preview mode
 const rootParentNode = rootNode.parentNode
 const editBlockNode = rootParentNode.nextSibling
-if (editBlockNode) {
+if (editBlockNode && editBlockNode.style) {
 	editBlockNode.style.visibility = "hidden"
 }
 
@@ -233,15 +233,21 @@ const renderThumbnailFromVault = (thumb) => {
 	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
 }
 
-const renderExternalUrlAnchor = (url) => {
+/**
+ * Returns a string of the form: `data-service="${service}">${serviceIcon}`
+ * Right now the data-service isn't used
+ * @param {string} url 
+ */
+const _resolveAnchorServicePartFromUrl= (url) => {
+	if (url.includes("youtu")) return `data-service="youtube">${youtubeIcon}`
+	if (url.includes("soundcloud")) return `data-service="soundcloud">${soundcloudIcon}`
+	if (url.includes("dailymotion")) return `data-service="dailymotion">${dailymotionIcon}`
+	if (url.includes("dropbox")) return `data-service="dropbox">${dropboxIcon}`
 
-	if (url.includes("youtu")) return `<a href="${url}" rel="noopener target="_blank" data-service="youtube">${youtubeIcon}</a>`
-	if (url.includes("dailymotion")) return `<a href="${url}" rel="noopener target="_blank" data-service="dailymotion">${dailymotionIcon}</a>`
-	if (url.includes("dropbox")) return `<a href="${url}" rel="noopener target="_blank" data-service="dropbox">${dropboxIcon}</a>`
-	if (url.includes("soundcloud")) return `<a href="${url}" rel="noopener target="_blank" data-service="soundcloud">${soundcloudIcon}</a>`
-
-	return `<a href="${url}" rel="noopener target="_blank" data-service="unknown">${linkIcon}</a>`
+	return `data-service="unknown">${linkIcon}`
 }
+
+const renderExternalUrlAnchor = (url) => `<a href="${url}" class="external-link" rel="noopener target="_blank" ${_resolveAnchorServicePartFromUrl(url)}</a>`
 
 const renderInternalFileAnchor = (file) => {
 	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${file.path}" data-href="${file.path}" href="${file.path}">${file.name}</a>`
@@ -263,7 +269,7 @@ const renderTimecode = (length) => {
 
 logPerf("Declaration of variables and util functions")
 
-//#region Construct the filters based on parameters
+//#region Construct the filter functions map
 
 const scoreQueryFilterFunctionsMap = new Map()
 scoreQueryFilterFunctionsMap.set('mp3Only', (qs) => {
@@ -350,6 +356,10 @@ scoreQueryFilterFunctionsMap.set('voice', (qs, value) => {
 	}
 })
 
+//#endregion
+
+//#region Build and run the score dataview query
+
 /**
  * Build and query the score pages from your vault based on some filters
  * @param {object} [filter]
@@ -385,12 +395,11 @@ const buildAndRunScoreQuery = async (filter) => {
 	return qs.query()
 }
 
-//#endregion
-
 const pages = await buildAndRunScoreQuery(filter)
 console.log({ pages })
 
 const numberOfPagesFetched = pages.length
+//#endregion
 
 //#region Sort pages options
 const sortPages = ({ sort, pages }) => {
@@ -424,10 +433,9 @@ const sortPages = ({ sort, pages }) => {
 }
 
 sortPages({ pages, sort })
-//#endregion
 
 logPerf("Dataview js query: sorting")
-
+//#endregion
 
 //#region Build the grid of score for the DOM
 const os = getOS();
@@ -522,11 +530,10 @@ const grid = dv.el("div", gridArticles.slice(0, SCORE_PER_PAGE_BATCH).join(""), 
 logPerf("Convert string gridContent to DOM object")
 
 rootNode.appendChild(grid);
+logPerf("Appending the first built grid to the DOM")
 //#endregion
 
-logPerf("Appending the first built grid to the DOM")
-
-//#region Handle the add class button
+//#region Functions to handle the add class button
 /**
  * from there : https://github.com/vanadium23/obsidian-advanced-new-file/blob/master/src/CreateNoteModal.ts
  * Handles creating the new note
@@ -611,7 +618,6 @@ async function handleAddScoreButtonClick ({ filters, os }) {
 	const etags = current.file.etags
 	if (etags.length !== 0) {
 		mmenuPlugin.replaceValues(newFile.path, "media", etags[0].slice(1))
-
 	}
 
 	if (filters?.current) { mmenuPlugin.replaceValues(newFile.path, filters.current, `[[${current.file.name}]]`) }
@@ -729,6 +735,7 @@ manageMp3Scores()
 
 /**
  * This function should be called every time new scores are added at the end of the grid (because of scroll)
+ * or if the grid of score is re-arranged because of new filters ?
  * It:
  * - Binds the update of the audio to the progress of the timeline
  * - Handle what happened when you click on the custom button
@@ -799,6 +806,8 @@ function manageMp3Scores() {
  * @description Since Android audios are corrupt for no reasons, this function only flag the ones that failed to load to:
  *  - Skip them on autoplay
  *  - Visually mark them so that the user know they didn't load correctly
+ * Edit: Big twist as of today (2023-01-04). Even mp3 with correct loading time may not play completely. I've experienced this with Elegia today, i was flabbergasted...
+ *       So it truly is unreliable on Android after all 😥. I still keep this function though because i'm sure it's still better than nothing
  * @param {HTMLAudioElement} audio
  */
 function checkLoadedMp3Status(audio) {

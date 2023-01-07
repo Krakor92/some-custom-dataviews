@@ -14,8 +14,8 @@ et je l'assume
 	--cards-border-width: 1px;
 	--cards-aspect-ratio: auto;
 	--cards-columns: repeat(auto-fit, minmax(var(--cards-min-width), var(--cards-max-width)));
-	--background-modifier-border: hsl(0, 0%, calc(15% + 6%))
-	--background-modifier-border-hover: hsl(0, 0%, calc(15% + 12%))
+	--background-modifier-border: hsl(0, 0%, calc(15% + 6%));
+	--background-modifier-border-hover: hsl(0, 0%, calc(15% + 12%));
 }
 
 @media (max-width:400pt) {
@@ -28,13 +28,16 @@ et je l'assume
 	position: relative;
 }
 
+.jukebox span {
+	display: contents;
+}
+
 /* #region thumbnail */
 .jukebox .thumb-stack {
 	display: grid;
 }
 
-.jukebox img
-{
+.jukebox img {
 	pointer-events: none;
 	z-index: -1;
 	grid-column: 1;
@@ -58,11 +61,8 @@ et je l'assume
 		opacity: 1;
 	}
 }
-/* #endregion */
 
-.jukebox span {
-	display: contents;
-}
+/* #endregion */
 
 .jukebox .grid {
 	padding: 0.5rem 0;
@@ -74,7 +74,7 @@ et je l'assume
 
 /*#region .article*/
 .jukebox article {
-	z-index: 0;/* needed for mobile ?*/
+	z-index: 0; /* needed for mobile ?*/
 	position: relative;
 	background-color: var(--cards-background);
 	border: var(--cards-border-width) solid var(--background-modifier-border);
@@ -91,8 +91,8 @@ et je l'assume
 .jukebox article:hover {
 	border: var(--cards-border-width) solid var(--background-modifier-border-hover);
 	box-shadow:
-	0 4px 6px 0px rgba(0, 0, 0, 0.05),
-	0 1px 3px 1px rgba(0, 0, 0, 0.025);
+		0 4px 6px 0px rgba(0, 0, 0, 0.05),
+		0 1px 3px 1px rgba(0, 0, 0, 0.025);
 	transition: box-shadow 0.15s linear;
 }
 
@@ -132,9 +132,10 @@ et je l'assume
 }
 
 @media (hover: hover) {
-.jukebox .audio-player:hover {
-	opacity: 1;
-}}
+	.jukebox .audio-player:hover {
+		opacity: 1;
+	}
+}
 
 .jukebox button.player-button {
 	color: var(--ax1);
@@ -151,6 +152,7 @@ et je l'assume
 	height: 48px;
 }
 
+/* #endregion */
 
 /* #region .timeline */
 .jukebox .timeline {
@@ -207,6 +209,10 @@ et je l'assume
 	position: absolute;
 	top: 4px;
 	right: 8px;
+
+	/* To remove the icon added by default next to external-link */
+	background-image: none;
+	padding: 0;
 }
 
 /*#region .timecode*/
