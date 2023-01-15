@@ -38,6 +38,12 @@ et je l'assume
 }
 
 .jukebox img {
+	object-fit: cover;
+	width: 100%;
+	/* width: auto; */
+	max-height: var(--cards-image-height);
+	;
+
 	pointer-events: none;
 	z-index: -1;
 	grid-column: 1;
@@ -74,7 +80,8 @@ et je l'assume
 
 /*#region .article*/
 .jukebox article {
-	z-index: 0; /* needed for mobile ?*/
+	z-index: 0;
+	/* needed for mobile ?*/
 	position: relative;
 	background-color: var(--cards-background);
 	border: var(--cards-border-width) solid var(--background-modifier-border);
@@ -108,6 +115,7 @@ et je l'assume
 .jukebox article.add-file:hover {
 	color: var(--background-modifier-border-hover);
 }
+
 /*#endregion*/
 
 /*#region .audio-player*/
@@ -138,13 +146,18 @@ et je l'assume
 }
 
 .jukebox button.player-button {
-	color: var(--ax1);
+	color: var(--color-accent);
 	background-color: transparent;
 	border: 0;
 	box-shadow: none;
 	cursor: pointer;
 	pointer-events: auto;
 	padding: 0 !important;
+}
+
+/* To get rid of the hideous semi-transparent white rectangle when hovering over it */
+body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
+	background: none;
 }
 
 .jukebox .player-button svg {
@@ -161,7 +174,7 @@ et je l'assume
 	width: auto;
 	border-radius: 5px;
 	background-size: 0% 100%;
-	background-image: linear-gradient(var(--ax1), var(--ax1));
+	background-image: linear-gradient(var(--color-accent), var(--color-accent));
 	background-repeat: no-repeat;
 }
 
@@ -173,11 +186,11 @@ et je l'assume
 	cursor: pointer;
 	opacity: 0;
 	transition: all .1s;
-	background-color: var(--ax1);
+	background-color: var(--color-accent);
 }
 
 .jukebox .timeline::-webkit-slider-thumb:hover {
-	background-color: var(--ax1);
+	background-color: var(--color-accent);
 }
 
 .jukebox .timeline:hover::-webkit-slider-thumb {
@@ -189,6 +202,7 @@ et je l'assume
 	border: none;
 	background: transparent;
 }
+
 /* #endregion */
 
 .jukebox span.file-link {
@@ -213,6 +227,14 @@ et je l'assume
 	/* To remove the icon added by default next to external-link */
 	background-image: none;
 	padding: 0;
+
+	/* To remove the [object HTMLImageElement] text */
+	font-size: 0;
+}
+
+/* ONLY for Link Favicons users */
+.jukebox img.link-favicon {
+	display: none !important;
 }
 
 /*#region .timecode*/
@@ -237,4 +259,5 @@ et je l'assume
 	font-size: 0.8em;
 	font-weight: 600;
 }
+
 /* #endregion */
