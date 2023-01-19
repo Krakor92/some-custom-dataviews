@@ -95,6 +95,10 @@ const filePlusIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="$
 //#endregion
 
 //#region Utils
+//	#region Javascript
+// Clamp number between two values with the following line:
+const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+
 const delay = async (time) => new Promise((resolve) => setTimeout(resolve, time));
 
 function isObject(o) {
@@ -115,7 +119,9 @@ function shuffleArray(a) {
 		a[j] = x;
 	}
 }
+//	#endregion
 
+//	#region Obsidian
 const getOS = () => {
 	const { isMobile } = this.app
 	const { platform } = navigator
@@ -167,9 +173,60 @@ const convertTimecodeToDuration = (timecode) => {
 	return total + seconds
 }
 
+/**
+ * @todo Find the correct way to know if a file link exists
+ * because right now it's a workaround that only works because i follow a specific rule (which is to have no file at the root of my vault)
+ * @param {link} link
+ */
+const linkExists = (link) => {
+	// It means there is a `/` in the path
+	return link?.path.indexOf("/") !== -1
+}
+
+//	#endregion
 //#endregion
 
 //#region Rendering functions
+
+const _resolveThumbnailStyle = (display) => {
+	const thumbnailY = parseFloat(display)
+	if (isNaN(thumbnailY)) return null // Si le display n'est pas un chiffre, on renvoit null
+
+	return `style="object-position: 50% ${clamp(thumbnailY, 0, 1) * 100}%"`
+}
+
+const _resolveUrlThumbnailStyle = (str) => {
+	const startOfDisplayId = str.indexOf("[")
+	const endOfDisplayId = str.indexOf("]")
+
+	// Il n'y a soit pas de [], soit il est y est mais est vide
+	if (startOfDisplayId === -1 || (endOfDisplayId - startOfDisplayId) === 1) return null
+
+	let display = str.substring(startOfDisplayId + 1, endOfDisplayId)
+	const firstPipeId = str.indexOf("|", startOfDisplayId)
+	if (firstPipeId !== -1) {
+		// Instead of having display be "0.2|400", it's going to be "0.2" only
+		display = str.substring(startOfDisplayId + 1, firstPipeId)
+	}
+
+	return _resolveThumbnailStyle(display)
+}
+
+const _resolveVaultThumbnailStyle = (thumb) => {
+
+	let display = thumb.display
+
+	if (display === undefined) return null
+
+	const firstPipeId = display.indexOf("|")
+	if (firstPipeId !== -1) {
+		// Instead of having display be "0.2|400", it's going to be "0.2" only
+		display = display.substring(0, firstPipeId)
+	}
+
+	return _resolveThumbnailStyle(display)
+}
+
 /**
  * 
  * @param {string} url 
@@ -190,17 +247,20 @@ const renderThumbnailFromUrl = (url) => {
 		return `<img src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
 	}
 
+	let style = null;
 	// Embed de la miniature dans le document
 	if (url[0] === '!') {
+		style = _resolveUrlThumbnailStyle(url)
+
 		const startOfUrl = url.lastIndexOf('(') + 1
 		url = url.substring(startOfUrl, url.length - 1)
 	}
 
-	return `<img src="${url}" referrerpolicy="no-referrer">`
+	return `<img src="${url}" referrerpolicy="no-referrer" ${style ?? ""}>`
 }
 
 const renderMP3Audio = (mp3File) => {
-	if (!mp3File) return ""
+	if (!mp3File || !linkExists(mp3File)) return ""
 
 	return `
 	<div class="audio-player">
@@ -216,7 +276,9 @@ const renderMP3Audio = (mp3File) => {
 const renderThumbnailFromVault = (thumb) => {
 	if (!thumb) return ""
 
-	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}">`
+	let style = _resolveVaultThumbnailStyle(thumb);
+
+	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}" ${style ?? ""}>`
 }
 
 /**
@@ -263,6 +325,7 @@ const scoreQueryFilterFunctionsMap = new Map()
 scoreQueryFilterFunctionsMap.set('mp3Only', (qs) => {
 	console.log(`%cFilter on mp3Only 🔊`, 'color: #7f6df2; font-size: 13px')
 	qs.withExistingField("mp3")
+	qs.with((page) => linkExists(page.mp3))
 })
 
 scoreQueryFilterFunctionsMap.set('current', (qs, value) => {
