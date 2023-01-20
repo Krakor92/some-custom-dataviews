@@ -250,6 +250,9 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	border-radius: 5px;
 	padding: 0 4px;
 	margin: 2px;
+
+	/* To add a little space when the thumbnail image is disabled */
+	margin-top: 28px;
 }
 
 .jukebox .timecode span {
