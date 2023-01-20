@@ -20,6 +20,9 @@ const {
 
 //#region Constants
 
+// For demonstration purpose only
+const DISABLE_LAZY_RENDERING = false
+
 // Where to create the file when we press the + tile/button
 const DEFAULT_SCORE_DIRECTORY = "/DB/🎼"
 const NB_SCORE_BATCH_PER_PAGE = 20
@@ -102,6 +105,21 @@ const pauseIcon = `
 </svg>`
 
 const filePlusIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`
+
+const filterIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>';
+
+// Taken from Alexandru Dinu Sortable plugin
+const sortIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" d="M49.792 33.125l-5.892 5.892L33.333 28.45V83.333H25V28.45L14.438 39.017L8.542 33.125L29.167 12.5l20.625 20.625zm41.667 33.75L70.833 87.5l-20.625 -20.625l5.892 -5.892l10.571 10.567L66.667 16.667h8.333v54.883l10.567 -10.567l5.892 5.892z"></path></svg>'
+
+const saveIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>'
+
+const listMusicIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6"></path><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path><path d="M12 12H3"></path><path d="M16 6H3"></path><path d="M12 18H3"></path></svg>'
+
+const micOffIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"></line><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"></path><path d="M5 10v2a7 7 0 0 0 12 5"></path><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"></path><path d="M9 9v3a3 3 0 0 0 5.12 2.12"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>`
+
+const mic2Icon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"></path><circle cx="17" cy="7" r="5"></circle></svg>`
+
+const venetianMaskIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-5a8 8 0 0 0-5 2 8 8 0 0 0-5-2H2Z"></path><path d="M6 11c1.5 0 3 .5 3 2-2 0-3 0-3-2Z"></path><path d="M18 11c-1.5 0-3 .5-3 2 2 0 3 0 3-2Z"></path></svg>`
 //#endregion
 
 //#region Utils
@@ -494,8 +512,71 @@ const sortPages = ({ sort, pages }) => {
 }
 
 sortPages({ pages, sort })
-
 logPerf("Dataview js query: sorting")
+//#endregion
+
+//#region Build buttons but don't apply events yet
+
+const clickPlaylistButton = (pages) => {
+	const baseUrl = "https://www.youtube.com/watch_videos?video_ids="
+	const aggregatedYoutubeUrls = pages.reduce((prev, cur) => {
+		/** @type{string} */
+		const url = cur.url;
+		if (!url.includes("youtu")) return prev;
+
+		let id = url.indexOf("watch_videos")
+		if (id !== -1) {
+			return prev + ',' + url.substring(id + 23)
+		}
+
+		id = url.indexOf("?t=")
+		if (id !== -1) {
+			const t = url.substring(id + 3)
+			if (parseInt(t) > MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST) {
+				console.warn(`The 't' argument is too deep inside the video of url: '${url}' to be added in the playlist`)
+				return prev
+			}
+		}
+
+		const sep = prev !== "" ? ',' : ''
+
+		return prev + sep + url.substring(17, 28)
+	}, "")
+
+	// Only open in default browser
+	// document.location = `https://www.youtube.com/watch_videos?video_ids=` + "qAzebXdaAKk,AxI0wTQLMLI"
+
+	// Does open in Obsidian browser (usin Surfing plugin)
+	window.open(baseUrl + aggregatedYoutubeUrls)
+}
+
+const setButtonEvents = (pages) => {
+	rootNode.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (() => {
+		if (btn.className == "playlist") {
+			clickPlaylistButton(pages)
+		}
+		else if (btn.className == "add-file") {
+			handleAddScoreButtonClick({ filters: filter, os })
+		}
+
+		btn.blur();
+	})));
+}
+
+const buildButtons = () => {
+	const addFileButton = `<button class='add-file'>${filePlusIcon(20)}</button>`
+
+	return `<button class='playlist'>
+		${listMusicIcon}
+	</button>
+	${disableSet.has("addscore") ? "" : addFileButton}
+	`
+}
+
+const buttons = buildButtons()
+
+rootNode.appendChild(dv.el("div", buttons, { cls: "buttons", attr: {} }))
+
 //#endregion
 
 const os = getOS();
@@ -585,14 +666,23 @@ removeTagChildDVSpan(rootNode)
 
 let nbPageBatchesFetched = 1
 
+const buildGridDOM = (disableLazyRendering = false) => {
+	if (disableLazyRendering) {
+		return dv.el("div", gridArticles.join(""), { cls: "grid" })
+	}
+	return dv.el("div", gridArticles.slice(0, NB_SCORE_BATCH_PER_PAGE).join(""), { cls: "grid" })
+}
+
 /** @type {HTMLDivElement} */
-const grid = dv.el("div", gridArticles.slice(0, SCORE_PER_PAGE_BATCH).join(""), { cls: "grid" })
+const grid = buildGridDOM(DISABLE_LAZY_RENDERING)
 
 logPerf("Convert string gridContent to DOM object")
 
 rootNode.appendChild(grid);
 logPerf("Appending the first built grid to the DOM")
 //#endregion
+
+setButtonEvents(pages)
 
 //#region Functions to handle the add class button
 /**
@@ -721,7 +811,7 @@ function handleLastScoreIntersection(entries) {
 }
 const scoreObserver = new IntersectionObserver(handleLastScoreIntersection);
 let lastScore = grid.querySelector('article:last-of-type');
-if (lastScore) {
+if (lastScore && !DISABLE_LAZY_RENDERING) {
 	scoreObserver.observe(lastScore)
 }
 //#endregion

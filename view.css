@@ -68,7 +68,70 @@ et je l'assume
 
 /* #endregion */
 
+
+/* #region .buttons */
+.jukebox .buttons {
+	display: flex;
+	justify-content: flex-end;
+
+}
+
+.jukebox .buttons {
+	cursor: default;
+	width: 100%;
+	height: 30px;
+	display: flex;
+	flex-wrap: nowrap;
+	flex-direction: row;
+	margin-bottom: 0.75rem;
+	gap: 0.5rem
+}
+
+.jukebox button.active,
+.jukebox.playlist button.playlist,
+.jukebox.no-voice button.no-voice {
+	background: var(--background-modifier-active-hover);
+}
+
+body:not(.is-mobile) .jukebox button:not(.active):hover {
+	background: var(--background-modifier-hover);
+}
+
+.jukebox button.active svg,
+.jukebox.playlist button.playlist svg,
+.jukebox.no-voice button.no-voice svg {
+	stroke: var(--icon-color-active) !important;
+}
+
+.jukebox button {
+	background-color: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	border-radius: 5px;
+	color: var(--icon-color);
+	height: 30px;
+	box-shadow: none;
+	border: 1px solid var(--nav-item-background-active);
+	font-weight: normal;
+	font-size: 14px;
+	background: var(--background-secondary);
+	padding: 4px 6px;
+	outline: none;
+	user-select: none;
+	white-space: nowrap;
+	flex: 0;
+}
+
+.jukebox.no-voice article.voice {
+	display: none;
+}
+
+/* #endregion */
+
 .jukebox .grid {
+	/* padding: 0.5rem 0; */
 	padding-bottom: 0.5rem;
 	display: grid;
 	grid-template-columns: var(--cards-columns);
