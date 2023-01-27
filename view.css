@@ -149,7 +149,6 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	display: flex;
 	flex-direction: column;
 	margin: 0;
-	padding: 0 0 calc(var(--cards-padding)/3) 0;
 	border-radius: 6px;
 	overflow: hidden;
 	transition: box-shadow 0.15s linear;
@@ -237,6 +236,14 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	background-size: 0% 100%;
 	background-image: linear-gradient(var(--color-accent), var(--color-accent));
 	background-repeat: no-repeat;
+
+	/* Handle conflicting themes */
+	background-color: var(--slider-track-background);
+	margin: 0;
+}
+.jukebox .timeline::before,
+.jukebox .timeline::after {
+	display: none
 }
 
 .jukebox .timeline::-webkit-slider-thumb {
