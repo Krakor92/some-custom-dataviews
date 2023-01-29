@@ -1,13 +1,24 @@
+//#region Debug
+let inceptionTime = performance.now()
 let startTime = performance.now()
 let perfTime = null;
 
+// Hacky but it's for debug purposes
+const buildDurationLog = (duration) => {
+	if (duration >= 1000) {
+		return `${(duration / 1000.0).toPrecision(3)} seconds`
+	}
+	return `${(duration).toPrecision(3)} milliseconds`
+}
+
 const logPerf = (label) => {
 	perfTime = performance.now()
-	console.info(`${label} took ${(perfTime - startTime).toPrecision(3)} milliseconds`)
+	console.info(`${label} took ${buildDurationLog(perfTime - startTime)}`)
 	startTime = perfTime
 }
 
 console.log("=----------------------=")
+//#endregion
 
 const {
 	filter,
@@ -16,17 +27,28 @@ const {
 
 	// voir ce post https://stackoverflow.com/a/18939803 pour avoir un système de debug robuste
 	debug = false
+	//@ts-ignore
 } = input || {};
 
-//#region Constants
+//#region Settings
 
 // For demonstration purpose only
 const DISABLE_LAZY_RENDERING = false
 
+const DEFAULT_FROM = '#🎼 AND -"_templates"'
+
 // Where to create the file when we press the + tile/button
-const DEFAULT_SCORE_DIRECTORY = "/DB/🎼"
+const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
+
+// Only used by the orphan system
+const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
+
 const NB_SCORE_BATCH_PER_PAGE = 20
 const ENABLE_SIMULTANEOUS_MP3_PLAYING = false
+const STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC = true
+
+// Between 0 (silent) and 1 (loudest)
+const DEFAULT_VOLUME = 0.4
 
 // Until how many seconds in youtube url (?t=) should we consider the music to not be elegible to playlist
 const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
@@ -51,7 +73,7 @@ const rootNode = dv.el("div", "", {
 
 // Hide the edit button so it doesn't trigger anymore in preview mode
 const rootParentNode = rootNode.parentNode
-const editBlockNode = rootParentNode.nextSibling
+const editBlockNode = rootParentNode?.nextSibling
 if (editBlockNode && editBlockNode.style) {
 	editBlockNode.style.visibility = "hidden"
 }
@@ -135,11 +157,11 @@ function isObject(o) {
 
 /**
  * from https://stackoverflow.com/a/6274381
- * Shuffles array in place. (Modify it)
- * @param {Array} a items An array containing the items.
+ * It alters the array
+ * @param {Array} a.
  */
 function shuffleArray(a) {
-	var j, x, i;
+	let j, x, i;
 	for (i = a.length - 1; i > 0; i--) {
 		j = Math.floor(Math.random() * (i + 1));
 		x = a[i];
@@ -168,6 +190,8 @@ const getOS = () => {
  */
 function removeTagChildDVSpan(tag) {
 	const span = tag.querySelector("span")
+	if (!span) return;
+
 	span.outerHTML = span.innerHTML
 }
 
@@ -202,7 +226,7 @@ const convertTimecodeToDuration = (timecode) => {
 }
 
 /**
- * @param {link} link
+ * @param {import('../view').Link} link
  */
 const linkExists = async (link) => {
 	return await window.app.vault.adapter.exists(link?.path)
@@ -284,27 +308,40 @@ const renderThumbnailFromUrl = (url) => {
 	return `<img src="${url}" referrerpolicy="no-referrer" ${style ?? ""}>`
 }
 
-const renderMP3Audio = async (mp3File) => {
-	if (!mp3File) return ""
+/**
+ * 
+ * @param {object} _
+ * @param {import('../view').Link} _.audioFile
+ * @param {number?} _.volumeOffset
+ */
+const renderMP3Audio = async ({ audioFile, volumeOffset }) => {
+	if (!audioFile) return ""
 
-	const mp3Exists = await linkExists(mp3File)
+	const mp3Exists = await linkExists(audioFile)
 	if (!mp3Exists) return ""
+
+	const dataVolume = volumeOffset ? `data-volume="${volumeOffset}"` : ""
 
 	return `
 	<div class="audio-player">
 		<button class="player-button">
 			${playIcon}
 		</button>
-		<audio>
-			<source src="${window.app.vault.adapter.getResourcePath(mp3File.path)}"/>
+		<audio ${dataVolume}>
+			<source src="${window.app.vault.adapter.getResourcePath(audioFile.path)}"/>
 		</audio>
 	</div>`;
 }
 
+/**
+ * @param {import('../view').Link} thumb
+ */
 const renderThumbnailFromVault = (thumb) => {
 	if (!thumb) return ""
 
 	let style = _resolveVaultThumbnailStyle(thumb);
+
+	console.log("thumb.path", thumb.path)
 
 	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}" ${style ?? ""}>`
 }
@@ -327,8 +364,13 @@ const _resolveAnchorServicePartFromUrl = (url) => {
 
 const renderExternalUrlAnchor = (url) => `<a href="${url}" class="external-link" rel="noopener target="_blank" ${_resolveAnchorServicePartFromUrl(url)}</a>`
 
-const renderInternalFileAnchor = (file) => {
-	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${file.path}" data-href="${file.path}" href="${file.path}">${file.name}</a>`
+/**
+ * @param {object} file 
+ * @param {string} file.path 
+ * @param {string} file.name 
+ */
+const renderInternalFileAnchor = ({ path, name } = {}) => {
+	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${path}" data-href="${path}" href="${path}">${name}</a>`
 }
 
 const renderMediaTag = (media) => {
@@ -345,11 +387,68 @@ const renderTimecode = (length) => {
 
 //#endregion
 
-logPerf("Declaration of variables and util functions")
+//#region Manage and build orphans
 
-//#region Construct the filters based on parameters
+/**
+ * @param {object} _
+ * @param {import('../view').ScoreFile} _.ScoreFile
+ * @param {string[]} _.orphans
+ * @returns {import('../view').ScoreFile[]}
+ */
+const buildOrphans = (scoreFile) => {
+	if (!scoreFile || !scoreFile.orphans) return []
+
+	let orphans = null
+
+	try {
+		if (Array.isArray(orphans)) {
+			orphans = JSON.parse(`[${scoreFile.orphans.join(',')}]`)
+		} else {
+			orphans = JSON.parse(`[${scoreFile.orphans}]`)
+		}
+	} catch (error) {
+		console.error(error)
+		return []
+	}
+
+	console.log({ orphans })
+
+	// Needed to disguise orphans as real ScoreFile (mock Link to TFile)
+	for (const o of orphans) {
+		// If thumbnail includes a '/', that means it's an url
+		if (o.thumbnail && !o.thumbnail.includes("/")) {
+			o.thumbnail = {
+				path: `${DEFAULT_THUMBNAIL_DIRECTORY}/${o.thumbnail.replace(/\[|\]/g, '')}`
+			}
+		}
+
+		o.file = {
+			name: o.title,
+			path: `${DEFAULT_SCORE_DIRECTORY}/${o.title}.md`
+		}
+	}
+
+	return orphans
+}
+
+const orphanPages = disableSet.has("orphans") ? [] : buildOrphans(dv.current())
+
+//#endregion
+
+//#region Query the pages based on filters
 
 const scoreQueryFilterFunctionsMap = new Map()
+scoreQueryFilterFunctionsMap.set('manual', async (qs) => {
+	console.log(`%cFilter on manual`, 'color: #7f6df2; font-size: 13px')
+
+	const links = dv.current()[filter.manual]
+	if (!links) {
+		return console.warn("You must set an inline field inside your file containing score links for the manual filter to work")
+	}
+
+	await qs.setLinks(links)
+})
+
 scoreQueryFilterFunctionsMap.set('mp3Only', async (qs) => {
 	console.log(`%cFilter on mp3Only 🔊`, 'color: #7f6df2; font-size: 13px')
 	qs.withExistingField("mp3")
@@ -435,21 +534,38 @@ scoreQueryFilterFunctionsMap.set('voice', (qs, value) => {
 	}
 })
 
-//#endregion
+/**
+ * Needed to profit of Dataview implementation of backlinks
+ * @warning This function mutate the filter argument
+ * @param {string} from 
+ * @param {object} filter 
+ * @returns 
+ */
+const _updateFromStringBasedOnSpecialFilters = (from, filter) => {
+	if (!filter) return from
 
-//#region Build and run the score dataview query
+	console.log({ from, filter })
+	if (filter.current === "backlinks") {
+		// console.log(`dv.current().file.path: ${dv.current().file.path}`)
+		delete filter.current
+		return from += ` AND [[${dv.current().file.path}]]`
+	}
+
+	return from
+}
 
 /**
  * Build and query the score pages from your vault based on some filters
  * @param {object} [filter]
- * @returns {Array}
+ * @returns {import('../view').ScoreFile[]}
  */
 const buildAndRunScoreQuery = async (filter) => {
 	await forceLoadCustomJS();
 	const { CustomJs } = customJS
 	const QueryService = new CustomJs.Query(dv)
 
-	const fromQuery = filter?.from ?? '#🎼 AND -"_templates"'
+	let fromQuery = filter?.from ?? DEFAULT_FROM
+	fromQuery = _updateFromStringBasedOnSpecialFilters(fromQuery, filter)
 
 	const qs = QueryService
 		.from(fromQuery);
@@ -474,18 +590,55 @@ const buildAndRunScoreQuery = async (filter) => {
 	return qs.query()
 }
 
-const pages = await buildAndRunScoreQuery(filter)
-console.log({ pages })
+const queriedPages = await buildAndRunScoreQuery(filter)
+const numberOfPagesFetched = queriedPages.length
 
-const numberOfPagesFetched = pages.length
+console.log({ queriedPages })
+
+const pages = [...queriedPages, ...orphanPages]
+
 //#endregion
 
 //#region Sort pages options
-const sortPages = ({ sort, pages }) => {
+
+/**
+ * Adds the DEFAULT_SCORE_DIRECTORY to the path of orphans (uncreated) files
+ * @param {Array<import('../view').Link|string>} links 
+ */
+const _normalizeLinksPath = async (links) => {
+	return await Promise.all(links.map(async l => {
+
+		// l is a string
+		if (!l.path) {
+			return { path: `${DEFAULT_SCORE_DIRECTORY}/${l}.md` }
+		}
+
+		// l is an empty link
+		console.log({ l })
+
+		if (! await linkExists(l)) {
+			return { ...l, path: `${DEFAULT_SCORE_DIRECTORY}/${l.path}.md` }
+		}
+
+		return l
+	}))
+}
+
+/**
+ * @param {object} _ 
+ * @param {object} _.sort
+ * @param {import('../view').ScoreFile[]} _.pages
+ */
+const sortPages = async ({ sort, pages }) => {
 	if (sort?.manual) {
-		console.log(dv.current())
-		const sortingPages = dv.current()[sort.manual]
-		if (!sortingPages) return
+		// console.log(dv.current())
+		const rawSortingPages = dv.current()[sort.manual]
+		if (!rawSortingPages) {
+			console.warn(`${sort.manual} property could not be found in your file`)
+			return pages
+		}
+
+		const sortingPages = await _normalizeLinksPath(rawSortingPages)
 
 		/* https://stackoverflow.com/a/44063445 + https://gomakethings.com/how-to-get-the-index-of-an-object-in-an-array-with-vanilla-js/ */
 		return pages.sort((a, b) => {
@@ -511,7 +664,7 @@ const sortPages = ({ sort, pages }) => {
 	return pages.sort((a, b) => a.file.name.localeCompare(b.file.name))
 }
 
-sortPages({ pages, sort })
+await sortPages({ pages, sort })
 logPerf("Dataview js query: sorting")
 //#endregion
 
@@ -551,7 +704,7 @@ const clickPlaylistButton = (pages) => {
 }
 
 const setButtonEvents = (pages) => {
-	rootNode.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (() => {
+	rootNode.querySelectorAll('button').forEach(btn => btn.addEventListener('click', ((e) => {
 		if (btn.className == "playlist") {
 			clickPlaylistButton(pages)
 		}
@@ -559,7 +712,8 @@ const setButtonEvents = (pages) => {
 			handleAddScoreButtonClick({ filters: filter, os })
 		}
 
-		btn.blur();
+		e.preventDefault()
+		btn.blur()
 	})));
 }
 
@@ -585,16 +739,14 @@ const os = getOS();
 /**
  * Build the complete list of score that will eventually be rendered on the screen
  * (if you scroll all the way down)
- * @param {any[]} pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
+ * @param {import('../view').ScoreFile[]} pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
  * @returns {string[]} Each value of the array contains some HTML equivalent to a cell on the grid
  */
 const buildGridArticles = async (pages) => {
 	const gridArticles = []
 
 	for (const p of pages) {
-		let fileTag = `<span class="file-link">
-			${renderInternalFileAnchor(p.file)}
-		</span>`
+		let fileTag = ""
 		let thumbTag = ""
 		let imgTag = ""
 		let soundTag = ""
@@ -602,6 +754,18 @@ const buildGridArticles = async (pages) => {
 		let timecodeTag = ""
 		let urlTag = ""
 		let mediaTag = ""
+
+		if (!disableSet.has("filelink")) {
+			if (p.title) {
+				fileTag = `<span class="file-link">
+				${renderInternalFileAnchor({ path: p.file.path, name: p.title })}
+				</span>`
+			} else {
+				fileTag = `<span class="file-link">
+				${renderInternalFileAnchor(p.file)}
+				</span>`
+			}
+		}
 
 		if (!disableSet.has("thumbnail")) {
 			if (!p.thumbnail) {
@@ -635,7 +799,7 @@ const buildGridArticles = async (pages) => {
 		*/
 		// if (os !== "Android" && !disableSet.has("audioplayer") && p.mp3) {
 		if (p.mp3 && !disableSet.has("audioplayer")) {
-			soundTag = await renderMP3Audio(p.mp3)
+			soundTag = await renderMP3Audio({ audioFile: p.mp3, volumeOffset: p.volume })
 			trackTag = renderTimelineTrack()
 		}
 
@@ -660,7 +824,7 @@ const buildGridArticles = async (pages) => {
 }
 const gridArticles = await buildGridArticles(pages)
 
-logPerf("Building the actual grid")
+logPerf("Building the string array of article")
 
 removeTagChildDVSpan(rootNode)
 
@@ -676,10 +840,10 @@ const buildGridDOM = (disableLazyRendering = false) => {
 /** @type {HTMLDivElement} */
 const grid = buildGridDOM(DISABLE_LAZY_RENDERING)
 
-logPerf("Convert string gridContent to DOM object")
+logPerf(`Converting the string array to DOM object`)
 
 rootNode.appendChild(grid);
-logPerf("Appending the first built grid to the DOM")
+// logPerf("Appending the first built grid to the DOM")
 //#endregion
 
 setButtonEvents(pages)
@@ -841,11 +1005,20 @@ const changeSeek = (timeline, audio) => {
  * @param {object} _
  * @param {number} _.index
  * @param {HTMLAudioElement[]} _.audios
- * @param {HTMLButtonElement[]} _.playButtons 
+ * @param {HTMLButtonElement[]} _.playButtons
  */
 const playAudio = ({ index, audios, playButtons }) => {
 	if (!ENABLE_SIMULTANEOUS_MP3_PLAYING && currentMP3Playing !== -1) {
 		pauseAudio({ audio: audios[currentMP3Playing], playButton: playButtons[currentMP3Playing] })
+	}
+
+	// Handle volume
+	let dataVolume = audios[index].dataset.volume;
+	dataVolume = parseFloat(dataVolume)
+	if (!isNaN(dataVolume)) {
+		audios[index].volume = clamp(DEFAULT_VOLUME + dataVolume, 0.1, 1)
+	} else {
+		audios[index].volume = clamp(DEFAULT_VOLUME, 0.1, 1)
 	}
 
 	currentMP3Playing = index;
@@ -911,7 +1084,7 @@ function manageMp3Scores() {
 
 	// Must never happen
 	if (audios.length !== playButtons.length) {
-		console.warn("The number of play buttons doesn't match the number of audios")
+		console.error("The number of play buttons doesn't match the number of audios")
 	}
 
 
@@ -931,7 +1104,11 @@ function manageMp3Scores() {
 			trackTimelines[i].value = 0
 			trackTimelines[i].style.backgroundSize = "0% 100%"
 
-			if (disableSet.has("autoplay") || audios.length === 1) return;
+			if (disableSet.has("autoplay")
+				|| audios.length === 1
+				|| (STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC && i + 1 === audios.length)) {
+				return;
+			}
 
 			let j = 0
 			if (i + 1 != audios.length) j = i + 1
@@ -1006,3 +1183,5 @@ function reloadMp3IfCorrupt(audio) {
 	audio.src = audio.querySelector("source").src
 }
 //#endregion
+
+console.info(`View took ${buildDurationLog(performance.now() - inceptionTime)} to run`)
