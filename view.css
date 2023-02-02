@@ -26,6 +26,7 @@ et je l'assume
 
 .jukebox {
 	position: relative;
+	cursor: default;
 }
 
 .jukebox span {
@@ -74,10 +75,6 @@ et je l'assume
 	display: flex;
 	justify-content: flex-end;
 
-}
-
-.jukebox .buttons {
-	cursor: default;
 	width: 100%;
 	height: 30px;
 	display: flex;
@@ -298,6 +295,11 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 
 	/* To remove the [object HTMLImageElement] text */
 	font-size: 0;
+}
+
+/* ONLY for ITS - External Link Icons users */
+.jukebox span.url-link a::before {
+	display: none
 }
 
 /* ONLY for Link Favicons users */
