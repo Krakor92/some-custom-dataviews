@@ -1,3 +1,8 @@
+/**
+ * @file Depends on DataviewJS
+ * @author Krakor <krakor.faivre@gmail.com>
+ */
+
 //#region Debug
 let inceptionTime = performance.now()
 let startTime = performance.now()
@@ -35,6 +40,13 @@ const {
 // For demonstration purpose only
 const DISABLE_LAZY_RENDERING = false
 
+const TITLE_FIELD = "title"
+const THUMBNAIL_FIELD = "thumbnail"
+const AUDIO_FILE_FIELD = "mp3"
+const URL_FIELD = "url"
+const LENGTH_FIELD = "length"
+const VOLUME_FIELD = "volume"
+
 const DEFAULT_FROM = '#🎼 AND -"_templates"'
 
 // Where to create the file when we press the + tile/button
@@ -47,12 +59,19 @@ const NB_SCORE_BATCH_PER_PAGE = 20
 const ENABLE_SIMULTANEOUS_MP3_PLAYING = false
 const STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC = true
 
+/** @type {'auto'|'metadata'|'none'} */
+const AUDIO_DEFAULT_PRELOAD = 'metadata'
+
 // Between 0 (silent) and 1 (loudest)
 const DEFAULT_VOLUME = 0.4
 
 // Until how many seconds in youtube url (?t=) should we consider the music to not be elegible to playlist
 const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
 const HIDE_ICONS = true
+
+// CustomJS related
+const DEFAULT_CUSTOMJS_CLASS = "DataviewJS"
+const DEFAULT_CUSTOMJS_SUBCLASS = "Query"
 
 //#endregion
 
@@ -145,6 +164,8 @@ const venetianMaskIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" widt
 //#endregion
 
 //#region Utils
+const httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
+
 //	#region Javascript
 // Clamp number between two values with the following line:
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
@@ -195,8 +216,6 @@ function removeTagChildDVSpan(tag) {
 	span.outerHTML = span.innerHTML
 }
 
-const httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
-
 /**
  * @param {string} timecode 
  * @returns {number} The timecode converted to seconds
@@ -239,7 +258,7 @@ const linkExists = async (link) => {
 
 const _resolveThumbnailStyle = (display) => {
 	const thumbnailY = parseFloat(display)
-	if (isNaN(thumbnailY)) return null // Si le display n'est pas un chiffre, on renvoit null
+	if (isNaN(thumbnailY)) return null
 
 	return `style="object-position: 50% ${clamp(thumbnailY, 0, 1) * 100}%"`
 }
@@ -248,7 +267,7 @@ const _resolveUrlThumbnailStyle = (str) => {
 	const startOfDisplayId = str.indexOf("[")
 	const endOfDisplayId = str.indexOf("]")
 
-	// Il n'y a soit pas de [], soit il est y est mais est vide
+	// Either there is no [], or there is but its empty
 	if (startOfDisplayId === -1 || (endOfDisplayId - startOfDisplayId) === 1) return null
 
 	let display = str.substring(startOfDisplayId + 1, endOfDisplayId)
@@ -297,7 +316,6 @@ const renderThumbnailFromUrl = (url) => {
 	}
 
 	let style = null;
-	// Embed de la miniature dans le document
 	if (url[0] === '!') {
 		style = _resolveUrlThumbnailStyle(url)
 
@@ -327,7 +345,7 @@ const renderMP3Audio = async ({ audioFile, volumeOffset }) => {
 		<button class="player-button">
 			${playIcon}
 		</button>
-		<audio ${dataVolume}>
+		<audio preload="${AUDIO_DEFAULT_PRELOAD}" ${dataVolume}>
 			<source src="${window.app.vault.adapter.getResourcePath(audioFile.path)}"/>
 		</audio>
 	</div>`;
@@ -339,9 +357,7 @@ const renderMP3Audio = async ({ audioFile, volumeOffset }) => {
 const renderThumbnailFromVault = (thumb) => {
 	if (!thumb) return ""
 
-	let style = _resolveVaultThumbnailStyle(thumb);
-
-	console.log("thumb.path", thumb.path)
+	const style = _resolveVaultThumbnailStyle(thumb);
 
 	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}" ${style ?? ""}>`
 }
@@ -546,7 +562,6 @@ const _updateFromStringBasedOnSpecialFilters = (from, filter) => {
 
 	console.log({ from, filter })
 	if (filter.current === "backlinks") {
-		// console.log(`dv.current().file.path: ${dv.current().file.path}`)
 		delete filter.current
 		return from += ` AND [[${dv.current().file.path}]]`
 	}
@@ -561,8 +576,8 @@ const _updateFromStringBasedOnSpecialFilters = (from, filter) => {
  */
 const buildAndRunScoreQuery = async (filter) => {
 	await forceLoadCustomJS();
-	const { CustomJs } = customJS
-	const QueryService = new CustomJs.Query(dv)
+	const CustomJs = customJS[DEFAULT_CUSTOMJS_CLASS]
+	const QueryService = new CustomJs[DEFAULT_CUSTOMJS_SUBCLASS](dv)
 
 	let fromQuery = filter?.from ?? DEFAULT_FROM
 	fromQuery = _updateFromStringBasedOnSpecialFilters(fromQuery, filter)
@@ -614,8 +629,6 @@ const _normalizeLinksPath = async (links) => {
 		}
 
 		// l is an empty link
-		console.log({ l })
-
 		if (! await linkExists(l)) {
 			return { ...l, path: `${DEFAULT_SCORE_DIRECTORY}/${l.path}.md` }
 		}
@@ -651,9 +664,7 @@ const sortPages = async ({ sort, pages }) => {
 		return pages.sort((a, b) => b.file.ctime - a.file.ctime)
 	}
 	if (sort?.recentlyAdded === false) {
-		return pages.sort((a, b) => {
-			return a.file.ctime - b.file.ctime
-		})
+		return pages.sort((a, b) => a.file.ctime - b.file.ctime)
 	}
 
 	if (sort?.shuffle) {
@@ -756,9 +767,9 @@ const buildGridArticles = async (pages) => {
 		let mediaTag = ""
 
 		if (!disableSet.has("filelink")) {
-			if (p.title) {
+			if (p[TITLE_FIELD]) {
 				fileTag = `<span class="file-link">
-				${renderInternalFileAnchor({ path: p.file.path, name: p.title })}
+				${renderInternalFileAnchor({ path: p.file.path, name: p[TITLE_FIELD] })}
 				</span>`
 			} else {
 				fileTag = `<span class="file-link">
@@ -768,24 +779,24 @@ const buildGridArticles = async (pages) => {
 		}
 
 		if (!disableSet.has("thumbnail")) {
-			if (!p.thumbnail) {
-				imgTag = renderThumbnailFromUrl(p.url)
-			} else if (typeof p.thumbnail === "string") {
+			if (!p[THUMBNAIL_FIELD]) {
+				imgTag = renderThumbnailFromUrl(p[URL_FIELD])
+			} else if (typeof p[THUMBNAIL_FIELD] === "string") {
 				// Thumbnail is an url (for non youtube music)
-				imgTag = renderThumbnailFromUrl(p.thumbnail)
+				imgTag = renderThumbnailFromUrl(p[THUMBNAIL_FIELD])
 			} else {
-				imgTag = renderThumbnailFromVault(p.thumbnail)
+				imgTag = renderThumbnailFromVault(p[THUMBNAIL_FIELD])
 			}
 		}
 
-		if (p.url && !disableSet.has("urlicon")) {
+		if (p[URL_FIELD] && !disableSet.has("urlicon")) {
 			urlTag = `<span class="url-link">
-				${renderExternalUrlAnchor(p.url)}
+				${renderExternalUrlAnchor(p[URL_FIELD])}
 			</span>`
 		}
 
-		if (p.length && !disableSet.has("timecode")) {
-			timecodeTag = renderTimecode(p.length)
+		if (p[LENGTH_FIELD] && !disableSet.has("timecode")) {
+			timecodeTag = renderTimecode(p[LENGTH_FIELD])
 		}
 
 		/*
@@ -797,9 +808,9 @@ const buildGridArticles = async (pages) => {
 		So i prefer disabling it completely rather than having a buggy feature
 		Remove the `os !== "Android"` if you want to try it on yours
 		*/
-		// if (os !== "Android" && !disableSet.has("audioplayer") && p.mp3) {
-		if (p.mp3 && !disableSet.has("audioplayer")) {
-			soundTag = await renderMP3Audio({ audioFile: p.mp3, volumeOffset: p.volume })
+		// if (os !== "Android" && !disableSet.has("audioplayer") && p[AUDIO_FILE_FIELD]) {
+		if (p[AUDIO_FILE_FIELD] && !disableSet.has("audioplayer")) {
+			soundTag = await renderMP3Audio({ audioFile: p[AUDIO_FILE_FIELD], volumeOffset: p[VOLUME_FIELD] })
 			trackTag = renderTimelineTrack()
 		}
 
