@@ -990,16 +990,31 @@ async function handleAddScoreButtonClick({ filters, os }) {
 //#endregion
 
 //#region Infinite scroll custom implementation
+const _insertNewChunkInGrid = () => {
+	const newChunk = gridArticles.slice(
+		nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE,
+		(nbPageBatchesFetched + 1) * NB_SCORE_BATCH_PER_PAGE).join("")
+
+	// Needed for metadata-menu to trigger and render extra buttons
+	const newChunkDOM = dv.el("div", newChunk)
+
+	const newChunkFragment = document.createDocumentFragment();
+	newChunkDOM.querySelectorAll("article").forEach(article => {
+		newChunkFragment.appendChild(article)
+	})
+
+	grid.querySelector("span").insertBefore(newChunkFragment, grid.querySelector("span").lastChild);
+	nbPageBatchesFetched++
+}
+
 function handleLastScoreIntersection(entries) {
 	entries.map((entry) => {
 		if (entry.isIntersecting) {
 			startTime = performance.now();
 
 			scoreObserver.unobserve(entries[0].target);
-			grid.querySelector("span").insertAdjacentHTML('beforeend', gridArticles.slice(
-				nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE,
-				(nbPageBatchesFetched + 1) * NB_SCORE_BATCH_PER_PAGE).join(""));
-			nbPageBatchesFetched++
+
+			_insertNewChunkInGrid()
 
 			logPerf("Appended new scores at the end of the grid")
 
