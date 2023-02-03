@@ -550,6 +550,26 @@ scoreQueryFilterFunctionsMap.set('voice', (qs, value) => {
 	}
 })
 
+scoreQueryFilterFunctionsMap.set('release', (qs, value) => {
+	console.log({ value })
+
+	if (!isObject(value)) {
+		return qs.withDateFieldOfTime({ name: "release", value })
+	}
+
+	if (value.before) qs.withDateFieldOfTime({ name: "release", value: value.before, compare: 'lt' })
+	if (value.after) qs.withDateFieldOfTime({ name: "release", value: value.after, compare: 'gt' })
+})
+
+scoreQueryFilterFunctionsMap.set('star', (qs, value) => {
+	console.log({ value })
+
+	if (!!value) {
+		return qs.withFileFieldOfValue({ name: "starred", value: true })
+	}
+	return qs.withFileFieldOfValue({ name: "starred", value: false })
+})
+
 /**
  * Needed to profit of Dataview implementation of backlinks
  * @warning This function mutate the filter argument
@@ -665,6 +685,24 @@ const sortPages = async ({ sort, pages }) => {
 	}
 	if (sort?.recentlyAdded === false) {
 		return pages.sort((a, b) => a.file.ctime - b.file.ctime)
+	}
+
+	if (sort?.recentlyReleased === true) {
+		return pages.sort((a, b) => {
+			const aReleased = dv.date(a.release)
+			const bReleased = dv.date(b.release)
+			if (!aReleased || !bReleased) return 0
+			return bReleased - aReleased
+		})
+	}
+	if (sort?.recentlyReleased === false) {
+		return pages.sort((a, b) => {
+			const aReleased = dv.date(a.release)
+			const bReleased = dv.date(b.release)
+			if (!aReleased || !bReleased) return 0
+
+			return aReleased - bReleased
+		})
 	}
 
 	if (sort?.shuffle) {
