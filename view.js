@@ -625,10 +625,15 @@ const buildAndRunScoreQuery = async (filter) => {
 	return qs.query()
 }
 
-const queriedPages = await buildAndRunScoreQuery(filter)
-const numberOfPagesFetched = queriedPages.length
+let queriedPages = []
+let numberOfPagesFetched = 0
 
-console.log({ queriedPages })
+if (!disableSet.has("query")) {
+	queriedPages = await buildAndRunScoreQuery(filter)
+	numberOfPagesFetched = queriedPages.length
+	
+	console.log({ queriedPages })
+}
 
 const pages = [...queriedPages, ...orphanPages]
 
@@ -655,6 +660,17 @@ const _normalizeLinksPath = async (links) => {
 
 		return l
 	}))
+}
+
+/**
+ * Let me handle YYYY format too (luxon don't recognized this format as a single year -_-)
+ * @param {object|number} value
+ */
+function valueToDateTime(value) {
+	if (typeof value === "number") { // that means its just a year
+		return dv.luxon.DateTime.fromObject({ year: value })
+	}
+	return dv.date(value)
 }
 
 /**
@@ -689,16 +705,16 @@ const sortPages = async ({ sort, pages }) => {
 
 	if (sort?.recentlyReleased === true) {
 		return pages.sort((a, b) => {
-			const aReleased = dv.date(a.release)
-			const bReleased = dv.date(b.release)
+			const aReleased = valueToDateTime(a.release)
+			const bReleased = valueToDateTime(b.release)
 			if (!aReleased || !bReleased) return 0
 			return bReleased - aReleased
 		})
 	}
 	if (sort?.recentlyReleased === false) {
 		return pages.sort((a, b) => {
-			const aReleased = dv.date(a.release)
-			const bReleased = dv.date(b.release)
+			const aReleased = valueToDateTime(a.release)
+			const bReleased = valueToDateTime(b.release)
 			if (!aReleased || !bReleased) return 0
 
 			return aReleased - bReleased
