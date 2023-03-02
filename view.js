@@ -1,5 +1,6 @@
 /**
- * @file Depends on DataviewJS
+ * @file Render a grid of music from your vault. Files can have an mp3 embedded, an url or both
+ * @depends on DataviewJS
  * @author Krakor <krakor.faivre@gmail.com>
  */
 
@@ -47,6 +48,7 @@ const URL_FIELD = "url"
 const LENGTH_FIELD = "length"
 const VOLUME_FIELD = "volume"
 
+// The dataview query used to query the music markdown files	
 const DEFAULT_FROM = '#🎼 AND -"_templates"'
 
 // Where to create the file when we press the + tile/button
@@ -63,7 +65,7 @@ const STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC = true
 const AUDIO_DEFAULT_PRELOAD = 'metadata'
 
 // Between 0 (silent) and 1 (loudest)
-const DEFAULT_VOLUME = 0.4
+const DEFAULT_VOLUME = 0.3
 
 // Until how many seconds in youtube url (?t=) should we consider the music to not be elegible to playlist
 const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
@@ -77,13 +79,23 @@ const DEFAULT_CUSTOMJS_SUBCLASS = "Query"
 
 //#region Initialize view's root node
 
+/** @param {Set<string>} set */
+const computeClassName = (set) => {
+	let className = "jukebox"
+	if (set.has("border")) {
+		className += " no-border"
+	}
+
+	return className
+}
+
 /** @type {Set<string>} */
 const disableSet = new Set(disable.split(' ').map(v => v.toLowerCase()))
 const tid = (new Date()).getTime();
 
 /** @type {HTMLDivElement} */
 const rootNode = dv.el("div", "", {
-	cls: "jukebox",
+	cls: computeClassName(disableSet),
 	attr: {
 		id: "jukebox" + tid,
 		style: 'position:relative;-webkit-user-select:none!important'
@@ -92,10 +104,19 @@ const rootNode = dv.el("div", "", {
 
 // Hide the edit button so it doesn't trigger anymore in preview mode
 const rootParentNode = rootNode.parentNode
-const editBlockNode = rootParentNode?.nextSibling
+let editBlockNode = rootParentNode?.nextSibling
 if (editBlockNode && editBlockNode.style) {
 	editBlockNode.style.visibility = "hidden"
+} else { // We are probably inside a callout
+	const calloutContentNode = rootParentNode?.parentNode
+	const calloutNode = calloutContentNode?.parentNode
+	editBlockNode = calloutNode?.nextSibling
+	if (editBlockNode && editBlockNode.style) {
+		editBlockNode.style.visibility = "hidden"
+	}
 }
+
+
 
 //#endregion
 
@@ -190,31 +211,6 @@ function shuffleArray(a) {
 		a[j] = x;
 	}
 }
-//	#endregion
-
-//	#region Obsidian
-const getOS = () => {
-	const { isMobile } = this.app
-	const { platform } = navigator
-
-	if (platform.indexOf("Win") !== -1) return "Windows";
-	// if (platform.indexOf("Mac") !== -1) return "MacOS";
-	if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux";
-	if (platform.indexOf("Linux") !== -1 && isMobile) return "Android";
-	if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS";
-
-	return "Unknown OS";
-}
-
-/**
- * @param {HTMLElement} tag 
- */
-function removeTagChildDVSpan(tag) {
-	const span = tag.querySelector("span")
-	if (!span) return;
-
-	span.outerHTML = span.innerHTML
-}
 
 /**
  * @param {string} timecode 
@@ -242,6 +238,31 @@ const convertTimecodeToDuration = (timecode) => {
 	if (isNaN(seconds)) return NaN
 
 	return total + seconds
+}
+//	#endregion
+
+//	#region Obsidian
+const getOS = () => {
+	const { isMobile } = this.app
+	const { platform } = navigator
+
+	if (platform.indexOf("Win") !== -1) return "Windows";
+	// if (platform.indexOf("Mac") !== -1) return "MacOS";
+	if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux";
+	if (platform.indexOf("Linux") !== -1 && isMobile) return "Android";
+	if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS";
+
+	return "Unknown OS";
+}
+
+/**
+ * @param {HTMLElement} tag 
+ */
+function removeTagChildDVSpan(tag) {
+	const span = tag.querySelector("span")
+	if (!span) return;
+
+	span.outerHTML = span.innerHTML
 }
 
 /**
@@ -478,19 +499,19 @@ scoreQueryFilterFunctionsMap.set('current', (qs, value) => {
 })
 
 scoreQueryFilterFunctionsMap.set('in', (qs, value) => {
-	const inLink = dv.parse(value);
+	const inLink = dv.parse(value);// transform [[value]] into a link
 	console.log({ inLink })
 
 	if (isObject(inLink)) {
 		const page = dv.page(inLink.path)
 		console.log({ page })
 		if (!page) {
-			qs.withLinkFieldOfPath({ field: "in", path: inLink.path })
+			qs.withLinkFieldOfPath({ field: "in", path: inLink.path, acceptStringField: true })
 		} else {
-			qs.withLinkFieldOfPath({ field: "in", path: page.file.path })
+			qs.withLinkFieldOfPath({ field: "in", path: page.file.path, acceptStringField: false })
 		}
 	} else {
-		qs.withLinkFieldOfPath({ field: "in", path: value })
+		qs.withLinkFieldOfPathRegex({ field: "in", path: value, acceptStringField: true })
 	}
 })
 
@@ -631,7 +652,7 @@ let numberOfPagesFetched = 0
 if (!disableSet.has("query")) {
 	queriedPages = await buildAndRunScoreQuery(filter)
 	numberOfPagesFetched = queriedPages.length
-	
+
 	console.log({ queriedPages })
 }
 
@@ -764,7 +785,7 @@ const clickPlaylistButton = (pages) => {
 	// Only open in default browser
 	// document.location = `https://www.youtube.com/watch_videos?video_ids=` + "qAzebXdaAKk,AxI0wTQLMLI"
 
-	// Does open in Obsidian browser (usin Surfing plugin)
+	// Does open in Obsidian browser (using Surfing plugin)
 	window.open(baseUrl + aggregatedYoutubeUrls)
 }
 
@@ -792,9 +813,11 @@ const buildButtons = () => {
 	`
 }
 
-const buttons = buildButtons()
+if (!disableSet.has("buttons")) {
+	const buttons = buildButtons()
 
-rootNode.appendChild(dv.el("div", buttons, { cls: "buttons", attr: {} }))
+	rootNode.appendChild(dv.el("div", buttons, { cls: "buttons", attr: {} }))
+}
 
 //#endregion
 
@@ -917,9 +940,9 @@ setButtonEvents(pages)
 /**
  * from there : https://github.com/vanadium23/obsidian-advanced-new-file/blob/master/src/CreateNoteModal.ts
  * Handles creating the new note
- * A new markdown file will be created at the given file path (`input`)
- * @param {string} input 
- * @param {string} mode - current-pane / new-pane / new-tab
+ * A new markdown file will be created at the given file path {input}
+ * @param {string} input
+ * @param {"current-pane"|"new-pane"|"new-tab"} mode - current-pane / new-pane / new-tab
  * @returns {TFile}
  */
 const createNewNote = async (input, mode = "new-tab") => {
@@ -989,19 +1012,41 @@ async function handleAddScoreButtonClick({ filters, os }) {
 	// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
 	await delay(2500)
 
+	const fieldsPayload = []
+
 	const textInClipboard = await navigator.clipboard.readText();
 	if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
-		mmenuPlugin.replaceValues(newFile.path, "url", textInClipboard)
+		fieldsPayload.push({
+			name: URL_FIELD,
+			payload: { value: textInClipboard }
+		})
 	}
 
 	const current = dv.current()
 	const etags = current.file.etags
 	if (etags.length !== 0) {
-		mmenuPlugin.replaceValues(newFile.path, "media", etags[0].slice(1))
+		console.log({ etags })
+		fieldsPayload.push({
+			name: "media",
+			payload: { value: etags[0].slice(1) }
+		})
 	}
 
-	if (filters?.current) { mmenuPlugin.replaceValues(newFile.path, filters.current, `[[${current.file.name}]]`) }
-	if (filters?.tags) { mmenuPlugin.replaceValues(newFile.path, "tags_", filters.tags) }
+	if (filters?.current) {
+		fieldsPayload.push({
+			name: filters.current,
+			payload: { value: `[[${current.file.name}]]` }
+		})
+	}
+
+	if (filters?.tags) {
+		fieldsPayload.push({
+			name: "tags_",
+			payload: { value: Array.isArray(filters.tags) ? `[${filters.tags.join(", ")}]` : filters.tags }
+		})
+	}
+
+	await mmenuPlugin.postValues(newFile.path, fieldsPayload)
 }
 //#endregion
 

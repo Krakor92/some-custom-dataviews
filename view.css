@@ -1,28 +1,64 @@
 /*
-Complètement pompé sur https://github.com/kepano/obsidian-minimal/blob/master/src/scss/features/cards.scss
-et je l'assume
+The grid layout is copied from there https://github.com/kepano/obsidian-minimal/blob/master/src/scss/features/cards.scss
+And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calendar/blob/main/tasksCalendar/view.css
 */
 
 :root {
-	--cards-min-width: 180px;
-	--cards-max-width: 1fr;
-	--cards-mobile-width: 120px;
-	--cards-image-height: 140px;
-	--cards-padding: 1.2em;
-	--cards-image-fit: contain;
-	--cards-background: transparent;
-	--cards-border-width: 1px;
-	--cards-aspect-ratio: auto;
-	--cards-columns: repeat(auto-fit, minmax(var(--cards-min-width), var(--cards-max-width)));
-	--background-modifier-border: hsl(0, 0%, calc(15% + 6%));
-	--background-modifier-border-hover: hsl(0, 0%, calc(15% + 12%));
+	--jukebox-cards-min-width: 140px;
+	/* --jukebox-cards-min-width: 160px; */
+	--jukebox-cards-max-width: 1fr;
+	--jukebox-cards-mobile-width: 120px;
+	--jukebox-cards-image-height: 140px;
+	--jukebox-cards-padding: 1.2em;
+	--jukebox-cards-image-fit: cover;
+	--jukebox-cards-background: transparent;
+	--jukebox-cards-border-width: 1px;
+	--jukebox-cards-border-radius: 6px;
+	/* --cards-aspect-ratio: auto; */
+	--jukebox-cards-columns: repeat(auto-fit, minmax(var(--jukebox-cards-min-width), var(--jukebox-cards-max-width)));
+	--jukebox-background-modifier-border: hsl(0, 0%, 20%);
+	--jukebox-background-modifier-border-hover: hsl(0, 0%, 25%);
+	--jukebox-background-modifier-border-light: hsl(0, 0%, 80%);
+	--jukebox-background-modifier-border-hover-light: hsl(0, 0%, 85%);
 }
 
 @media (max-width:400pt) {
 	:root {
-		--cards-min-width: var(--cards-mobile-width);
+		--jukebox-cards-min-width: var(--jukebox-cards-mobile-width);
 	}
 }
+
+/* Remove the box-shadow around the view in live preview */
+.cm-preview-code-block:has(.jukebox):hover {
+	box-shadow: none !important;
+}
+
+
+
+/* #region better callouts */
+
+.callout:has(.jukebox) {
+	mix-blend-mode: normal;
+}
+
+/* #endregion */
+
+/* #region no box-shadow clipping */
+
+.markdown-source-view.mod-cm6 .cm-content>[contenteditable=false]:has(.jukebox) {
+	contain: none !important;
+}
+
+.cm-preview-code-block:has(.jukebox),
+.block-language-dataviewjs:has(.jukebox),
+.jukebox,
+.jukebox .grid,
+.jukebox article {
+	overflow: visible !important;
+}
+
+/* #endregion */
+
 
 .jukebox {
 	position: relative;
@@ -39,9 +75,10 @@ et je l'assume
 }
 
 .jukebox img {
-	object-fit: cover;
+	object-fit: var(--jukebox-cards-image-fit);
 	width: 100%;
-	max-height: var(--cards-image-height);
+	max-height: var(--jukebox-cards-image-height);
+	border-radius: var(--jukebox-cards-border-radius);
 	margin: 0;
 	pointer-events: none;
 	z-index: -1;
@@ -128,49 +165,63 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 /* #endregion */
 
 .jukebox .grid {
-	/* padding: 0.5rem 0; */
-	padding-bottom: 0.5rem;
 	display: grid;
-	grid-template-columns: var(--cards-columns);
+	grid-template-columns: var(--jukebox-cards-columns);
 	grid-column-gap: 0.75rem;
 	grid-row-gap: 0.75rem;
 }
 
 /*#region .article*/
+.theme-light .jukebox article {
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-light);
+}
+
+.theme-light .jukebox article:hover {
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover-light);
+}
+
 .jukebox article {
 	z-index: 0;
 	/* needed for mobile ?*/
 	position: relative;
-	background-color: var(--cards-background);
-	border: var(--cards-border-width) solid var(--background-modifier-border);
+	background-color: var(--jukebox-cards-background);
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border);
 	display: flex;
 	flex-direction: column;
 	margin: 0;
-	border-radius: 6px;
+	border-radius: var(--jukebox-cards-border-radius);
 	overflow: hidden;
 	transition: box-shadow 0.15s linear;
-	max-width: var(--cards-max-width);
+	max-width: var(--jukebox-cards-max-width);
+	/* justify-content: center; */
 }
 
 .jukebox article:hover {
-	border: var(--cards-border-width) solid var(--background-modifier-border-hover);
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover);
 	box-shadow:
-		0 4px 6px 0px rgba(0, 0, 0, 0.05),
-		0 1px 3px 1px rgba(0, 0, 0, 0.025);
+		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
+		/* 0 1px 3px 1px rgba(0, 0, 0, 0.025); */
+		0 4px 6px 0px rgba(0, 0, 0, 0.07),
+		0 1px 3px 1px rgba(0, 0, 0, 0.04);
 	transition: box-shadow 0.15s linear;
 }
 
 .jukebox article.add-file {
-	min-height: var(--cards-image-height);
+	min-height: var(--jukebox-cards-image-height);
 	cursor: pointer;
 	padding: 0;
 	justify-content: center;
 	align-items: center;
-	color: var(--background-modifier-border);
+	color: var(--jukebox-background-modifier-border);
 }
 
 .jukebox article.add-file:hover {
-	color: var(--background-modifier-border-hover);
+	color: var(--jukebox-background-modifier-border-hover);
+}
+
+.jukebox.no-border article,
+.jukebox.no-border article:hover {
+	border: 0;
 }
 
 /*#endregion*/
@@ -200,6 +251,10 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	.jukebox .audio-player:hover {
 		opacity: 1;
 	}
+}
+
+.jukebox .audio-player:active svg {
+	color: var(--color-base-10);
 }
 
 .jukebox button.player-button {
@@ -238,6 +293,7 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	background-color: var(--slider-track-background);
 	margin: 0;
 }
+
 .jukebox .timeline::before,
 .jukebox .timeline::after {
 	display: none
@@ -272,22 +328,28 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 
 .jukebox span.file-link {
 	display: inline-block;
-	padding: calc(var(--cards-padding)/2) 0;
+	padding: calc(var(--jukebox-cards-padding)/2) 0;
 	border-bottom: none;
 	font-size: var(--table-text-size);
 	font-weight: 600;
 	line-height: 1.2;
-	width: calc(100% - var(--cards-padding));
-	margin: 0 auto;
+	width: calc(100% - var(--jukebox-cards-padding));
+	margin: auto;
 	overflow: visible !important;
 	max-width: 100%;
 	display: flex;
+	justify-content: space-between;
+}
+
+/* For better integration of the Metadata Menu icons */
+.jukebox .fileclass-icon {
+	align-self: center;
 }
 
 .jukebox span.url-link a {
 	position: absolute;
 	top: 4px;
-	right: 8px;
+	right: 6px;
 
 	/* To remove the icon added by default next to external-link */
 	background-image: none;
