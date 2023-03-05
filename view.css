@@ -72,6 +72,9 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 /* #region thumbnail */
 .jukebox .thumb-stack {
 	display: grid;
+
+	/* Hide Sanctum's img overflowing */
+	overflow: hidden;
 }
 
 .jukebox .thumb-stack img {
@@ -206,7 +209,6 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	overflow: hidden;
 	transition: box-shadow 0.15s linear;
 	max-width: var(--jukebox-cards-max-width);
-	/* justify-content: center; */
 }
 
 .jukebox article:hover {
@@ -351,7 +353,7 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	line-height: 1.2;
 	width: calc(100% - var(--jukebox-cards-padding));
 	margin: auto;
-	overflow: visible !important;
+	overflow-wrap: anywhere;
 	max-width: 100%;
 	display: flex;
 	justify-content: space-between;
