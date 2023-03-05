@@ -74,7 +74,7 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 	display: grid;
 }
 
-.jukebox img {
+.jukebox .thumb-stack img {
 	object-fit: var(--jukebox-cards-image-fit);
 	width: 100%;
 	max-height: var(--jukebox-cards-image-height);
@@ -103,6 +103,19 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 		opacity: 1;
 	}
 }
+
+/* When the thumbnail is wrapped in <a> */
+.jukebox .thumb-stack a {
+	display: flex;
+	grid-column: 1;
+	grid-row: 1;
+	/* transition: transform .5s ease; */
+}
+
+/* It doesn't look good imo */
+/* .jukebox .thumb-stack a:hover {
+	transform: scale(1.1);
+} */
 
 /* #endregion */
 
@@ -222,6 +235,7 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 .jukebox.no-border article,
 .jukebox.no-border article:hover {
 	border: 0;
+	box-shadow: none;
 }
 
 /*#endregion*/
@@ -232,6 +246,7 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	opacity: 0.8;
 	transition: opacity 0.3s ease;
 
+	z-index: 100;
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -282,6 +297,7 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 /* #region .timeline */
 .jukebox .timeline {
 	/* Strange behaviour, all inputs don't respond equally to this ?_? some are smaller than others */
+	z-index: 20;
 	height: 2px;
 	width: auto;
 	border-radius: 5px;
@@ -351,16 +367,20 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	top: 4px;
 	right: 6px;
 
-	/* To remove the icon added by default next to external-link */
-	background-image: none;
-	padding: 0;
-
 	/* To remove the [object HTMLImageElement] text */
 	font-size: 0;
 }
 
+.jukebox a {
+	/* To remove the icon added by default next to external-link */
+	background-image: none;
+	padding: 0;
+
+}
+
 /* ONLY for ITS - External Link Icons users */
-.jukebox span.url-link a::before {
+.jukebox a::before,
+.jukebox a::after {
 	display: none
 }
 
@@ -376,6 +396,7 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	justify-content: center;
 	align-items: center;
 
+	z-index: 10;
 	grid-column: 1;
 	grid-row: 1;
 	align-self: flex-end;

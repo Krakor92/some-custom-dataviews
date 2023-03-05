@@ -9,6 +9,10 @@ let inceptionTime = performance.now()
 let startTime = performance.now()
 let perfTime = null;
 
+// For demonstration purpose only
+const DISABLE_LAZY_RENDERING = false
+const DISABLE_LOG_PERF = true
+
 // Hacky but it's for debug purposes
 const buildDurationLog = (duration) => {
 	if (duration >= 1000) {
@@ -18,12 +22,12 @@ const buildDurationLog = (duration) => {
 }
 
 const logPerf = (label) => {
+	if (DISABLE_LOG_PERF) return;
 	perfTime = performance.now()
 	console.info(`${label} took ${buildDurationLog(perfTime - startTime)}`)
 	startTime = perfTime
 }
 
-console.log("=----------------------=")
 //#endregion
 
 const {
@@ -36,53 +40,12 @@ const {
 	//@ts-ignore
 } = input || {};
 
-//#region Settings
-
-// For demonstration purpose only
-const DISABLE_LAZY_RENDERING = false
-
-const TITLE_FIELD = "title"
-const THUMBNAIL_FIELD = "thumbnail"
-const AUDIO_FILE_FIELD = "mp3"
-const URL_FIELD = "url"
-const LENGTH_FIELD = "length"
-const VOLUME_FIELD = "volume"
-
-// The dataview query used to query the music markdown files	
-const DEFAULT_FROM = '#🎼 AND -"_templates"'
-
-// Where to create the file when we press the + tile/button
-const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
-
-// Only used by the orphan system
-const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
-
-const NB_SCORE_BATCH_PER_PAGE = 20
-const ENABLE_SIMULTANEOUS_MP3_PLAYING = false
-const STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC = true
-
-/** @type {'auto'|'metadata'|'none'} */
-const AUDIO_DEFAULT_PRELOAD = 'metadata'
-
-// Between 0 (silent) and 1 (loudest)
-const DEFAULT_VOLUME = 0.3
-
-// Until how many seconds in youtube url (?t=) should we consider the music to not be elegible to playlist
-const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
-const HIDE_ICONS = true
-
-// CustomJS related
-const DEFAULT_CUSTOMJS_CLASS = "DataviewJS"
-const DEFAULT_CUSTOMJS_SUBCLASS = "Query"
-
-//#endregion
-
 //#region Initialize view's root node
 
 /** @param {Set<string>} set */
-const computeClassName = (set) => {
+const computeClassName = (disableSet) => {
 	let className = "jukebox"
-	if (set.has("border")) {
+	if (disableSet.has("border")) {
 		className += " no-border"
 	}
 
@@ -116,7 +79,88 @@ if (editBlockNode && editBlockNode.style) {
 	}
 }
 
+const viewObserver = new IntersectionObserver(handleViewIntersection);
+if (!DISABLE_LAZY_RENDERING || disableSet.has("lazyloading")) {
+	viewObserver.observe(rootNode)
+}
 
+function handleViewIntersection(entries) {
+	entries.map((entry) => {
+		if (entry.isIntersecting) {
+			inceptionTime = performance.now()
+			startTime = performance.now()
+			viewObserver.unobserve(entries[0].target);
+
+			renderView()
+		}
+	});
+}
+
+//#endregion
+
+async function renderView() {
+
+console.log("=----------------------=")
+
+//#region Settings
+
+// The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
+const CUSTOM_FIELDS = new Map()
+CUSTOM_FIELDS.set('added', 'date')
+CUSTOM_FIELDS.set('release', 'date')
+CUSTOM_FIELDS.set('from', 'link')
+CUSTOM_FIELDS.set('in', 'link')
+CUSTOM_FIELDS.set('artist', 'link')
+
+// These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
+const TITLE_FIELD = "title"
+const THUMBNAIL_FIELD = "thumbnail"
+const AUDIO_FILE_FIELD = "mp3"
+const URL_FIELD = "url"
+const LENGTH_FIELD = "length"
+const VOLUME_FIELD = "volume"
+
+// The dataview query from used to query the music markdown files
+const DEFAULT_FROM = '#🎼 AND -"_templates"'
+
+// Where to create the file when we press the + tile/button
+const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
+
+// Only used by the orphan system
+const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
+
+// How many more pages do you want to render each time you reach the end of the grid
+const NB_SCORE_BATCH_PER_PAGE = 20
+
+// It only works in the context of the page, if you have another page opened with another mp3 playing
+// then it won't stop it if you play one in the current page
+const ENABLE_SIMULTANEOUS_MP3_PLAYING = false
+
+// If false, then the end of the last loaded music will start the first one in the grid
+const STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC = true
+
+/** @type {'auto'|'metadata'|'none'} */
+const AUDIO_DEFAULT_PRELOAD = 'metadata'
+
+// Between 0 (silent) and 1 (loudest)
+const DEFAULT_VOLUME = 0.4
+
+// Until how many seconds in youtube url (?t=) should we consider the music to not be elegible to playlist
+const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
+
+// Music longer than that won't be included when generating a playlist
+const MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST = "10:00"
+
+// If true, hides the top right link icon (it is still clickable)
+const HIDE_ICONS = false
+
+// If true, it doesn't display any icon and the whole image become the link
+const THUMBNAIL_IS_URL_LINK = true
+
+
+// CustomJS related - look at the readme for more info
+const DEFAULT_CUSTOMJS_CLASS = "DataviewJS"
+const DEFAULT_CUSTOMJS_SUBCLASS = "Query"
 
 //#endregion
 
@@ -147,7 +191,8 @@ const dropboxIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="
 const spotifyIcon = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 512 512" stroke="#1ed760${HIDE_ICONS ? "00" : ""}" fill="#1ed760${HIDE_ICONS ? "00" : ""}" style="enable-background:new 0 0 512 512;" xml:space="preserve"><g><path d="M436.8,75.2C390.5,28.8,326.4,0,255.6,0C114.5,0,0,114.5,0,255.6c0,70.8,28.8,134.8,75.2,181.1c46.3,46.5,110.4,75.2,181.1,75.2C397.5,512,512,397.5,512,256.4C512,185.6,483.2,121.5,436.8,75.2z M256,475.1c-120.8,0-219.1-98.3-219.1-219.1S135.2,36.9,256,36.9S475.1,135.2,475.1,256S376.8,475.1,256,475.1z"/><path d="M406.5,195.9c-81.3-48.3-210-52.8-287.4-29.3c-8.5,2.6-14.6,10.4-14.6,19.6c0,11.3,9.2,20.5,20.5,20.5l6.1-0.9l-0.1,0c67.4-20.5,183.9-16.6,254.6,25.3c3,1.8,6.6,2.9,10.5,2.9c11.3,0,20.5-9.2,20.5-20.5C416.6,206.1,412.6,199.5,406.5,195.9L406.5,195.9L406.5,195.9z"/><path d="M351.9,334.1c-57.8-35.3-129.3-43.5-212.8-24.4c-6.1,1.4-10.6,6.9-10.6,13.3c0,7.5,6.1,13.7,13.7,13.7l3.1-0.4l-0.1,0c76.3-17.4,141-10.3,192.5,21.1c2,1.3,4.5,2,7.2,2c7.5,0,13.7-6.1,13.7-13.7C358.5,340.9,355.9,336.6,351.9,334.1L351.9,334.1z"/><path d="M377.7,269.8c-67.6-41.6-166.5-53.3-246.1-29.1c-7.1,2.2-12.1,8.7-12.1,16.3c0,9.4,7.6,17.1,17.1,17.1l5.1-0.8l-0.1,0c69.7-21.2,159.4-10.7,218.3,25.5c2.5,1.6,5.6,2.5,8.9,2.5c6.1,0,11.5-3.2,14.5-8.1l0-0.1c1.6-2.5,2.5-5.6,2.5-8.9C385.9,278.2,382.6,272.8,377.7,269.8L377.7,269.8L377.7,269.8z"/></g></svg>`
 
 // manually edited this one: https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Deezer_logo.svg/2560px-Deezer_logo.svg.png
-const deezerIcon = `<svg version="1.1" id="Calque_1" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="22" height="22" viewBox="0 0 198.4 129.7" xml:space="preserve"><style type="text/css">.st0{fill-rule:evenodd;clip-rule:evenodd;fill:#40AB5D${HIDE_ICONS ? "00" : ""};}.st1{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8192_1_);}.st2{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8199_1_);}.st3{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8206_1_);}.st4{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8213_1_);}.st5{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8220_1_);}.st6{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8227_1_);}.st7{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8234_1_);}.st8{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8241_1_);}.st9{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8248_1_);}</style><g id="g8252" transform="translate(0,25.2)"><rect id="rect8185" x="155.5" y="-25.1" class="st0" width="42.9" height="25.1"/><linearGradient id="rect8192_1_" gradientUnits="userSpaceOnUse" x1="-111.7225" y1="241.8037" x2="-111.9427" y2="255.8256" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"><stop offset="0" style="stop-color:#358C7B${HIDE_ICONS ? "00" : ""}"/><stop offset="0.5256" style="stop-color:#33A65E${HIDE_ICONS ? "00" : ""}"/></linearGradient><rect id="rect8192" x="155.5" y="9.7" class="st1" width="42.9" height="25.1"/><linearGradient id="rect8199_1_" gradientUnits="userSpaceOnUse" x1="-123.8913" y1="223.6279" x2="-99.7725" y2="235.9171" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"><stop offset="0" style="stop-color:#222B90${HIDE_ICONS ? "00" : ""}"/><stop offset="1" style="stop-color:#367B99${HIDE_ICONS ? "00" : ""}"/></linearGradient><rect id="rect8199" x="155.5" y="44.5" class="st2" width="42.9" height="25.1"/><linearGradient id="rect8206_1_" gradientUnits="userSpaceOnUse" x1="-208.4319" y1="210.7725" x2="-185.0319" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"><stop offset="0" style="stop-color:#FF9900${HIDE_ICONS ? "00" : ""}"/><stop offset="1" style="stop-color:#FF8000${HIDE_ICONS ? "00" : ""}"/></linearGradient><rect id="rect8206" x="0" y="79.3" class="st3" width="42.9" height="25.1"/> <linearGradient id="rect8213_1_" gradientUnits="userSpaceOnUse" x1="-180.1319" y1="210.7725" x2="-156.7319" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#FF8000${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#CC1953${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8213" x="51.8" y="79.3" class="st4" width="42.9" height="25.1"/> <linearGradient id="rect8220_1_" gradientUnits="userSpaceOnUse" x1="-151.8319" y1="210.7725" x2="-128.4319" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#CC1953${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#241284${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8220" x="103.7" y="79.3" class="st5" width="42.9" height="25.1"/> <linearGradient id="rect8227_1_" gradientUnits="userSpaceOnUse" x1="-123.5596" y1="210.7725" x2="-100.1596" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#222B90${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#3559A6${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8227" x="155.5" y="79.3" class="st6" width="42.9" height="25.1"/> <linearGradient id="rect8234_1_" gradientUnits="userSpaceOnUse" x1="-152.7555" y1="226.0811" x2="-127.5083" y2="233.4639" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#CC1953${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#241284${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8234" x="103.7" y="44.5" class="st7" width="42.9" height="25.1"/> <linearGradient id="rect8241_1_" gradientUnits="userSpaceOnUse" x1="-180.9648" y1="234.3341" x2="-155.899" y2="225.2108" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="2.669841e-03" style="stop-color:#FFCC00${HIDE_ICONS ? "00" : ""}"/> <stop offset="0.9999" style="stop-color:#CE1938${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8241" x="51.8" y="44.5" class="st8" width="42.9" height="25.1"/> <linearGradient id="rect8248_1_" gradientUnits="userSpaceOnUse" x1="-178.1651" y1="257.7539" x2="-158.6987" y2="239.791" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="2.669841e-03" style="stop-color:#FFD100${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#FD5A22${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8248" x="51.8" y="9.7" class="st9" width="42.9" height="25.1"/> </g> </svg>`
+// The icon doesn't hide when HIDE_ICONS is set to true...
+// const deezerIcon = `<svg version="1.1" id="Calque_1" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="22" height="22" viewBox="0 0 198.4 129.7" xml:space="preserve"><style type="text/css">.st0{fill-rule:evenodd;clip-rule:evenodd;fill:#40AB5D${HIDE_ICONS ? "00" : ""};}.st1{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8192_1_);}.st2{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8199_1_);}.st3{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8206_1_);}.st4{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8213_1_);}.st5{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8220_1_);}.st6{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8227_1_);}.st7{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8234_1_);}.st8{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8241_1_);}.st9{fill-rule:evenodd;clip-rule:evenodd;fill:url(#rect8248_1_);}</style><g id="g8252" transform="translate(0,25.2)"><rect id="rect8185" x="155.5" y="-25.1" class="st0" width="42.9" height="25.1"/><linearGradient id="rect8192_1_" gradientUnits="userSpaceOnUse" x1="-111.7225" y1="241.8037" x2="-111.9427" y2="255.8256" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"><stop offset="0" style="stop-color:#358C7B${HIDE_ICONS ? "00" : ""}"/><stop offset="0.5256" style="stop-color:#33A65E${HIDE_ICONS ? "00" : ""}"/></linearGradient><rect id="rect8192" x="155.5" y="9.7" class="st1" width="42.9" height="25.1"/><linearGradient id="rect8199_1_" gradientUnits="userSpaceOnUse" x1="-123.8913" y1="223.6279" x2="-99.7725" y2="235.9171" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"><stop offset="0" style="stop-color:#222B90${HIDE_ICONS ? "00" : ""}"/><stop offset="1" style="stop-color:#367B99${HIDE_ICONS ? "00" : ""}"/></linearGradient><rect id="rect8199" x="155.5" y="44.5" class="st2" width="42.9" height="25.1"/><linearGradient id="rect8206_1_" gradientUnits="userSpaceOnUse" x1="-208.4319" y1="210.7725" x2="-185.0319" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"><stop offset="0" style="stop-color:#FF9900${HIDE_ICONS ? "00" : ""}"/><stop offset="1" style="stop-color:#FF8000${HIDE_ICONS ? "00" : ""}"/></linearGradient><rect id="rect8206" x="0" y="79.3" class="st3" width="42.9" height="25.1"/> <linearGradient id="rect8213_1_" gradientUnits="userSpaceOnUse" x1="-180.1319" y1="210.7725" x2="-156.7319" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#FF8000${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#CC1953${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8213" x="51.8" y="79.3" class="st4" width="42.9" height="25.1"/> <linearGradient id="rect8220_1_" gradientUnits="userSpaceOnUse" x1="-151.8319" y1="210.7725" x2="-128.4319" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#CC1953${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#241284${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8220" x="103.7" y="79.3" class="st5" width="42.9" height="25.1"/> <linearGradient id="rect8227_1_" gradientUnits="userSpaceOnUse" x1="-123.5596" y1="210.7725" x2="-100.1596" y2="210.7725" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#222B90${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#3559A6${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8227" x="155.5" y="79.3" class="st6" width="42.9" height="25.1"/> <linearGradient id="rect8234_1_" gradientUnits="userSpaceOnUse" x1="-152.7555" y1="226.0811" x2="-127.5083" y2="233.4639" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="0" style="stop-color:#CC1953${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#241284${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8234" x="103.7" y="44.5" class="st7" width="42.9" height="25.1"/> <linearGradient id="rect8241_1_" gradientUnits="userSpaceOnUse" x1="-180.9648" y1="234.3341" x2="-155.899" y2="225.2108" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="2.669841e-03" style="stop-color:#FFCC00${HIDE_ICONS ? "00" : ""}"/> <stop offset="0.9999" style="stop-color:#CE1938${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8241" x="51.8" y="44.5" class="st8" width="42.9" height="25.1"/> <linearGradient id="rect8248_1_" gradientUnits="userSpaceOnUse" x1="-178.1651" y1="257.7539" x2="-158.6987" y2="239.791" gradientTransform="matrix(1.8318 0 0 -1.8318 381.8134 477.9528)"> <stop offset="2.669841e-03" style="stop-color:#FFD100${HIDE_ICONS ? "00" : ""}"/> <stop offset="1" style="stop-color:#FD5A22${HIDE_ICONS ? "00" : ""}"/> </linearGradient> <rect id="rect8248" x="51.8" y="9.7" class="st9" width="42.9" height="25.1"/> </g> </svg>`
 
 // ----------------
 // - Other icons
@@ -185,9 +230,10 @@ const venetianMaskIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" widt
 //#endregion
 
 //#region Utils
-const httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
 
 //	#region Javascript
+const httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
+
 // Clamp number between two values with the following line:
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 
@@ -272,6 +318,38 @@ const linkExists = async (link) => {
 	return await window.app.vault.adapter.exists(link?.path)
 }
 
+/**
+ * This function will transform a field containing an array and flatten it while calling JSON.parse() on any string it encounteers
+ * @info It could be extracted in a custom js script since it unopinionated
+ * @param {*} field
+ */
+const normalizeArrayOfObjectField = (field) => {
+	if (!field) return []
+
+	console.log({ field })
+
+	// Single object in yaml frontmatter
+	if (isObject(field)) return [field]
+
+	try {
+		// Single string as inline field
+		if (!Array.isArray(field)) return [JSON.parse(field)]
+
+		return field.reduce((a, c) => {
+			if (Array.isArray(c)) {
+				return [...a, ...normalizeArrayOfObjectField(c)]
+			}
+
+			if (isObject(c)) return [...a, c]
+
+			return [...a, JSON.parse(c)]
+		}, [])
+	} catch (e) {
+		console.error(e)
+		return []
+	}
+}
+
 //	#endregion
 //#endregion
 
@@ -316,16 +394,15 @@ const _resolveVaultThumbnailStyle = (thumb) => {
 	return _resolveThumbnailStyle(display)
 }
 
-/**
- * 
- * @param {string} url 
- */
-const renderThumbnailFromUrl = (url) => {
-	if (!url) return ""
-
-	//flemme de faire youtube.com pour l'instant
+const _resolveThumbnailUrlFrom3rdParty = (url) => {
 	if (url.includes("youtu.be")) {
 		const startOfId = url.indexOf("youtu.be/") + 9
+		const id = url.substring(startOfId, startOfId + 11)
+		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
+	}
+
+	if (url.includes("www.youtube.com")) {
+		const startOfId = url.indexOf("?v=") + 3
 		const id = url.substring(startOfId, startOfId + 11)
 		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
 	}
@@ -335,6 +412,19 @@ const renderThumbnailFromUrl = (url) => {
 		const id = url.substring(startOfId)
 		return `<img src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
 	}
+
+	return null
+}
+
+/**
+ * 
+ * @param {string} url 
+ */
+const renderThumbnailFromUrl = (url) => {
+	if (!url) return ""
+
+	const resolvedUrl = _resolveThumbnailUrlFrom3rdParty(url)
+	if (resolvedUrl) return resolvedUrl
 
 	let style = null;
 	if (url[0] === '!') {
@@ -394,12 +484,23 @@ const _resolveAnchorServicePartFromUrl = (url) => {
 	if (url.includes("dailymotion")) return `data-service="dailymotion">${dailymotionIcon}`
 	if (url.includes("dropbox")) return `data-service="dropbox">${dropboxIcon}`
 	if (url.includes("spotify")) return `data-service="spotify">${spotifyIcon}`
-	if (url.includes("deezer")) return `data-service="deezer">${deezerIcon}`
+	// The icon doesn't hide when HIDE_ICONS is set to true...
+	// if (url.includes("deezer")) return `data-service="deezer">${deezerIcon}`
 
 	return `data-service="unknown">${linkIcon}`
 }
 
-const renderExternalUrlAnchor = (url) => `<a href="${url}" class="external-link" rel="noopener target="_blank" ${_resolveAnchorServicePartFromUrl(url)}</a>`
+/**
+ * 
+ * @param {object} _ 
+ * @param {string} _.url 
+ */
+const renderExternalUrlAnchor = ({ url, children = "", noIcon = false }) => {
+	const base = `<a href="${url}" class="external-link" rel="noopener target="_blank"`
+	return noIcon ?
+		`${base}>${children}</a>` :
+		`${base}${_resolveAnchorServicePartFromUrl(url)}${children}</a>`;
+}
 
 /**
  * @param {object} file 
@@ -435,18 +536,7 @@ const renderTimecode = (length) => {
 const buildOrphans = (scoreFile) => {
 	if (!scoreFile || !scoreFile.orphans) return []
 
-	let orphans = null
-
-	try {
-		if (Array.isArray(orphans)) {
-			orphans = JSON.parse(`[${scoreFile.orphans.join(',')}]`)
-		} else {
-			orphans = JSON.parse(`[${scoreFile.orphans}]`)
-		}
-	} catch (error) {
-		console.error(error)
-		return []
-	}
+	const orphans = normalizeArrayOfObjectField(scoreFile.orphans)
 
 	console.log({ orphans })
 
@@ -474,6 +564,34 @@ const orphanPages = disableSet.has("orphans") ? [] : buildOrphans(dv.current())
 
 //#region Query the pages based on filters
 
+const scoreQueryDefaultFilterFunctionsMap = new Map()
+scoreQueryDefaultFilterFunctionsMap.set('date', (qs, field, value) => {
+	console.log({ value })
+
+	if (!isObject(value)) {
+		return qs.withDateFieldOfTime({ name: field, value })
+	}
+
+	if (value.before) qs.withDateFieldOfTime({ name: field, value: value.before, compare: 'lt' })
+	if (value.after) qs.withDateFieldOfTime({ name: field, value: value.after, compare: 'gt' })
+})
+
+scoreQueryDefaultFilterFunctionsMap.set('link', (qs, field, value) => {
+	const inLink = dv.parse(value);// transform [[value]] into a link
+	console.log({ inLink })
+
+	if (isObject(inLink)) {
+		const page = dv.page(inLink.path)
+		if (!page) {
+			qs.withLinkFieldOfPath({ field, path: inLink.path, acceptStringField: true })
+		} else {
+			qs.withLinkFieldOfPath({ field, path: page.file.path, acceptStringField: false })
+		}
+	} else {
+		qs.withLinkFieldOfPathRegex({ field, path: value, acceptStringField: true })
+	}
+})
+
 const scoreQueryFilterFunctionsMap = new Map()
 scoreQueryFilterFunctionsMap.set('manual', async (qs) => {
 	console.log(`%cFilter on manual`, 'color: #7f6df2; font-size: 13px')
@@ -488,31 +606,14 @@ scoreQueryFilterFunctionsMap.set('manual', async (qs) => {
 
 scoreQueryFilterFunctionsMap.set('mp3Only', async (qs) => {
 	console.log(`%cFilter on mp3Only 🔊`, 'color: #7f6df2; font-size: 13px')
-	qs.withExistingField("mp3")
-	await qs.asyncFilter(async (page) => await linkExists(page.mp3))
+	qs.withExistingField(AUDIO_FILE_FIELD)
+	await qs.asyncFilter(async (page) => await linkExists(page[AUDIO_FILE_FIELD]))
 })
 
 scoreQueryFilterFunctionsMap.set('current', (qs, value) => {
 	console.log(`%cFilter on current ↩️ (${value})`, 'color: #7f6df2; font-size: 13px')
 	const currentPath = dv.current().file.path;
 	qs.withLinkFieldOfPath({ field: value, path: currentPath })
-})
-
-scoreQueryFilterFunctionsMap.set('in', (qs, value) => {
-	const inLink = dv.parse(value);// transform [[value]] into a link
-	console.log({ inLink })
-
-	if (isObject(inLink)) {
-		const page = dv.page(inLink.path)
-		console.log({ page })
-		if (!page) {
-			qs.withLinkFieldOfPath({ field: "in", path: inLink.path, acceptStringField: true })
-		} else {
-			qs.withLinkFieldOfPath({ field: "in", path: page.file.path, acceptStringField: false })
-		}
-	} else {
-		qs.withLinkFieldOfPathRegex({ field: "in", path: value, acceptStringField: true })
-	}
 })
 
 scoreQueryFilterFunctionsMap.set('tags', (qs, value) => {
@@ -571,24 +672,8 @@ scoreQueryFilterFunctionsMap.set('voice', (qs, value) => {
 	}
 })
 
-scoreQueryFilterFunctionsMap.set('release', (qs, value) => {
-	console.log({ value })
-
-	if (!isObject(value)) {
-		return qs.withDateFieldOfTime({ name: "release", value })
-	}
-
-	if (value.before) qs.withDateFieldOfTime({ name: "release", value: value.before, compare: 'lt' })
-	if (value.after) qs.withDateFieldOfTime({ name: "release", value: value.after, compare: 'gt' })
-})
-
 scoreQueryFilterFunctionsMap.set('star', (qs, value) => {
-	console.log({ value })
-
-	if (!!value) {
-		return qs.withFileFieldOfValue({ name: "starred", value: true })
-	}
-	return qs.withFileFieldOfValue({ name: "starred", value: false })
+	return qs.withFileFieldOfValue({ name: "starred", value: !!value })
 })
 
 /**
@@ -626,18 +711,39 @@ const buildAndRunScoreQuery = async (filter) => {
 	const qs = QueryService
 		.from(fromQuery);
 
-	for (const prop in filter) {
-		console.log(`filter.${prop} = ${filter[prop]}`)
+	if (typeof filter === "function") {
+		await filter(qs)
+	} else {
+		for (const prop in filter) {
+			console.log(`filter.${prop} = ${filter[prop]}`)
 
-		if (prop === "from") continue;
+			if (prop === "from") continue;
 
-		const propFilterFunc = scoreQueryFilterFunctionsMap.get(prop)
-		if (!propFilterFunc && !Array.isArray(filter[prop])) {
+			// The property has a special meaning in this view (example: thumbnail, url, mp3, ...)
+			let propFilterFunc = scoreQueryFilterFunctionsMap.get(prop)
+			if (propFilterFunc) {
+				// The queryService and the value
+				await propFilterFunc(qs, filter[prop])
+				continue
+			}
+
+			// The property has a been specified in the CUSTOM_FIELDS constants set by the user so it has a special type (example: link, date, ...)
+			propFilterFunc = scoreQueryDefaultFilterFunctionsMap.get(CUSTOM_FIELDS.get(prop))
+			console.log({ propFilterFunc })
+			if (propFilterFunc) {
+				// The queryService, the field name and the value
+				await propFilterFunc(qs, prop, filter[prop])
+				continue
+			}
+
 			// Default filter
-			qs.withFieldOfValue({ name: prop, value: filter[prop] })
-		} else {
-			// The queryService and the value
-			await propFilterFunc(qs, filter[prop])
+			if (Array.isArray(filter[prop])) {
+				filter[prop].forEach(value => {
+					qs.withFieldOfValue({ name: prop, value })
+				})
+			} else {
+				qs.withFieldOfValue({ name: prop, value: filter[prop] })
+			}
 		}
 	}
 
@@ -700,6 +806,10 @@ function valueToDateTime(value) {
  * @param {import('../view').ScoreFile[]} _.pages
  */
 const sortPages = async ({ sort, pages }) => {
+	if (typeof sort === "function") {
+		return pages.sort(sort)
+	}
+
 	if (sort?.manual) {
 		// console.log(dv.current())
 		const rawSortingPages = dv.current()[sort.manual]
@@ -754,13 +864,24 @@ await sortPages({ pages, sort })
 logPerf("Dataview js query: sorting")
 //#endregion
 
+//#region Build Header (top flexbox with stats and buttons)
+
+const header = `<header>
+
+</header>`
+
+//#endregion
+
 //#region Build buttons but don't apply events yet
 
 const clickPlaylistButton = (pages) => {
+
+	const maxLengthAccepted = convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
 	const baseUrl = "https://www.youtube.com/watch_videos?video_ids="
 	const aggregatedYoutubeUrls = pages.reduce((prev, cur) => {
 		/** @type{string} */
-		const url = cur.url;
+		const { url, length, file } = cur;
+
 		if (!url.includes("youtu")) return prev;
 
 		let id = url.indexOf("watch_videos")
@@ -775,6 +896,11 @@ const clickPlaylistButton = (pages) => {
 				console.warn(`The 't' argument is too deep inside the video of url: '${url}' to be added in the playlist`)
 				return prev
 			}
+		}
+
+		if (convertTimecodeToDuration(length) > maxLengthAccepted) {
+			console.warn(`${file.name} is too long to be added in the playlist`)
+			return prev
 		}
 
 		const sep = prev !== "" ? ',' : ''
@@ -866,9 +992,13 @@ const buildGridArticles = async (pages) => {
 			}
 		}
 
-		if (p[URL_FIELD] && !disableSet.has("urlicon")) {
+		if (THUMBNAIL_IS_URL_LINK) {
+			imgTag = renderExternalUrlAnchor({ url: p[URL_FIELD], children: imgTag, noIcon: true })
+		}
+
+		if (p[URL_FIELD] && !disableSet.has("urlicon") && !THUMBNAIL_IS_URL_LINK) {
 			urlTag = `<span class="url-link">
-				${renderExternalUrlAnchor(p[URL_FIELD])}
+				${renderExternalUrlAnchor({ url: p[URL_FIELD] })}
 			</span>`
 		}
 
@@ -899,10 +1029,10 @@ const buildGridArticles = async (pages) => {
 		</div>`
 
 		const article = `<article>
-		${thumbTag ?? ""}
-		${fileTag}
-		${urlTag ?? ""}
-		${mediaTag ?? ""}
+			${thumbTag ?? ""}
+			${fileTag}
+			${urlTag ?? ""}
+			${mediaTag ?? ""}
 		</article>
 		`
 		gridArticles.push(article)
@@ -1050,7 +1180,7 @@ async function handleAddScoreButtonClick({ filters, os }) {
 }
 //#endregion
 
-//#region Infinite scroll custom implementation
+//#region Infinite scroll custom implementation (it doesn't handle freeing passed articles yet)
 const _insertNewChunkInGrid = () => {
 	const newChunk = gridArticles.slice(
 		nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE,
@@ -1132,7 +1262,7 @@ const changeSeek = (timeline, audio) => {
  * @param {HTMLAudioElement[]} _.audios
  * @param {HTMLButtonElement[]} _.playButtons
  */
-const playAudio = ({ index, audios, playButtons }) => {
+const playAudio = async ({ index, audios, playButtons }) => {
 	if (!ENABLE_SIMULTANEOUS_MP3_PLAYING && currentMP3Playing !== -1) {
 		pauseAudio({ audio: audios[currentMP3Playing], playButton: playButtons[currentMP3Playing] })
 	}
@@ -1147,6 +1277,9 @@ const playAudio = ({ index, audios, playButtons }) => {
 	}
 
 	currentMP3Playing = index;
+
+	await reloadMp3IfCorrupt(audios[index])
+
 	audios[index].play()
 	playButtons[index].innerHTML = pauseIcon;
 }
@@ -1169,9 +1302,9 @@ const pauseAudio = ({ playButton, audio }) => {
  * @param {HTMLAudioElement[]} _.audios
  * @param {HTMLButtonElement[]} _.playButtons 
  */
-const handlePlayButtonClick = ({ index, audios, playButtons }) => {
+const handlePlayButtonClick = async ({ index, audios, playButtons }) => {
 	if (audios[index].paused) {
-		playAudio({ playButtons, audios, index })
+		await playAudio({ playButtons, audios, index })
 	} else {
 		pauseAudio({ playButton: playButtons[index], audio: audios[index] })
 	}
@@ -1180,7 +1313,7 @@ const handlePlayButtonClick = ({ index, audios, playButtons }) => {
 let currentMP3Playing = -1;
 let numberOfAudiosLoaded = -1;
 
-manageMp3Scores()
+manageMp3Scores(os)
 
 /**
  * This function should be called every time new scores are added at the end of the grid (because of scroll)
@@ -1190,8 +1323,9 @@ manageMp3Scores()
  * - Handle what happened when you click on the custom button
  * - Make possible to drag the timeline to change the audio timecode
  * - Supports automatic playback of the next found mp3 (which is already loaded in the grid of course)
+ * @param {string} os - The current operating system (only has an effect if on Android)
  */
-function manageMp3Scores() {
+function manageMp3Scores(os) {
 	startTime = performance.now();
 
 	/** @type {HTMLAudioElement[]} */
@@ -1214,9 +1348,9 @@ function manageMp3Scores() {
 
 
 	for (let i = 0; i < audios.length; i++) {
-		audios[i].onloadedmetadata = checkLoadedMp3Status.bind(this, audios[i])
-
-		// audios[i].onplay = reloadMp3IfCorrupt.bind(this, audios[i])
+		if (os === "Android") {
+			audios[i].onloadedmetadata = checkLoadedMp3Status.bind(this, audios[i])
+		}
 
 		audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
 
@@ -1224,7 +1358,7 @@ function manageMp3Scores() {
 
 		trackTimelines[i].onchange = changeSeek.bind(this, trackTimelines[i], audios[i])
 
-		audios[i].onended = () => {
+		audios[i].onended = async () => {
 			playButtons[i].innerHTML = playIcon
 			trackTimelines[i].value = 0
 			trackTimelines[i].style.backgroundSize = "0% 100%"
@@ -1238,14 +1372,11 @@ function manageMp3Scores() {
 			let j = 0
 			if (i + 1 != audios.length) j = i + 1
 
-			// To skip "corrupt" audio on Android
-			while (audios[j].classList.contains("corrupt")) {
-				j++;
-				if (j === audios.length) j = 0
+			if (os === "Android") {
+				checkLoadedMp3Status(audios[j])
 			}
 
-			// Tricky situation: It means there are multiple audio files in the view but only one loaded correctly 
-			if (audios[j] === audios[i]) return;
+			await reloadMp3IfCorrupt(audios[j])
 
 			playButtons[j].innerHTML = pauseIcon;
 			audios[j].play()
@@ -1267,10 +1398,9 @@ function checkLoadedMp3Status(audio) {
 	const timecodeTag = audio.parentNode.parentNode.querySelector(".timecode")
 	if (!timecodeTag) return;
 
-	if (getOS() !== "Android") return;
-
 	const timecodeDuration = convertTimecodeToDuration(timecodeTag.querySelector("span").innerText)
 
+	// Even in this state, the audio may not play completely...
 	if (Math.abs(timecodeDuration - audio.duration) <= 1) {
 		timecodeTag.style.backgroundColor = "#060D"
 		return true;
@@ -1297,16 +1427,21 @@ function checkLoadedMp3Status(audio) {
  * I guess it can't be patched like that 😕, so i should report this bug on obsidian forum
  * Edit: Here is the link to the issue i've created : https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684
  * Edit 2: Hahaha nobody cares (as expected 😅)
+ * Edit 3: @Majed6 on Discord said he had the same problem and he found a workaround, unfortunatly, it doesn't completely solve the issue 😞
  * @param {HTMLAudioElement} audio
  */
-function reloadMp3IfCorrupt(audio) {
-
+async function reloadMp3IfCorrupt(audio) {
 	if (!audio.classList.contains("corrupt")) return;
 
-	audio.pause()
-
-	audio.src = audio.querySelector("source").src
+	// from: https://github.com/Majed6/android-audio-fixer/blob/master/main.ts
+	if (!audio.classList.contains("processed")) {
+		audio.classList.add('processed');
+		const file = await fetch(audio.firstElementChild.src);
+		const fileBlob = await file.blob();
+		audio.src = URL.createObjectURL(fileBlob);
+	}
 }
 //#endregion
 
 console.info(`View took ${buildDurationLog(performance.now() - inceptionTime)} to run`)
+}
