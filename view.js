@@ -619,16 +619,7 @@ scoreQueryFilterFunctionsMap.set('current', (qs, value) => {
 scoreQueryFilterFunctionsMap.set('tags', (qs, value) => {
 	console.log("%cFilter on tags 🏷️", 'color: #7f6df2; font-size: 14px')
 
-	if (Array.isArray(value)) {
-		value.forEach(t => {
-			qs.withFieldOfValue({ name: "tags_", value: t })
-		})
-	}
-	else {
-		console.log(`%c=> ${value}`, 'color: #7f6df2')
-
-		qs.withFieldOfValue({ name: "tags_", value })
-	}
+	qs.withTags(value)
 })
 
 /**
@@ -709,11 +700,12 @@ const buildAndRunScoreQuery = async (filter) => {
 	fromQuery = _updateFromStringBasedOnSpecialFilters(fromQuery, filter)
 
 	const qs = QueryService
-		.from(fromQuery);
 
 	if (typeof filter === "function") {
 		await filter(qs)
 	} else {
+		qs.from(fromQuery)
+
 		for (const prop in filter) {
 			console.log(`filter.${prop} = ${filter[prop]}`)
 
@@ -1217,7 +1209,7 @@ function handleLastScoreIntersection(entries) {
 				scoreObserver.observe(lastScore)
 			} else {
 				console.log(`Finish to load: ${nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE}`)
-				if (disableSet.has("addscore")) return;
+				if (disableSet.has("addscore") || disableSet.has("addscorecell")) return;
 
 				const addScoreCellDOM = dv.el("article", filePlusIcon(24), { cls: "add-file" })
 				grid.querySelector("span").appendChild(addScoreCellDOM);
