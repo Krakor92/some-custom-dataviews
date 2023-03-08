@@ -211,7 +211,7 @@ And here is the list of all the properties supported by this view:
 | ----------- | ------------- | ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | -------------------------------- |
 | **filter**  | manual        | string           | ""                                             |Defines precisely the music you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the music) |"scores"| ✅                               |
 |             | from          | string           | `#🎼 AND -"_templates"`                        |To define a specific dvjs query instead of using the default one|  | ✅                               |
-|             | tags          |string | string[]|"" |To filter on tags|"#song"|✅|
+|             | tags          |string / string[]|"" |To filter on tags|"#song"|✅|
 |             |in| string           |""|To filter on the `in` property. Only one at a time for now | "[[Arcane (2021)]]"    |✅|
 |             |artist| string           | ""                                             |To filter on the `artist` property. Only one at a time for now|"[[Joe Hisaishi]]"|✅|
 |             | voice         | object           | {yes: true, chorus: true, few: true, no; true} |  |                        | ✅                               |
