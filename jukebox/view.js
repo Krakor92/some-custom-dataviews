@@ -263,8 +263,8 @@ function shuffleArray(a) {
  * @returns {number} The timecode converted to seconds
 */
 const convertTimecodeToDuration = (timecode) => {
-	const timeArray = timecode.split(':');
-	if (timeArray.length < 2 || timeArray.length > 3) { // It only supports 00:00 or 00:00:00
+	const timeArray = timecode?.split(':');
+	if (!timeArray || timeArray.length < 2 || timeArray.length > 3) { // It only supports 00:00 or 00:00:00
 		return NaN;
 	}
 
