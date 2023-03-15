@@ -82,9 +82,13 @@ class DataviewJS {
 			return this
 		}
 
-		pages(pages) {
+		setPages(pages) {
 			this._pages = [...pages]
 			return this
+		}
+
+		pages(pages) {
+			return this.setPages(pages)
 		}
 
 		// Transfrom the proxy target to a regular array for easier manipulation later on
@@ -99,6 +103,11 @@ class DataviewJS {
 			}
 
 			this._pages = this._pages.filter(p => cb(p))
+			return this
+		}
+
+		where(cb) {
+			return this.filter(cb)
 		}
 
 		async asyncFilter(cb) {

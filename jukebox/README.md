@@ -10,8 +10,8 @@ This custom view both supports mp3 (also every other audio files supported by Ob
 
 - The **mp3** user experience on **Android** is not reliable 😞:
 	- Some (if not most) mp3 don't load at all (i've opened an [issue on Obsidian Forums](https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684) about it):
-			- Those either play until the end but don't trigger the autoplay
-			- Or stop playing before the end
+		- Those either play until the end but don't trigger the autoplay
+		- Or stop playing before the end
 	- Edit: thanks to this : https://github.com/Majed6/android-audio-fixer, I've managed to decrease the likeliness of mp3 files having problem, but it still happens randomly...
 	- If you set an .mp4 as the source of the audio, besides sharing the same problem as above, you also can't lock your phone / switch app or the music will pause
 	- Audios aren't recognized by the phone's system (you can't pause them with your headset for example)
@@ -47,7 +47,7 @@ I'm a huge anime and video game music enjoyer. Unfortunatly, traditional music s
 
 It worked great for a long time. Some music used to get striked once in a while but it wasn't a big deal. Then one day, Youtube decided that the striked/unavailable videos should be hidden immediatly for the end user, that way, they couldn't have a clue (except if they remembered their playlist by heart) what the video was. For me it was the straw that broke the camel's back: I had to find a solution.
 
-Around the same time, i've discovered Notion and the PKM world in general. For several months, I've built and progressively upgraded a music database system on Notion and I was really satisfied with it at first but it quickly became a burden to use and manage because of Notion's online-only strategy... Then, I've heard about Obsidian. The local / non-proprietary aspect of the app charmed me but i wasn't sure it could fix my problem. Then I learned about the plugin ecosystem (Dataview in particular) and at that point i was convinced it could answer my very specific needs.
+Around the same time, i've discovered Notion and the PKM world in general. For several months, I've built and progressively upgraded a music database system on Notion and I was really satisfied with it at first but it quickly became a burden to use and manage because of Notion's online-only strategy... Then, I've heard about Obsidian. The local / non-proprietary aspect of the app charmed me but i wasn't sure it could fix my problem. But that was before I learned about the plugin ecosystem (Dataview in particular) and at that point i was convinced it could answer my very specific needs.
 
 But i didn't know where to start because imo, a plugin would be too overkill for what i needed to have (and i'm way too lazy to learn how to make one). As i thought my journey with Obsidian was over, I've stumbled accross this fantastic [repository](https://github.com/702573N/Obsidian-Tasks-Calendar) and it opened my eyes: I just needed to use dataview's view with some custom css.
 
@@ -97,7 +97,7 @@ So I have an architecture that looks like this:
 
 #### CustomJS
 
-In addition to this folder containing the two files, you need to copy the `query.js` file and place it in a folder in your vault (I recommend the same `_js` folder).
+In addition to this folder containing the two files, you need to copy the `query.js` at the root of this repository and place it in a folder in your vault (I recommend the same `_js` folder).
 
 Then you'll have to go into the CustomJs plugin settings to designate the `query.js` file as compatible.
 
@@ -170,7 +170,7 @@ There are currently 6 fields that have a special meaning inside this view:
 
 *Note that all these fields name can be modified in the global options of the view.js. To do so, check the const variables ending with `_FIELD`*
 
-Actually there is also the `tags_` and `voice` properties that have a special meaning right now but I planned to remove them soon...
+Actually there is also the `voice` property that has a special meaning right now but I planned to remove it soon...
 
 ##### Custom Metadata
 
@@ -261,8 +261,8 @@ It means the following: "Filter on every music.md files that contains a field na
 
 Instead of passing an object to `filter` or `sort` properties, you can actually pass a javascript function and do the whole filtering/sorting yourself.
 
-- The function passed to `filter` takes a `qs` property as its single parameter. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly
-- The function passed to `sort` takes `a` file a and file `b`. You must return an integer at the end of your function just like with a regular sort function in js
+- The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the query service defined in the query.js file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look inside query.js to see every methods that are already implemented and call them accordingly to your needs
+- The function passed to `sort` takes `a` file a and file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering 
 
 
 ##### Date Object
@@ -291,7 +291,7 @@ Instead of passing an object to `filter` or `sort` properties, you can actually 
 
 *Note: The values aren't sensitive to casse*
 
-##### Some Examples
+### Some Examples
 
 In the examples below:
 - `in` and `artist` are both `link` fields
@@ -300,7 +300,7 @@ In the examples below:
 - `voice` is a special field right now but I intend to remove it in future commits (or at least change its internal implementation so it become a default custom field like `in` or `release`)
 
 ~~~
-// Arcane emotional OSTs with vocals + disable borders, the buttons to add score and the file names
+// Arcane emotional OSTs with vocals + disable the buttons and tile to add score, file names and borders
 
 ```dataviewjs
 await dv.view("_js/jukebox",
@@ -331,7 +331,8 @@ await dv.view("_js/jukebox",
 ```
 ~~~
 
-I've specified above that `in` was a `link` field so that means that value should be wrapped with `[[]]` right?
+_I've specified above that `in` was a `link` field so that means that value should be wrapped with `[[]]` right?_
+
 Well i've decided that when ommited, the value act as a regex.
 
 So in this example, it will retrieve every musics with a `in` field that contains a `link` (or a string) that contains "Professor Layton" in its name

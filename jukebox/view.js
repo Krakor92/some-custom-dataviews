@@ -120,7 +120,7 @@ const URL_FIELD = "url"
 const LENGTH_FIELD = "length"
 const VOLUME_FIELD = "volume"
 
-// The dataview query from used to query the music markdown files
+// The 'from' dataview query used to query the music markdown files
 const DEFAULT_FROM = '#🎼 AND -"_templates"'
 
 // Where to create the file when we press the + tile/button
@@ -149,7 +149,7 @@ const DEFAULT_VOLUME = 0.4
 const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
 
 // Music longer than that won't be included when generating a playlist
-const MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST = "10:00"
+const MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST = "12:00"
 
 // If true, hides the top right link icon (it is still clickable)
 const HIDE_ICONS = false
