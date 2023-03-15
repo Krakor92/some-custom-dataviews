@@ -1,0 +1,187 @@
+/*
+The grid layout is copied from there https://github.com/kepano/obsidian-minimal/blob/master/src/scss/features/cards.scss
+*/
+
+:root {
+	--gallery-cards-min-width: 180px;
+	--gallery-cards-max-width: 1fr;
+	--gallery-cards-mobile-width: 120px;
+	--gallery-cards-image-height: 140px;
+	--gallery-cards-padding: 1.2em;
+	--gallery-cards-image-fit: cover;
+	--gallery-cards-background: transparent;
+	--gallery-cards-border-width: 1px;
+	--gallery-cards-border-radius:6px;
+	/* --cards-aspect-ratio: auto; */
+	--gallery-cards-columns: repeat(auto-fit, minmax(var(--gallery-cards-min-width), var(--gallery-cards-max-width)));
+	--gallery-background-modifier-border: hsl(0, 0%, 20%);
+	--gallery-background-modifier-border-hover: hsl(0, 0%, 25%);
+	--gallery-background-modifier-border-light: hsl(0, 0%, 80%);
+	--gallery-background-modifier-border-hover-light: hsl(0, 0%, 85%);
+}
+
+@media (max-width:400pt) {
+	:root {
+		--gallery-cards-min-width: var(--gallery-cards-mobile-width);
+	}
+}
+
+/* Remove the box-shadow around the view in live preview */
+.cm-preview-code-block:has(.gallery):hover {
+	box-shadow: none !important;
+}
+
+/* #region better callouts */
+
+.callout:has(.gallery) {
+	mix-blend-mode: normal;
+}
+
+/* #endregion */
+
+/* #region no box-shadow clipping */
+
+.markdown-source-view.mod-cm6 .cm-content>[contenteditable=false]:has(.gallery) {
+	contain: none !important;
+}
+
+.cm-preview-code-block:has(.gallery),
+.block-language-dataviewjs:has(.gallery),
+.gallery,
+.gallery .grid,
+.gallery article {
+	overflow: visible !important;
+}
+
+/* #endregion */
+
+
+.gallery {
+	position: relative;
+	cursor: default;
+}
+
+.gallery span {
+	display: contents;
+}
+
+/* #region thumbnail */
+.gallery .thumb-stack {
+	display: grid;
+}
+
+.gallery img {
+	object-fit: var(--gallery-cards-image-fit);
+	width: 100%;
+	max-height: var(--gallery-cards-image-height);
+	border-radius: var(--gallery-cards-border-radius);
+	margin: 0;
+	pointer-events: none;
+	z-index: -1;
+	grid-column: 1;
+	grid-row: 1;
+	align-self: center;
+	justify-self: center;
+}
+
+.gallery img {
+	animation: fadeInAnimation ease 0.4s;
+	animation-iteration-count: 1;
+	animation-fill-mode: forwards;
+}
+
+@keyframes fadeInAnimation {
+	0% {
+		opacity: 0;
+	}
+
+	100% {
+		opacity: 1;
+	}
+}
+
+/* #endregion */
+
+.gallery .grid {
+	display: grid;
+	grid-template-columns: var(--gallery-cards-columns);
+	grid-column-gap: 0.75rem;
+	grid-row-gap: 0.75rem;
+}
+
+/*#region .article*/
+.theme-light .gallery article {
+	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-light);
+}
+
+.theme-light .gallery article:hover {
+	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-hover-light);
+}
+
+.gallery article {
+	z-index: 0;
+	/* needed for mobile ?*/
+	position: relative;
+	background-color: var(--gallery-cards-background);
+	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	border-radius: var(--gallery-cards-border-radius);
+	overflow: hidden;
+	transition: box-shadow 0.15s linear;
+	max-width: var(--gallery-cards-max-width);
+}
+
+.gallery article:hover {
+	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-hover);
+	box-shadow:
+		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
+		/* 0 1px 3px 1px rgba(0, 0, 0, 0.025); */
+		0 4px 6px 0px rgba(0, 0, 0, 0.1),
+		0 1px 3px 1px rgba(0, 0, 0, 0.05);
+	transition: box-shadow 0.15s linear;
+}
+
+.gallery article.add-file {
+	min-height: var(--gallery-cards-image-height);
+	cursor: pointer;
+	padding: 0;
+	justify-content: center;
+	align-items: center;
+	color: var(--gallery-background-modifier-border);
+}
+
+.gallery article.add-file:hover {
+	color: var(--gallery-background-modifier-border-hover);
+}
+
+/*#endregion*/
+
+
+.gallery span.file-link {
+	display: inline-block;
+	padding: calc(var(--gallery-cards-padding)/2) 0;
+	border-bottom: none;
+	font-size: var(--table-text-size);
+	font-weight: 600;
+	line-height: 1.2;
+	width: calc(100% - var(--gallery-cards-padding));
+	margin: auto;
+	overflow-wrap: anywhere;
+	max-width: 100%;
+	display: flex;
+	justify-content: space-between;
+}
+
+/* For better integration of the Metadata Menu icons */
+.gallery .fileclass-icon {
+	align-self: center;
+}
+
+/* ONLY for Link Favicons users */
+.gallery img.link-favicon {
+	display: none !important;
+}
+
+/* #endregion */
