@@ -157,6 +157,8 @@ const HIDE_ICONS = false
 // If true, it doesn't display any icon and the whole image become the link
 const THUMBNAIL_IS_URL_LINK = true
 
+/** @type {'auto', 'top', 'center', 'bottom'} */
+const ARTICLE_ALIGN = 'center'
 
 // CustomJS related - look at the readme for more info
 const DEFAULT_CUSTOMJS_CLASS = "DataviewJS"
@@ -521,6 +523,22 @@ const renderTimelineTrack = () => {
 
 const renderTimecode = (length) => {
 	return `<div class="timecode"><span>${length}</span></div>`
+}
+
+/**
+ * 
+ * @param {object} _
+ * @param {import('../view').ScoreFile)} _.page
+ * @param {object} _.options
+ */
+const _resolveArticleStyle = ({page, options}) => {
+	if (!options) return ""
+
+	const {align} = options
+	
+	let style = ""
+	style += align ? `align-self: ${align};` : ""
+	return style !== "" ? `style="${style}"` : ""
 }
 
 //#endregion
@@ -987,8 +1005,7 @@ const buildGridArticles = async (pages) => {
 		if (THUMBNAIL_IS_URL_LINK) {
 			imgTag = renderExternalUrlAnchor({ url: p[URL_FIELD], children: imgTag, noIcon: true })
 		}
-
-		if (p[URL_FIELD] && !disableSet.has("urlicon") && !THUMBNAIL_IS_URL_LINK) {
+		else if (p[URL_FIELD] && !disableSet.has("urlicon")) {
 			urlTag = `<span class="url-link">
 				${renderExternalUrlAnchor({ url: p[URL_FIELD] })}
 			</span>`
@@ -1020,7 +1037,11 @@ const buildGridArticles = async (pages) => {
 			${timecodeTag}
 		</div>`
 
-		const article = `<article>
+		const articleStyle = _resolveArticleStyle({page: p, options: {
+			align: ARTICLE_ALIGN,
+		}})
+
+		const article = `<article ${articleStyle}>
 			${thumbTag ?? ""}
 			${fileTag}
 			${urlTag ?? ""}

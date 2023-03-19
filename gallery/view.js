@@ -49,6 +49,9 @@ const DEFAULT_FROM = '-"_templates"'
 
 const NB_FILE_BATCH_PER_PAGE = 20
 
+/** @type {'auto', 'top', 'center', 'bottom'} */
+const ARTICLE_ALIGN = 'center'
+
 // CustomJS related
 const DEFAULT_CUSTOMJS_CLASS = "DataviewJS"	
 const DEFAULT_CUSTOMJS_SUBCLASS = "Query"
@@ -244,6 +247,20 @@ const renderInternalFileAnchor = ({ path, name, mdmIcon = true } = {}) => {
 	return `<a class="internal-link ${mdmIcon ? "" : "metadata-menu-button-hidden"}" aria-label="${path}" data-href="${path}" href="${path}">${name}</a>`
 }
 
+/**
+ * @param {object} _
+ * @param {import('../view').ScoreFile)} _.page
+ * @param {object} _.options
+ */
+const _resolveArticleStyle = ({ page, options }) => {
+	if (!options) return ""
+
+	const { align } = options
+
+	let style = ""
+	style += align ? `align-self: ${align};` : ""
+	return style !== "" ? `style="${style}"` : ""
+}
 //#endregion
 
 //#region Query the pages based on filters
@@ -461,9 +478,14 @@ const buildGridArticles = async (pages) => {
 		thumbTag = `<div class="thumb-stack">
 			${renderInternalFileAnchor({path: p.file.path, name: imgTag, mdmIcon: false})}
 		</div>`
-			// ${imgTag}
 
-		const article = `<article class="internal-link">
+		const articleStyle = _resolveArticleStyle({
+			page: p, options: {
+				align: ARTICLE_ALIGN,
+			}
+		})
+
+		const article = `<article class="internal-link" ${articleStyle}>
 		${thumbTag ?? ""}
 		${fileTag}
 		</article>

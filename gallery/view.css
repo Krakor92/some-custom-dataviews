@@ -70,6 +70,10 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	display: grid;
 }
 
+.gallery .thumb-stack .internal-link {
+	font-size: 0;
+}
+
 .gallery img {
 	object-fit: var(--gallery-cards-image-fit);
 	width: 100%;
