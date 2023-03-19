@@ -350,7 +350,7 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	border-bottom: none;
 	font-size: var(--table-text-size);
 	font-weight: 600;
-	line-height: 1.2;
+	line-height: normal;
 	width: calc(100% - var(--jukebox-cards-padding));
 	margin: auto;
 	overflow-wrap: anywhere;

@@ -71,7 +71,7 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 }
 
 .gallery .thumb-stack .internal-link {
-	font-size: 0;
+	display: inherit;
 }
 
 .gallery img {
@@ -169,7 +169,7 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	border-bottom: none;
 	font-size: var(--table-text-size);
 	font-weight: 600;
-	line-height: 1.2;
+	line-height: normal;
 	width: calc(100% - var(--gallery-cards-padding));
 	margin: auto;
 	overflow-wrap: anywhere;

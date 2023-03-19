@@ -241,10 +241,10 @@ const renderThumbnailFromVault = (thumb) => {
  * @param {string} file.path 
  * @param {string} file.name 
  */
-const renderInternalFileAnchor = ({ path, name, mdmIcon = true } = {}) => {
+const renderInternalFileAnchor = ({ path, name, ariaLabel = true, mdmIcon = true } = {}) => {
 	// return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${path}" data-href="${path}" href="${path}">${name}</a>`
 	// look at https://github.com/mdelobelle/metadatamenu/issues/247 for explanation on mdmIcon
-	return `<a class="internal-link ${mdmIcon ? "" : "metadata-menu-button-hidden"}" aria-label="${path}" data-href="${path}" href="${path}">${name}</a>`
+	return `<a class="internal-link ${mdmIcon ? "" : "metadata-menu-button-hidden"}" ${ariaLabel ? `aria-label="${path}"` : ""} data-href="${path}" href="${path}">${name}</a>`
 }
 
 /**
@@ -476,7 +476,7 @@ const buildGridArticles = async (pages) => {
 			}
 		}
 		thumbTag = `<div class="thumb-stack">
-			${renderInternalFileAnchor({path: p.file.path, name: imgTag, mdmIcon: false})}
+			${renderInternalFileAnchor({path: p.file.path, name: imgTag, ariaLabel: false, mdmIcon: false})}
 		</div>`
 
 		const articleStyle = _resolveArticleStyle({
