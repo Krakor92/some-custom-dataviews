@@ -73,9 +73,22 @@ if (editBlockNode && editBlockNode.style) {
 } else { // We are probably inside a callout
 	const calloutContentNode = rootParentNode?.parentNode
 	const calloutNode = calloutContentNode?.parentNode
+
+	// Hide the `Edit this block` button on the top right of the callout in live preview
 	editBlockNode = calloutNode?.nextSibling
 	if (editBlockNode && editBlockNode.style) {
 		editBlockNode.style.visibility = "hidden"
+	}
+
+	calloutNode.onclick = (e) => {
+		if (// we click on something that usually trigger the edit of callout in live preview, do nothing
+			e.target === calloutContentNode
+			|| e.target === rootNode
+			|| e.target === rootNode.querySelector(".buttons")
+			|| e.target === rootNode.querySelector(".grid")
+		) {
+			e.stopPropagation()
+		}
 	}
 }
 
@@ -889,10 +902,9 @@ const clickPlaylistButton = (pages) => {
 	const maxLengthAccepted = convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
 	const baseUrl = "https://www.youtube.com/watch_videos?video_ids="
 	const aggregatedYoutubeUrls = pages.reduce((prev, cur) => {
-		/** @type{string} */
 		const { url, length, file } = cur;
 
-		if (!url.includes("youtu")) return prev;
+		if (!url || !url.includes("youtu")) return prev;
 
 		let id = url.indexOf("watch_videos")
 		if (id !== -1) {
@@ -933,8 +945,8 @@ const setButtonEvents = (pages) => {
 		else if (btn.className == "add-file") {
 			handleAddScoreButtonClick({ filters: filter, os })
 		}
-
-		e.preventDefault()
+		
+		e.stopPropagation() // used for preventing callout default behavior in live preview
 		btn.blur()
 	})));
 }
