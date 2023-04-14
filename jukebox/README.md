@@ -154,9 +154,9 @@ So in the end, my complete architecture looks like this:
 > Then if it appears (it's even less likely) that you already defined the Query class inside your file, then you'll need to modify the name of the one you've copied and set the `DEFAULT_QUERY_CLASS` inside `view.js` according to the name you gave it
 > 
 >
-> - 2nd option (The lazy one) 👉 Simply rename the `DataviewJS` class to something that you've not defined in any of your custom js files then change the `DEFAULT_CUSTOMJS_CLASS`  value to the name you've set
+> - 2nd option (The lazy one) 👉 Simply rename the `DataviewJS` class to something that you've not defined in any of your custom js files then change the `DEFAULT_CUSTOMJS_CLASS` value to the name you've set
 
-	
+
 #### Global Settings
 
 You'll probably want to tweak the default settings inside the `view.js` to fully configure the view, but apart from that, you're all setup !
@@ -209,6 +209,35 @@ Besides these 6 fields, you can obviously use your own. By default they'll be tr
 
 Right now, there is only two custom types available: `link` and `date`. To tell the view that one of your field is a link or date, you must go to the global options of the `view.js` just above the variables mentionned above. You'll see a variable named `CUSTOM_FIELDS` with several call to the `.set()` method below.
 To specify your own field, simply duplicate one line below and change the first string with the name of your field and the second string with its type
+
+
+### Buttons
+
+Right now there is a top bar at the top right of this view that contains some buttons. Here they are:
+
+#### The (Youtube) playlist button
+
+When clicked on, it will create an anonymous playlist on youtube with the first 50 youtube links rendered in your grid. The number limitation is set by Youtube unfortunatly...
+
+There are two global constants that you can change to increase or decrease the threshold of music you will accept in your generated playlist. The first one is `MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST` and the second is `MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST`. For more explanation, look inside view.js
+
+
+From experience, I often have problems with this button. On mobile,  it sometimes doesn't create the playlist at the first press. In that case, I usually exit the video, come back to this view and press the button again to make it work. It's a bit tedious, but I've gotten used to it.
+
+When I use it on desktop, it works but I have to go to the open tab once for Youtube to trigger the playlist behavior. As above, I can't solve this problem but it's not really a problem since it takes 3 seconds to work around it.
+
+
+#### The + button
+
+When clicked on, it will create a new `Untitled.md` file at the location specified in the const variable `DEFAULT_SCORE_DIRECTORY`.
+
+If you already have a file named `Untitled.md` there, it will report an error and do nothing.
+
+
+#### The last cell
+
+Same effect as the + button but located at the end of the grid
+
 
 
 ### View options / settings
@@ -298,27 +327,28 @@ Instead of passing an object to `filter` or `sort` properties, you can actually 
 
 ##### Date Object
 
-| Properties | Value        | Done |
-| ---------- | ------------ | ---- |
-| before     | "YYYY-MM-DD" | ✅   |
-| after      | "YYYY-MM-DD" | ✅   |
+| Properties | Value        |
+| ---------- | ------------ |
+| before     | "YYYY-MM-DD" |
+| after      | "YYYY-MM-DD" |
 
 
 ##### Disable values
 
-| String accepté dans disable | Description                                                                                                              | Status |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------ |
-| autoplay                    | The end of an mp3 will not launch the next one in the grid                                                               | ✅     |
-| audioPlayer                 | Don't show audio player for files with audio field                                                                       | ✅     |
-| urlIcon                     | Remove the service icon that appears on the top right of the card                                                        | ✅     |
-| thumbnail                   | Removes the images                                                                                                       | ✅     |
-| fileLink                    | Removes file links                                                                                                       | ✅     |
-| addScore                    | Removes the cell at the end that let you add new music<br>*NEW*: It removes the + icon button inside the top row buttons | ✅     |
-| buttons                     | Removes the top button line                                                                                              | ✅     |
-| timecode                    | Removes the bottom right timecode in the thumbnail                                                                       | ✅     |
-| border                      | Removes the borders around each cell in the grid                                                                         | ✅     |
-| query                       | Don't query pages at all (useful to show orphans only)                                                                   | ✅     |
-| orphans                     | Doesn't show orphans                                                                                                     | ✅     |
+| String accepté dans disable | Description                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| autoplay                    | The end of an mp3 will not launch the next one in the grid                                                   |
+| audioPlayer                 | Don't show audio player for files with audio field                                                           |
+| urlIcon                     | Remove the service icon that appears on the top right of the card                                            |
+| thumbnail                   | Removes the images                                                                                           |
+| fileLink                    | Removes file links                                                                                           |
+| addScore                    | Removes both the cell at the end that let you add new music and the + icon button inside the top row buttons |
+| addScoreCell                | Removes only the cell at the end that let you add new music                                                  |
+| buttons                     | Removes the top button line                                                                                  |
+| timecode                    | Removes the bottom right timecode in the thumbnail                                                           |
+| border                      | Removes the borders around each cell in the grid                                                             |
+| query                       | Don't query pages at all (useful to show orphans only)                                                       |
+| orphans                     | Doesn't show orphans                                                                                         |
 
 *Note: The values aren't sensitive to casse*
 
