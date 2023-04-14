@@ -3,6 +3,22 @@
 
 A custom view built with [Obsidian-Dataview](https://github.com/blacksmithgu/obsidian-dataview) to show markdown musics files from your vault within a customisable grid view
 
+## 🎼 Features
+
+In this readme, when I mention `music file`, I'm talking about a markdown file with custom (manually defined) metadata.
+
+Here are the overarching principles of how this view works:
+
+- You can filter your music files according to their metadata (url, artist, media, genre, instruments, mp3 file, custom tags, ...).
+- The filters are **static**, you can't switch them without re-rendering the view
+- You can tap a card to open the youtube video (or any other streaming service) associated with it.
+	- On *Desktop*, it will open it in your default browser (or in a Surfing tab if you have the plugin installed)
+	- On *Mobile*, it will open in the application if you have it installed (or open it in your default browser)
+- Files with a mp3 tag get rendered with a minimal player (simple play/pause button and a timeline)
+- Almost all visual elements can be disabled at the global level or per code block (check `disable` property)
+- Since its a dvjs view and not a plugin, there aren't any settings page but there is a `Settings` region at the beginning of the `view.js`. Each option is capitalized and contains a comment above that explains what they do. You can change their value if needed (note: it will affect every occurence of this view obviously)
+
+
 
 ## 🚩 Warning / Known caveats
 
@@ -12,11 +28,11 @@ This custom view both supports mp3 (also every other audio files supported by Ob
 	- Some (if not most) mp3 don't load at all (i've opened an [issue on Obsidian Forums](https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684) about it):
 		- Those either play until the end but don't trigger the autoplay
 		- Or stop playing before the end
-	- Edit: thanks to this : https://github.com/Majed6/android-audio-fixer, I've managed to decrease the likeliness of mp3 files having problem, but it still happens randomly...
+		- Edit: thanks to this : https://github.com/Majed6/android-audio-fixer, I've managed to decrease the likeliness of mp3 files having problem, but it still happens randomly...
 	- If you set an .mp4 as the source of the audio, besides sharing the same problem as above, you also can't lock your phone / switch app or the music will pause
 	- Audios aren't recognized by the phone's system (you can't pause them with your headset for example)
 
-- Timelines are a gimmick:
+- **Timelines** are mostly a gimmick:
 	- What I mean is that they're useful to know at a glance the progress of the music, but the timecode does not update and it can be difficult to change its position, especially on mobile
 
 - The url links support has been built with **Youtube links** in mind:
@@ -24,17 +40,19 @@ This custom view both supports mp3 (also every other audio files supported by Ob
 
 - If you are listening to mp3 files and modifiying your vault at the same time then you'll want to remove the **auto refresh of Dataview** or else it will reset the music everytime dv refreshes
 
+-  If you have scrolled far enough inside a page and a lot of musics have been rendered (> 200) and you decide to switch to another tab, then you may experience a screen freeze for few seconds when switching back to this tab (This phenomenon was only really experienced on my Android phone)
+
 ## 🎯 Motivations
 
-The three main reasons why i've started to build this are:
+The three main reasons why i've started building this are:
 
-- I can't trust any music service to store indefinitly all the music i listen (especially Youtube)
-	Why ? Because it can decide for any specific reason (copyright claim most of the time) to delete any music i've added to one of my playlist without warning
+- **I can't trust any music service** to store indefinitly all the music i listen (especially Youtube)
+	Why? Because it can decide for any specific reason (copyright claim most of the time) to delete any music i've added to one of my playlist without warning
 
-- I want musics to populate "playlists" on the fly (based on custom metadata) without me having to manually insert them inside (while still having the ability to do so).
+- I want musics **to populate "playlists" on the fly** (based on custom metadata) without me having to manually insert them inside (while still having the ability to do so).
 	imho the traditional playlist system main flaw is exactly that: It doesn't take into account that the human brain connects musics together in a variety of ways and not just by artist, genre or album.
 
-- I want to put all the music I listen to on a unified platform so it's accessible on all my devices
+- I want to put all the music I listen to **on a unified platform accessible on all my devices**.
 	It's not my top reason but i find it very cool to have soundcloud and other external service musics next to my regular youtube links
 
 N.B.
@@ -47,12 +65,14 @@ I'm a huge anime and video game music enjoyer. Unfortunatly, traditional music s
 
 It worked great for a long time. Some music used to get striked once in a while but it wasn't a big deal. Then one day, Youtube decided that the striked/unavailable videos should be hidden immediatly for the end user, that way, they couldn't have a clue (except if they remembered their playlist by heart) what the video was. For me it was the straw that broke the camel's back: I had to find a solution.
 
-Around the same time, i've discovered Notion and the PKM world in general. For several months, I've built and progressively upgraded a music database system on Notion and I was really satisfied with it at first but it quickly became a burden to use and manage because of Notion's online-only strategy... Then, I've heard about Obsidian. The local / non-proprietary aspect of the app charmed me but i wasn't sure it could fix my problem. But that was before I learned about the plugin ecosystem (Dataview in particular) and at that point i was convinced it could answer my very specific needs.
+Around the same time, i've discovered Notion and the PKM world in general. For several months, I've built and progressively upgraded a music database system on Notion. It was definitly not the best tool for the job but I was really satisfied with it. Unfortunatly at some point, it became a burden to use and manage because of Notion's online-only strategy... The whole database was sluggish and difficult to populate but I forced myself to keep using it nonetheless.
+
+Then I've heard about Obsidian. The local / non-proprietary aspect of the app charmed me but i wasn't sure it could fix my problem. But that was before I learned about the plugin ecosystem (Dataview in particular) and at that point i was convinced it could answer my very specific needs.
 
 But i didn't know where to start because imo, a plugin would be too overkill for what i needed to have (and i'm way too lazy to learn how to make one). As i thought my journey with Obsidian was over, I've stumbled accross this fantastic [repository](https://github.com/702573N/Obsidian-Tasks-Calendar) and it opened my eyes: I just needed to use dataview's view with some custom css.
 
 
-##  Usage
+## 🎧 Usage
 
 ### 🏗️ Setup
 
@@ -65,13 +85,20 @@ But i didn't know where to start because imo, a plugin would be too overkill for
 **Plugins highly recommanded (but not required)**
 
 - Metadata Menu
->You'll be able to click on the icon for each music to instantly access their metadata instead of going in the file. Fantastic to quickly jump to an artist or a media link
+>You'll be able to click on the icon for each music to instantly access their metadata instead of going in the file. Fantastic to quickly jump to an artist or a media link (especially on mobile)
 
 - Templater
->You'll be able to set a default music template on file creation
+>You could set a default music template on file created inside the default score directory after clicking on the `+` button
 
 - Surfing (*Desktop only*)
 > Very helpful because it will open the music link directly inside Obsidian. Combined with YT Premium it transform your vault into a real music player
+
+- Force Note View Mode
+> Simple but very convenient to automatically switch to reading mode. That way you don't have to scroll the yaml frontmatter if it is too big
+
+
+> [!NOTE] You won't find a tutorial on how to configure these optional plugins below
+> This section is just here to give some insights
 
 ---
 
@@ -79,7 +106,7 @@ But i didn't know where to start because imo, a plugin would be too overkill for
 
 So to use this dataviewjs view, you need to get the `view.js` and `view.css` files and put them in a common folder where they are the only ones called that. You can't change their names because `dv.view` looks for these 2 files specifically in the path you specify.
 
-My advice is to have a common folder where you put all the js files. (Personally I have one at the root which I have called `_js`)
+My advice is to have a common folder where you put all your `.js` files. (Personally I have one at the root which I have called `_js`)
 And in this folder, we create a subfolder with a distinct name relatively clear on the content of what the js generates (here I called it `jukebox`)
 
 So I have an architecture that looks like this:
@@ -118,11 +145,16 @@ So in the end, my complete architecture looks like this:
 > [!WARNING] If you had CustomJs already installed, read the following
 > *The following issues are very unlikely to happen but still*
 > 
-> If you already have a js file used with CustomJs and that it appeared it already define the class `CustomJs` inside then instead of putting the query.js inside your vault, you'll need to only copy the `Query = class` part and put it inside your already existing file defining the class CustomJs
+> If you already have a js file used with CustomJs and that it appeared it already define the class `CustomJs` inside then you have two options:
+> 
+> - 1st option (The merge one) 👉 Instead of putting the query.js inside your vault, only copy the `Query = class` part and put it inside your already existing file defining the class CustomJs
 > 
 > Then if it appears (it's even less likely) that you already defined the Query class inside your file, then you'll need to modify the name of the one you've copied and set the `DEFAULT_QUERY_CLASS` inside `view.js` according to the name you gave it
+> 
+>
+> - 2nd option (The lazy one) 👉 Simply rename the `DataviewJS` class to something that you've not defined in any of your custom js files then change the `DEFAULT_CUSTOMJS_CLASS`  value to the name you've set
 
-
+	
 #### Global Settings
 
 You'll probably want to tweak the default settings inside the `view.js` to fully configure the view, but apart from that, you're all setup !
@@ -137,34 +169,31 @@ await dv.view("_js/jukebox")
 ```
 ~~~
 
-this codeblock is gonna render a grid of all the files marked as music inside your vault. i.e. every markdown files containing the tag `#🎼`. It's the default behavior but you can change it (see [[#Global]] for more info)
-
-
-### Features
-
-Here is the overarching principles of how this view works:
-
--   Each music is a markdown file with custom metadata (set manually).
--   You can filter them according to these metadata (url, artist, media, genre, instruments, mp3 file, custom tags, ...).
--   The filters are **static**, you can't switch them without re-rendering the view
--   Tap a card to open the youtube video (or any other streaming service) associated with it.
--   Files with a mp3 tag get rendered with a minimal player (simple play/pause button and a timeline)
--   Almost every visual elements can be disabled for each view
--   Since its a dvjs view and not a plugin, there aren't any settings page but there is a `Settings` region at the beginning of the `view.js`. Each option is capitalized and can be changed if needed (note: it will affect every occurence of the view obviously)
+this codeblock is gonna render a grid of all the files marked as music inside your vault. i.e. every markdown files containing the tag `#🎼`. It's the default behavior but you can change it (see [here](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#global))
 
 
 #### Metadata
+
+As stated earlier, each music file can have a variety of metadata. Right now, there are certain metadata that are handled specially by this view, others that you can define with a specific type and the rest that are considered as strings.
+
+> [!NOTE] If you have doubt on how to define your metadata, read the following...
+> 
+>You can define your metadata either in the yaml frontmatter or as dataview inline fields in your file. This means that both `field: value` (inside frontmatter) and `field:: value` are perfectly valid and understood in the context of this view
+>
+>Though considering links aren't correctly handled when set in the frontmatter, i'd suggest to define them as inline fields
+>I also define my url key as inline field because the url isn't clickable when set in the frontmatter
+>For the rest, I define everything inside the frontmatter
 
 ##### Special Metadata
 
 There are currently 6 fields that have a special meaning inside this view:
 
-|   Name    |                                                       Description                                                        |                                            Example                                             |
+|   Name    |                                                       Description                                                        |Example|
 |:---------:|:------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------:|
 |   title   | It serves as an alias. If set, it will replace the default name of the file in the grid (used by default for `orphans`)  |"Shorter name"|
-| thumbnail |    The music image. Can be three different values: a string, an url (embedded or not) or a filelink (embedded or not)    | "https://site.com/my-image.jpg" OR `![](https://site.com/my-image.jpg)` OR `![[my-image.jpg]]` |
-|    mp3    |                               It can be any audio file recognized by Obsidian (even video)                               |                                      `![[my-audio.mp3]]`                                       |
-|    url    |                      The url to the music. It can be anything but youtube links have extra supports                      |                                  https://youtu.be/dQw4w9WgXcQ                                  |
+| thumbnail |The music image. Can be three different values: a string, an url (embedded or not) or a filelink (embedded or not)|https://example.com/my-image.jpg OR `![](https://example.com/my-image.jpg)` OR `![[my-image.jpg]]`|
+|    mp3    |                               It can be any audio file recognized by Obsidian (even video)                               |`![[my-audio.mp3]]`|
+|    url    |                      The url to the music. It can be anything but youtube links have extra supports                      |https://youtu.be/dQw4w9WgXcQ|
 |  length   | The length of the music. It is displayed at the bottom right just like on Youtube. (Only 00:00 or 00:00:00 is supported) |                                            01:30:04                                            |
 |  volume   |The volume offset to apply to the audio file when playing it|-0.1|
 
@@ -180,7 +209,7 @@ Right now, there is only two custom types available: `link` and `date`. To tell 
 To specify your own field, simply duplicate one line below and change the first string with the name of your field and the second string with its type
 
 
-### View options
+### View options / settings
 
 #### Global
 
@@ -209,14 +238,14 @@ And here is the list of all the properties supported by this view:
 
 | Main option | Sub options   | Type             | Default                                        |Description| Exemple                | Status                           |
 | ----------- | ------------- | ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | -------------------------------- |
-| **filter**  | manual        | string           | ""                                             |Defines precisely the music you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the music) |"scores"| ✅                               |
+| **filter**  | manual        | string           | ""                                             |Defines precisely the musics you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the musics)|"scores"| ✅                               |
 |             | from          | string           | `#🎼 AND -"_templates"`                        |To define a specific dvjs query instead of using the default one|  | ✅                               |
 |             | tags          |string / string[]|"" |To filter on tags|"#song"|✅|
 |             |in| string           |""|To filter on the `in` property. Only one at a time for now | "[[Arcane (2021)]]"    |✅|
 |             |artist| string           | ""                                             |To filter on the `artist` property. Only one at a time for now|"[[Joe Hisaishi]]"|✅|
 |             | voice         | object           | {yes: true, chorus: true, few: true, no; true} |  |                        | ✅                               |
-|             | mp3Only       | boolean          | false                                          |To get only the music with a non-null `mp3` field|                        | ✅                               |
-|             | release       | [[#Date Object]] | {}                                             |To define a time period (either before, after, or an interval)| {before: "2022-12-31"} |✅|
+|             | mp3Only       |boolean| false                                          |To get only the music with a non-null `mp3` field|                        | ✅                               |
+|             | release       |[Date Object](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#date-object)| {}                                             |To define a time period (either before, after, or an interval)| {before: "2022-12-31"} |✅|
 |             |current| string           | ""                                             |It expects the name of a field containing a link to the current file you're in. (More info in the text below this array). You can also pass the special `"backlinks"` string to filter on every music files that contains a link to the current file|  |✅|
 |             | star          | boolean          | false                                          |To retrieve only musics that have been `Starred` by the user |                        |✅|
 | **sort**    | shuffle       | boolean          | false                                          |To have a random sorting of the music|  | ✅                               |
@@ -414,11 +443,31 @@ are identical **in the context of this view**. However, for the sake of durabili
 You can add any fields you want in the orphan definition, but there is one important thing to keep in mind: Orphans are only accessible in the file in which they are defined. (This may change in the future)
 
 
+PS: If you prefer the yaml block style in the frontmatter, you can use the following instead of the json based syntax shown above
+
+~~~
+---
+orphans:
+  -
+    title: "Requiem"
+    url: "https://www.youtube.com/watch_videos?video_ids=QUB4u8VrdF4,yX-I_2WnURA"
+    thumbnail: "https://ds.static.rtbf.be/article/image/1248x702/7/9/b/479f499df3bbc0deda265b92316d362f-1645025919.jpg"
+  - 
+    title: "Lacrimosa"
+    url: "https://youtu.be/k1-TrAvp_xs"
+---
+
+...
+~~~
+
+Note that the indentation on the left must be made of spaces (your yaml won't be recognized if you use tabs there)
+
+
 ## 🔮 Future
 
-#### Datacore
+### Datacore
 
-I will eventually port this view to be compatible with Datacore when it is released, but it will depend heavily on how mature the early versions are and what features it unlocks if I decide to switch to its new React API.
+I will eventually port this view to be compatible with Datacore when it is released, but it will highly depend on how mature the early versions are and what features it unlocks if I decide to switch to its new React API.
 
 As for the performance improvement promised by the [readme](https://github.com/blacksmithgu/datacore#datacore), I doubt it will have any significative impact on this view, given how fast it already runs, even when querying thousands of files.
 
