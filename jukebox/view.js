@@ -40,6 +40,9 @@ const {
 	//@ts-ignore
 } = input || {};
 
+// You can add any disable values here to globally disable them in every view
+const GLOBAL_DISABLE = ""
+
 //#region Initialize view's root node
 
 /** @param {Set<string>} set */
@@ -52,8 +55,11 @@ const computeClassName = (disableSet) => {
 	return className
 }
 
+const combinedDisable = GLOBAL_DISABLE + " " + disable
+
 /** @type {Set<string>} */
-const disableSet = new Set(disable.split(' ').map(v => v.toLowerCase()))
+const disableSet = new Set(combinedDisable.split(" ").map((v) => v.toLowerCase())
+)
 const tid = (new Date()).getTime();
 
 /** @type {HTMLDivElement} */
@@ -65,20 +71,29 @@ const rootNode = dv.el("div", "", {
 	}
 });
 
-// Hide the edit button so it doesn't trigger anymore in preview mode
-const rootParentNode = rootNode.parentNode
-let editBlockNode = rootParentNode?.nextSibling
-if (editBlockNode && editBlockNode.style) {
-	editBlockNode.style.visibility = "hidden"
-} else { // We are probably inside a callout
-	const calloutContentNode = rootParentNode?.parentNode
-	const calloutNode = calloutContentNode?.parentNode
-
-	// Hide the `Edit this block` button on the top right of the callout in live preview
-	editBlockNode = calloutNode?.nextSibling
+const hideEditButtonLogic = (editBlockNode) => {
 	if (editBlockNode && editBlockNode.style) {
 		editBlockNode.style.visibility = "hidden"
+		return true
 	}
+	return false
+}
+
+const hideEditButton = () => {
+
+	// Hide the edit button so it doesn't trigger anymore in preview mode
+	const rootParentNode = rootNode.parentNode
+	if (hideEditButtonLogic(rootParentNode?.nextSibling)) return true
+
+	// We haven't been loaded yet in the DOM, are we in a callout?
+	const calloutContentNode = rootParentNode?.parentNode
+	const calloutNode = calloutContentNode?.parentNode
+	
+	// Not a callout, we are inside a long file and got lazyloaded by Obsidian
+	if (!calloutNode) return false
+
+	// Hide the `Edit this block` button on the top right of the callout in live preview
+	hideEditButtonLogic(calloutNode?.nextSibling)
 
 	calloutNode.onclick = (e) => {
 		if (// we click on something that usually trigger the edit of callout in live preview, do nothing
@@ -90,7 +105,9 @@ if (editBlockNode && editBlockNode.style) {
 			e.stopPropagation()
 		}
 	}
+	return true
 }
+const managedToHideEditButton = hideEditButton()
 
 const viewObserver = new IntersectionObserver(handleViewIntersection);
 if (!DISABLE_LAZY_RENDERING || disableSet.has("lazyloading")) {
@@ -103,6 +120,10 @@ function handleViewIntersection(entries) {
 			inceptionTime = performance.now()
 			startTime = performance.now()
 			viewObserver.unobserve(entries[0].target);
+
+			if (!managedToHideEditButton) {// try now that it has been loaded in the DOM
+				hideEditButtonLogic(rootNode.parentNode?.nextSibling)
+			}
 
 			renderView()
 		}
