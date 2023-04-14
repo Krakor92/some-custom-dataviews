@@ -3,6 +3,8 @@
 
 A custom view built with [Obsidian-Dataview](https://github.com/blacksmithgu/obsidian-dataview) to show markdown musics files from your vault within a customisable grid view
 
+![](https://user-images.githubusercontent.com/24924824/232079357-dc71dc66-14d1-476e-b8f4-549618b60df0.png)
+
 ## 🎼 Features
 
 In this readme, when I mention `music file`, I'm talking about a markdown file with custom (manually defined) metadata.
