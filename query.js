@@ -23,13 +23,25 @@ class DataviewJS {
 		_delimiter = "=-------------------------------="
 
 		//distinct
-		joinPages = (a1, a2) => {
-			const joinedArray = a1.values.concat(a2.values)
+		joinPages = (...vargs) => {
+			let joinedArray = []
+
+			for (const pages of vargs) {
+				if (Array.isArray(pages.values)) {
+					// .values in this context is not the function of the Array prototype
+					// but the property of the DataArrayImpl proxy target returned by a dataview function
+					joinedArray = [...joinedArray, ...pages.values]
+				}
+				else {
+					joinedArray = [...joinedArray, ...pages]
+				}
+			}
+
 			const result = [];
-			const map = new Map();
+			const set = new Set();
 			for (const page of joinedArray) {
-				if (!map.has(page.file.link.path)) {
-					map.set(page.file.link.path, true); // set any value to Map
+				if (!set.has(page.file.link.path)) {
+					set.add(page.file.link.path);
 					result.push({ ...page });
 				}
 			}
