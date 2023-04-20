@@ -797,12 +797,9 @@ const buildAndRunScoreQuery = async (filter) => {
 }
 
 let queriedPages = []
-let numberOfPagesFetched = 0
 
 if (!disableSet.has("query")) {
 	queriedPages = await buildAndRunScoreQuery(filter)
-	numberOfPagesFetched = queriedPages.length
-
 	console.log({ queriedPages })
 }
 
@@ -1257,7 +1254,7 @@ function handleLastScoreIntersection(entries) {
 
 			manageMp3Scores();
 
-			if (nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE < numberOfPagesFetched) {
+			if (nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE < pages.length) {
 				console.log(`Batch to load next: ${nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE}`)
 				lastScore = grid.querySelector('article:last-of-type')
 				scoreObserver.observe(lastScore)
