@@ -147,7 +147,7 @@ So in the end, my complete architecture looks like this:
 > [!WARNING] If you had CustomJs already installed, read the following
 > *The following issues are very unlikely to happen but still*
 > 
-> If you already have a js file used with CustomJs and that it appeared it already define the class `CustomJs` inside then you have two options:
+> If you already have a js file used with CustomJs and that it appeared it already define the class `DataviewJs` inside then you have two options:
 > 
 > - 1st option (The merge one) 👉 Instead of putting the query.js inside your vault, only copy the `Query = class` part and put it inside your already existing file defining the class CustomJs
 > 
@@ -232,6 +232,19 @@ When I use it on desktop, it works but I have to go to the open tab once for You
 When clicked on, it will create a new `Untitled.md` file at the location specified in the const variable `DEFAULT_SCORE_DIRECTORY`.
 
 If you already have a file named `Untitled.md` there, it will report an error and do nothing.
+
+
+##### Automatic insertion of fields on file creation
+
+If you have the Metadata plugin installed, file creation using this button will try to automate some field insertion. It will only work with classic (string) and link fields. Date fields will be ignored.
+
+So for example if you are inside the page of an artist and try to create a new music, then the `artist` field should have its value set to the artist page you clicked the button from.
+
+It will append every non present fields at the end of the frontmatter
+
+Note 1: For reasons I can't explain, I have to wait quite some time (like 3 seconds) before modifying the value of any fields inside a newly created file. You can change the name of your file during that time to wait for the automation to occur
+ 
+Note 2: This feature won't work if you use the advanced filter option with a custom function
 
 
 #### The last cell
@@ -322,7 +335,7 @@ It means the following: "Filter on every music.md files that contains a field na
 Instead of passing an object to `filter` or `sort` properties, you can actually pass a javascript function and do the whole filtering/sorting yourself.
 
 - The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the query service defined in the query.js file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look inside query.js to see every methods that are already implemented and call them accordingly to your needs
-- The function passed to `sort` takes `a` file a and file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering 
+- The function passed to `sort` takes a file `a` and a file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering 
 
 
 ##### Date Object
@@ -335,7 +348,7 @@ Instead of passing an object to `filter` or `sort` properties, you can actually 
 
 ##### Disable values
 
-| String accepté dans disable | Description                                                                                                  |
+| Values | Description                                                                                                  |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | autoplay                    | The end of an mp3 will not launch the next one in the grid                                                   |
 | audioPlayer                 | Don't show audio player for files with audio field                                                           |
@@ -472,7 +485,7 @@ orphans:: {"title": "Lacrimosa", "url": "https://youtu.be/k1-TrAvp_xs"}
 
 are identical **in the context of this view**. However, for the sake of durability/future-proofing, I recommend that you write them in the "frontmatter" format.
 
-You can add any fields you want in the orphan definition, but there is one important thing to keep in mind: Orphans are only accessible in the file in which they are defined. (This may change in the future)
+You can add any fields you want in the orphan definition, but there is one important thing to keep in mind: **Orphans are only accessible in the file in which they are defined**. (This may change in the future)
 
 
 PS: If you prefer the yaml block style in the frontmatter, you can use the following instead of the json based syntax shown above

@@ -961,7 +961,7 @@ const setButtonEvents = (pages) => {
 			clickPlaylistButton(pages)
 		}
 		else if (btn.className == "add-file") {
-			handleAddScoreButtonClick({ filters: filter, os })
+			handleAddScoreButtonClick({ filters: { ...filter }, customFields: CUSTOM_FIELDS, os })
 		}
 		
 		e.stopPropagation() // used for preventing callout default behavior in live preview
@@ -1168,10 +1168,11 @@ const waitUntilFileMetadataAreLoaded = async (pathToFile) => {
 /**
  * 
  * @param {object} _
- * @param {object[]} _.filters
+ * @param {object[]} _.filters - Careful this function modify this variable on certain condition
+ * @param {Map<string, string>} _.customFields
  * @param {string} _.os
  */
-async function handleAddScoreButtonClick({ filters, os }) {
+async function handleAddScoreButtonClick({ filters, customFields, os }) {
 	const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
 	const newFile = await createNewNote(newFilePath)
 
@@ -1185,9 +1186,13 @@ async function handleAddScoreButtonClick({ filters, os }) {
 	// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
 	await delay(2500)
 
+	console.log("At last, we can start the autocomplete")
+	console.log({filters, os})
+
 	const fieldsPayload = []
 
 	const textInClipboard = await navigator.clipboard.readText();
+
 	if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
 		fieldsPayload.push({
 			name: URL_FIELD,
@@ -1196,26 +1201,21 @@ async function handleAddScoreButtonClick({ filters, os }) {
 	}
 
 	const current = dv.current()
-	const etags = current.file.etags
-	if (etags.length !== 0) {
-		console.log({ etags })
-		fieldsPayload.push({
-			name: "media",
-			payload: { value: etags[0].slice(1) }
-		})
-	}
 
 	if (filters?.current) {
 		fieldsPayload.push({
 			name: filters.current,
 			payload: { value: `[[${current.file.name}]]` }
 		})
+		delete filters.current
 	}
 
-	if (filters?.tags) {
+	for (const field in filters) {
+		console.log(`${field}: ${filters[field]}`)
+		if (customFields.get(field) === "date") continue;
 		fieldsPayload.push({
-			name: "tags_",
-			payload: { value: Array.isArray(filters.tags) ? `[${filters.tags.join(", ")}]` : filters.tags }
+			name: field,
+			payload: { value: Array.isArray(filters[field]) ? `[${filters[field].join(", ")}]` : filters[field] }
 		})
 	}
 
@@ -1265,7 +1265,7 @@ function handleLastScoreIntersection(entries) {
 				const addScoreCellDOM = dv.el("article", filePlusIcon(24), { cls: "add-file" })
 				grid.querySelector("span").appendChild(addScoreCellDOM);
 
-				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, { filters: filter, os })
+				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, { filters: {...filter}, customFields: CUSTOM_FIELDS, os })
 			}
 
 		}
