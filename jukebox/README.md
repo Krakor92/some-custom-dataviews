@@ -161,7 +161,7 @@ So in the end, my complete architecture looks like this:
 
 You'll probably want to tweak the default settings inside the `view.js` to fully configure the view, but apart from that, you're all setup !
 
-### The one-liner
+### ✍️ The one-liner
 
 If you correctly followed every steps described in the above section, you should be able to write the following codeblock inside one of your markdown file
 
@@ -203,6 +203,23 @@ There are currently 6 fields that have a special meaning inside this view:
 
 Actually there is also the `voice` property that has a special meaning right now but I planned to remove it soon...
 
+Here are some precisions and special effects to keep in mind while using these metadata:
+
+- If you have a file with a *youtube* or *dailymotion* link as its `url` then you'll have a thumbnail appearing by default in the jukebox when querying this file
+	- Other services aren't supported because there isn't a standardized way to retrieve their thumbnail from a video url (if you find one feel free to open an issue regarding that)
+
+- `https://www.youtube.com/watch_videos?video_ids=id1,id2,...` urls are correctly recognized by this view. However, you won't have the default thumbnail behavior specified above if you use it
+
+- To have a more compact feel on mobile (regarding squared album covers), I've set a max height for thumbnail images. Its value is set in the `view.css` at the top, the variable is named `--jukebox-cards-image-height`. You can adjust its value if you don't like this behavior.
+	- By default the image will be centered in its container but you change that by prefixing a value between 0 and 1 to adjust the position (0.5 is the default).
+
+![thumbnail cropping example](https://user-images.githubusercontent.com/24924824/236331752-16b97ea7-91d9-4d57-b64c-bd8acec02b76.png)
+
+If you are embedding your image in your `thumbnail` property like so: `thumbnail:: ![400](...)` then this view will interpret the 400 inside the square brackets as a 1 in this context so the image will be positioned at the bottom. To bypass this annoyance, you could add a `0.5` on the left like so: `thumbnail:: ![0.5|400](...)`: You'll keep the 400px size for your embed and the thumbnail will be centered accordingly
+
+Note: The exact same method and workaround can be used for the wikilinks syntax (`thumbnail:: ![[my-image.jpg|0.5|400]]`) 
+
+
 ##### Custom Metadata
 
 Besides these 6 fields, you can obviously use your own. By default they'll be treated as strings fields but if you wish to, you can specify to the view what their types is.
@@ -211,9 +228,9 @@ Right now, there is only two custom types available: `link` and `date`. To tell 
 To specify your own field, simply duplicate one line below and change the first string with the name of your field and the second string with its type
 
 
-### Buttons
+### 🔘 Buttons
 
-Right now there is a top bar at the top right of this view that contains some buttons. Here they are:
+There is a top bar at the top right of this view that contains some buttons. Here they are:
 
 #### The (Youtube) playlist button
 
@@ -236,7 +253,7 @@ If you already have a file named `Untitled.md` there, it will report an error an
 
 ##### Automatic insertion of fields on file creation
 
-If you have the Metadata plugin installed, file creation using this button will try to automate some field insertion. It will only work with classic (string) and link fields. Date fields will be ignored.
+If you have the `Metadata-Menu` plugin installed, file creation using this button will try to automate some field insertion. It will only work with classic (string) and link fields. Date fields will be ignored.
 
 So for example if you are inside the page of an artist and try to create a new music, then the `artist` field should have its value set to the artist page you clicked the button from.
 
@@ -266,7 +283,7 @@ To look for them inside `view.js`, simply search for `//#region Settings`. The v
 
 The `dv.view()` function accept another argument after the path to the folder containing the sources.
 
-This second argument is an object passed to the view that let you customize what it does.
+In this view, the second argument is an object that let you customize what the view does.
 Here is the syntax:
 
 ````
@@ -280,24 +297,25 @@ await dv.view("_js/jukebox", {
 
 And here is the list of all the properties supported by this view:
 
-| Main option | Sub options   | Type             | Default                                        |Description| Exemple                | Status                           |
-| ----------- | ------------- | ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | -------------------------------- |
-| **filter**  | manual        | string           | ""                                             |Defines precisely the musics you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the musics)|"scores"| ✅                               |
-|             | from          | string           | `#🎼 AND -"_templates"`                        |To define a specific dvjs query instead of using the default one|  | ✅                               |
-|             | tags          |string / string[]|"" |To filter on tags|"#song"|✅|
-|             |in| string           |""|To filter on the `in` property. Only one at a time for now | "[[Arcane (2021)]]"    |✅|
-|             |artist| string           | ""                                             |To filter on the `artist` property. Only one at a time for now|"[[Joe Hisaishi]]"|✅|
-|             | voice         | object           | {yes: true, chorus: true, few: true, no; true} |  |                        | ✅                               |
-|             | mp3Only       |boolean| false                                          |To get only the music with a non-null `mp3` field|                        | ✅                               |
-|             | release       |[Date Object](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#date-object)| {}                                             |To define a time period (either before, after, or an interval)| {before: "2022-12-31"} |✅|
-|             |current| string           | ""                                             |It expects the name of a field containing a link to the current file you're in. (More info in the text below this array). You can also pass the special `"backlinks"` string to filter on every music files that contains a link to the current file|  |✅|
-|             | star          | boolean          | false                                          |To retrieve only musics that have been `Starred` by the user |                        |✅|
-| **sort**    | shuffle       | boolean          | false                                          |To have a random sorting of the music|  | ✅                               |
-|             | recentlyAdded | boolean          |                                                |Move up to the first place the musics we have recently added (True) or the musics we have added at the very beginning (False)|                        |                                  |
-|             | manual        | string           | ""                                             |To do a simple manual sort (works the same way as its namesake in **filter**)| "scores"               | ✅                               |
-| **disable** |               | string           |                                                |To remove almost all visible features if you don't like them. You must separate the values with space. See the table below for more information on the possible values.| "autoplay addscore"    | ✅                               |
+| Main option | Sub options   | Type                                                                                             | Default                                        | Description                                                                                                                                                                                                                                          | Example                | Status |
+| ----------- | ------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------ |
+| **filter**  | manual        | string                                                                                           | ""                                             | Defines precisely the musics you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the musics)                                                                                     | "scores"               | ✅     |
+|             | from          | string                                                                                           | `#🎼 AND -"_templates"`                        | To define a specific dvjs query instead of using the default one                                                                                                                                                                                     |                        | ✅     |
+|             | tags          | string / string[]                                                                                | ""                                             | To filter on tags                                                                                                                                                                                                                                    | "#song"                | ✅     |
+|             | in            | string                                                                                           | ""                                             | To filter on the `in` property. Only one at a time for now                                                                                                                                                                                           | "[[Arcane (2021)]]"    | ✅     |
+|             | artist        | string                                                                                           | ""                                             | To filter on the `artist` property. Only one at a time for now                                                                                                                                                                                       | "[[Joe Hisaishi]]"     | ✅     |
+|             | voice         | object                                                                                           | {yes: true, chorus: true, few: true, no; true} |                                                                                                                                                                                                                                                      |                        | ✅     |
+|             | mp3Only       | boolean                                                                                          | false                                          | To get only the music with a non-null `mp3` field                                                                                                                                                                                                    |                        | ✅     |
+|             | release       | [Date Object](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#date-object) | {}                                             | To define a time period (either before, after, or an interval)                                                                                                                                                                                       | {before: "2022-12-31"} | ✅     |
+|             | current       | string                                                                                           | ""                                             | It expects the name of a field containing a link to the current file you're in. (More info in the text below this array). You can also pass the special `"backlinks"` string to filter on every music files that contains a link to the current file |                        | ✅     |
+|             | star          | boolean                                                                                          | false                                          | *Legacy*: To retrieve only musics that have been `Starred` by the user                                                                                                                                                                               |                        | ❌     |
+|             | bookmarks     | string                                                                                           | ""                                             | To filter on musics inside a bookmark folder. It doesn't search recursively in nested folder. **Warning**: You can't filter on a folder with a `/` in its name                                                                                      |                        | ✅     |
+| **sort**    | shuffle       | boolean                                                                                          | false                                          | To have a random sorting of the music                                                                                                                                                                                                                |                        | ✅     |
+|             | recentlyAdded | boolean                                                                                          |                                                | Move up to the first place the musics we have recently added (True) or the musics we have added at the very beginning (False)                                                                                                                        |                        |        |
+|             | manual        | string                                                                                           | ""                                             | To do a simple manual sort (works the same way as its namesake in **filter**)                                                                                                                                                                        | "scores"               | ✅     |
+| **disable** |               | string                                                                                           |                                                | To remove almost all visible features if you don't like them. You must separate the values with space. See the table below for more information on the possible values.                                                                              | "autoplay addscore"    | ✅     |
 
-In my opinion, the most important filter is the `current` one. To give you a clearer example of how to use it: Let's say you have a file named "Hans Zimmer.md".
+In my opinion, the most important filter is the `current` one. To give you a clearer example of its use: Let's say you have a file named "Hans Zimmer.md".
 Apart from that, you have a bunch of music.md files with the following property: `artist: [[Hans Zimmer]]`.
 Now you want to query all of these file inside your file "Hans Zimmer.md". You might want to do the following:
 
@@ -329,6 +347,8 @@ await dv.view("_js/jukebox", {
 
 It means the following: "Filter on every music.md files that contains a field named `artist` which contains a link to the current file"
 
+The pros of this method compared to the previous notation is that if at some point you decide to rename your artist file, it won't break the view
+
 
 ##### Advanced use case for filter and sort
 
@@ -336,6 +356,19 @@ Instead of passing an object to `filter` or `sort` properties, you can actually 
 
 - The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the query service defined in the query.js file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look inside query.js to see every methods that are already implemented and call them accordingly to your needs
 - The function passed to `sort` takes a file `a` and a file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering 
+
+
+---
+
+For ease of use, you can also pass a string as the `sort` property instead of an object or a function:
+
+| Strings | Meaning                                                                                             |
+| ------- | --------------------------------------------------------------------------------------------------- |
+| shuffle | Same as `{shuffle: true}` but shorter                                                               |
+| random  |                                                                                                     |
+| filter  | Do nothing (keep the sort of the `filter` instead of doing the default ascending sort on file name) |
+| none    |                                                                                                     |
+
 
 
 ##### Date Object

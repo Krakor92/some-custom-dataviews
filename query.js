@@ -22,7 +22,53 @@ class DataviewJS {
 		_warningMsg = "You forgot to call from or pages before calling this"
 		_delimiter = "=-------------------------------="
 
-		//distinct
+		_isObject = (o) => o !== null && typeof o === 'object' && Array.isArray(o) === false
+
+
+		/**
+		 * There is probably a better way (less space/time complexity) to do it but using a map was the easiest solution for me
+		 * @param  {...any} vargs 
+		 */
+		innerJoinPages = (...vargs) => {
+			const pagesEncounteredMap = new Map()
+
+			for (const pages of vargs) {
+				let values = pages
+
+				if (Array.isArray(pages.values)) {
+					// .values in this context is not the function of the Array prototype
+					// but the property of the DataArrayImpl proxy target returned by a dataview function
+					values = [...pages.values]
+				}
+
+				values.forEach(page => {
+					const path = page.file.link.path
+
+					if (!pagesEncounteredMap.has(path)) {
+						return pagesEncounteredMap.set(path, {
+							page,
+							count: 1
+						})
+					}
+					pagesEncounteredMap.set(path, {
+						page,
+						count: pagesEncounteredMap.get(path).count + 1
+					})
+				})
+			}
+
+			const result = []
+
+			for (const [_, value] of pagesEncounteredMap) {
+				if (value.count === vargs.length) {
+					result.push({...value.page})
+				}
+			}
+
+			return result
+		}
+
+		//distinct outer join
 		joinPages = (...vargs) => {
 			let joinedArray = []
 
@@ -72,7 +118,18 @@ class DataviewJS {
 		}
 
 		/**
-		 * @param {import("./view").Link} link 
+		 * 
+		 * @param {string} value - A value of format `[[File]]` is expected
+		 */
+		_convertStringToLink(value) {
+			if (!value) return null
+			const link = this.dv.parse(value);// transform [[value]] into a link
+
+			return link
+		}
+
+		/**
+		 * @param {import("./view").Link} link
 		 */
 		_convertLinkToTFile(link) {
 			if (!link.path) return null
@@ -105,16 +162,16 @@ class DataviewJS {
 
 		// Transfrom the proxy target to a regular array for easier manipulation later on
 		query() {
-			return [...this._pages];
+			return [...this._pages]
 		}
 
 		filter(cb) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
+				return null
 			}
 
-			this._pages = this._pages.filter(p => cb(p))
+			this._pages = this._pages.filter((p) => cb(p))
 			return this
 		}
 
@@ -125,45 +182,50 @@ class DataviewJS {
 		async asyncFilter(cb) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
+				return null
 			}
 
 			/* from: https://stackoverflow.com/a/63932267 */
 			const filterPromise = (values, fn) =>
-				Promise.all(values.map(fn)).then(booleans => values.filter((_, i) => booleans[i]));
+				Promise.all(values.map(fn)).then((booleans) =>
+					values.filter((_, i) => booleans[i])
+				)
 
-			this._pages = await filterPromise(this._pages, (async p => await cb(p)))
+			this._pages = await filterPromise(
+				this._pages,
+				async (p) => await cb(p)
+			)
 		}
 
 		/**
-		 * @param {string[] | string} tags 
+		 * @param {string[] | string} tags
 		 */
 		withTags(tags) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
+				return null
 			}
 			if (!tags) return null
 
 			if (Array.isArray(tags)) {
-				tags.forEach(t => this._withTag(t))
+				tags.forEach((t) => this._withTag(t))
 			} else {
 				this._withTag(tags)
 			}
-			
+
 			return this
 		}
-		
+
 		/**
-		 * @param {string} tag 
-		*/
+		 * @param {string} tag
+		 */
 		_withTag(tag) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
+				return null
 			}
-			
-			this._pages = this._pages.filter(p => {
+
+			this._pages = this._pages.filter((p) => {
 				return p.file.etags.includes(tag)
 			})
 		}
@@ -171,14 +233,16 @@ class DataviewJS {
 		withExistingField(name) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
+				return null
 			}
 
-			this._pages = this._pages.filter(p => {
+			this._pages = this._pages.filter((p) => {
 				return !!p[name]
 			})
 			return this
 		}
+
+		//#region Date fields
 
 		/**
 		 * Private function used inside with/outDateFieldOfValue
@@ -193,7 +257,7 @@ class DataviewJS {
 		_dateFieldOfValue({ name, value, compare = "eq", with_ = true }) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
+				return null
 			}
 
 			const dateValue = this.dv.date(value)
@@ -202,13 +266,20 @@ class DataviewJS {
 				return this
 			}
 
-			console.log(`Before filtering on ${name} with value '${with_ ? '' : '-'}${value}', we have a total number of ${this._pages.length} pages`)
-			this._pages = this._pages.filter(p => {
+			console.log(
+				`Before filtering on ${name} with value '${with_ ? "" : "-"
+				}${value}', we have a total number of ${this._pages.length
+				} pages`
+			)
+			this._pages = this._pages.filter((p) => {
 				if (!p[name]) return !with_
 
 				let pValue = null
-				if (typeof p[name] === "number") { // that means its just a year
-					pValue = this.dv.luxon.DateTime.fromObject({year: p[name]})
+				if (typeof p[name] === "number") {
+					// that means its just a year
+					pValue = this.dv.luxon.DateTime.fromObject({
+						year: p[name],
+					})
 				} else {
 					pValue = this.dv.date(p[name])
 				}
@@ -219,17 +290,48 @@ class DataviewJS {
 				}
 
 				switch (compare) {
-					case 'eq': return (pValue.ts === dateValue.ts) === with_
-					case 'lt': return (pValue < dateValue) === with_
-					case 'gt': return (pValue > dateValue) === with_
-					default: return !with_
+					case "eq":
+						return (pValue.ts === dateValue.ts) === with_
+					case "lt":
+						return pValue < dateValue === with_
+					case "gt":
+						return pValue > dateValue === with_
+					default:
+						return !with_
 				}
 			})
 
-			console.log(`After filtering on ${name} with value '${with_ ? '' : '-'}${value}', we have a total number of ${this._pages.length} pages`)
+			console.log(
+				`After filtering on ${name} with value '${with_ ? "" : "-"
+				}${value}', we have a total number of ${this._pages.length
+				} pages`
+			)
 			return this
 		}
 
+		/**
+		 * Only works with scalar type (string, boolean, number)
+		 * To work with file use withLinkFieldOfPath function
+		 * @param {object} _
+		 * @param {string} _.name
+		 * @param {string} _.value - Must be in a valid date fromat
+		 * @param {string} _.compare
+		 * @param {boolean} _.acceptArray
+		 * - If true, then it will return false if {{value}} is find inside the array {{name}}.
+		 * - If false, it will return true as soon as an array is encountered
+		 */
+		withDateFieldOfTime({ name, value, compare = "eq" }) {
+			return this._dateFieldOfValue({
+				name,
+				value,
+				compare,
+				with_: true,
+			})
+		}
+
+		//#endregion
+
+		//#region Scalar fields and File fields
 
 		/**
 		 * Only works with scalar type (string, boolean, number) and array of scalar type
@@ -244,30 +346,39 @@ class DataviewJS {
 		 * - If true, then it will return {{with_}} if {{value}} is find inside the array {{name}}.
 		 * - If false, it will return !{{with_}} as soon as an array is encountered
 		 */
-		_fieldOfValue({ name, value, with_ = true, fileField = false, acceptArray = true }) {
+		_fieldOfValue({
+			name,
+			value,
+			with_ = true,
+			fileField = false,
+			acceptArray = true,
+		}) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return this;
+				return this
 			}
-			
+
 			if (typeof value === "object") {
 				console.error(`This function only accept scalar value`)
-				return this;
+				return this
 			}
 
-			console.log(`Before filtering on ${name} with value '${with_ ? '' : '-'}${value}', we have a total number of ${this._pages.length} pages`)
-			this._pages = this._pages.filter(p => {
-
+			console.log(
+				`Before filtering on ${name} with value '${with_ ? "" : "-"
+				}${value}', we have a total number of ${this._pages.length
+				} pages`
+			)
+			this._pages = this._pages.filter((p) => {
 				const field = fileField ? p.file[name] : p[name]
 
 				if (!field) return !with_
 
 				if (Array.isArray(field)) {
-					if (!acceptArray) return !with_;
+					if (!acceptArray) return !with_
 
-					return field.some(el => {
+					return field.some((el) => {
 						return el === value
-					});
+					})
 				}
 
 				// Like a number or anything
@@ -278,67 +389,100 @@ class DataviewJS {
 				// console.log({value})
 
 				// Alors en fait j'ai besoin de faire un XNOR et c'est comme ça que je m'y prend
-				return (field.toLocaleLowerCase() === value.toLocaleLowerCase()) === with_
+				return (
+					(field.toLocaleLowerCase() ===
+						value.toLocaleLowerCase()) ===
+					with_
+				)
 			})
 
-			console.log(`After filtering on ${name} with value '${with_ ? '' : '-'}${value}', we have a total number of ${this._pages.length} pages`)
+			console.log(
+				`After filtering on ${name} with value '${with_ ? "" : "-"
+				}${value}', we have a total number of ${this._pages.length
+				} pages`
+			)
 			return this
 		}
 
 		/**
 		 * Only works with scalar type (string, boolean, number)
-		 * To work wih file use withLinkFieldOfPath function
+		 * To work with file use withLinkFieldOfPath function
 		 * @param {object} _
 		 * @param {string} _.name
 		 * @param {string} _.value
-		 * @param {boolean} _.acceptArray 
+		 * @param {boolean} _.acceptArray
 		 * - If true, then it will return true if {{value}} is find inside the array {{name}}.
 		 * - If false, it will return false as soon as an array is encountered
 		 */
 		withFieldOfValue({ name, value, acceptArray = true }) {
-			return this._fieldOfValue({ name, value, acceptArray, with_: true })
+			return this._fieldOfValue({
+				name,
+				value,
+				acceptArray,
+				with_: true,
+			})
 		}
 
 		withFileFieldOfValue({ name, value, acceptArray = true }) {
-			return this._fieldOfValue({ name, value, fileField: true, acceptArray, with_: true })
+			return this._fieldOfValue({
+				name,
+				value,
+				fileField: true,
+				acceptArray,
+				with_: true,
+			})
 		}
 
 		/**
 		 * Only works with scalar type (string, boolean, number)
-		 * To work wih file use withLinkFieldOfPath function
+		 * To work with file use withLinkFieldOfPath function
 		 * @param {object} _
 		 * @param {string} _.name
 		 * @param {string} _.value
-		 * @param {boolean} _.acceptArray 
+		 * @param {boolean} _.acceptArray
 		 * - If true, then it will return false if {{value}} is find inside the array {{name}}.
 		 * - If false, it will return true as soon as an array is encountered
 		 */
 		withoutFieldOfValue({ name, value, acceptArray = true }) {
-			return this._fieldOfValue({ name, value, acceptArray, with_: false })
+			return this._fieldOfValue({
+				name,
+				value,
+				acceptArray,
+				with_: false,
+			})
 		}
 
 		withoutFileFieldOfValue({ name, value, acceptArray = true }) {
-			return this._fieldOfValue({ name, value, fileField: true, acceptArray, with_: false })
+			return this._fieldOfValue({
+				name,
+				value,
+				fileField: true,
+				acceptArray,
+				with_: false,
+			})
 		}
 
+		//#endregion
 
-		/**
-		 * Only works with scalar type (string, boolean, number)
-		 * To work wih file use withLinkFieldOfPath function
-		 * @param {object} _
-		 * @param {string} _.name
-		 * @param {string} _.value - Must be in a valid date fromat
-		 * @param {string} _.compare
-		 * @param {boolean} _.acceptArray 
-		 * - If true, then it will return false if {{value}} is find inside the array {{name}}.
-		 * - If false, it will return true as soon as an array is encountered
-		 */
-		withDateFieldOfTime({ name, value, compare = 'eq' }) {
-			return this._dateFieldOfValue({ name, value, compare, with_: true })
+		//#region Link fields
+
+		withLinkField({field, value}) {
+			const link = this._convertStringToLink(value)
+			if (!this._isObject(link)) {
+				console.warn(`File named ${value} couldn't be parsed by dv.page. Make sure to wrap the value with [[]]`)
+				return this
+			}
+
+			const page = this.dv.page(link.path)
+			if (!page) {
+				return this.withLinkFieldOfPath({ field, path: link.path, acceptStringField: true })
+			}
+
+			return this.withLinkFieldOfPath({ field, path: page.file.path, acceptStringField: false })
 		}
 
 		/**
-		 * 
+		 *
 		 * @param {object} _
 		 * @param {string} _.field - Name of the field to query on
 		 * @param {string} _.path
@@ -347,38 +491,40 @@ class DataviewJS {
 		withLinkFieldOfPath({ field, path, acceptStringField = false }) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
-			}
-
-			if (typeof (path) !== "string") {
-				console.error(`${path} must a be a single string. Call withLinkFieldOfAnyPath instead`)
 				return null
 			}
 
-			this._pages = this._pages.filter(p => {
-				if (!p[field]) return false;
-				
+			if (typeof path !== "string") {
+				console.error(
+					`${path} must a be a single string. Call withLinkFieldOfAnyPath instead`
+				)
+				return null
+			}
+
+			this._pages = this._pages.filter((p) => {
+				if (!p[field]) return false
+
 				if (Array.isArray(p[field])) {
-					return p[field].some(l => {
-						if (typeof (l) !== "object") {
+					return p[field].some((l) => {
+						if (typeof l !== "object") {
 							return acceptStringField ? l === path : false
 						}
-						
+
 						return l.path === path
-					});
+					})
 				}
 
-				if (typeof (p[field]) !== "object") {
+				if (typeof p[field] !== "object") {
 					return acceptStringField ? p[field] === path : false
 				}
 
 				return p[field].path === path
-			});
+			})
 			return this
 		}
 
 		/**
-		 * 
+		 *
 		 * @param {object} _
 		 * @param {string} _.field - Name of the field to query on
 		 * @param {string} _.path - A regex
@@ -387,84 +533,186 @@ class DataviewJS {
 		withLinkFieldOfPathRegex({ field, path, acceptStringField = false }) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
+				return null
 			}
 
-			if (typeof path !== "string" && !path instanceof RegExp ) {
+			if (typeof path !== "string" && !path instanceof RegExp) {
 				console.error(`${path} must be a regex`)
 				return null
 			}
-			
+
 			const regex = path instanceof RegExp ? path : new RegExp(path)
 			if (!regex) {
 				console.error(`${path} must be a valid regex`)
 				return null
-			} 
+			}
 
-			this._pages = this._pages.filter(p => {
-				if (!p[field]) return false;
+			this._pages = this._pages.filter((p) => {
+				if (!p[field]) return false
 
 				if (Array.isArray(p[field])) {
-					return p[field].some(l => {
-						if (typeof (l) !== "object") {
+					return p[field].some((l) => {
+						if (typeof l !== "object") {
 							return acceptStringField ? !!l.match(regex) : false
 						}
 
 						return !!l.path.match(regex)
-					});
+					})
 				}
 
-				if (typeof (p[field]) !== "object") {
+				if (typeof p[field] !== "object") {
 					return acceptStringField ? !!p[field].match(regex) : false
 				}
 
 				const match = p[field].path.match(regex)
 				// console.log({match})
 				return !!match
-			});
+			})
 			return this
 		}
 
 		/**
-		 * 
+		 *
 		 * @param {object} _
 		 * @param {string} _.field - Name of the field to query on
 		 * @param {string[]} _.paths
-		 * 
+		 *
 		 * @param {boolean} _.and
 		 */
 		withLinkFieldOfAnyPath({ field, paths }) {
 			if (!this._pages) {
 				console.error(this._warningMsg)
-				return null;
-			}
-
-			if (!Array.isArray(paths)) {
-				console.error(`${paths} isn't an array. Call withLinkFieldOfPath instead`)
 				return null
 			}
 
-			this._pages = this._pages.filter(p => {
-				if (!p[field]) return false;
+			if (!Array.isArray(paths)) {
+				console.error(
+					`${paths} isn't an array. Call withLinkFieldOfPath instead`
+				)
+				return null
+			}
+
+			this._pages = this._pages.filter((p) => {
+				if (!p[field]) return false
 
 				if (Array.isArray(p[field])) {
 					for (const path of paths) {
-						if (p[field].some(l => {
-							if (typeof (l) !== "object") return false;
+						if (
+							p[field].some((l) => {
+								if (typeof l !== "object") return false
 
-							return l.path === path
-						})) {
+								return l.path === path
+							})
+						) {
 							return true
 						}
 					}
 					return false
 				}
 
-				return paths.some(path => path === p.type.path)
-			});
+				return paths.some((path) => path === p.type.path)
+			})
 			return this
-
 		}
+
+		//#endregion
+
+		//#region Bookmarks
+		_getBookmarkGroupFilesFromItems(items) {
+			return items?.reduce((acc, cur) => {
+				if (cur.type === "file") return [...acc, cur]
+				return acc
+			}, [])
+		}
+
+		/**
+		 * 
+		 * @param {*} items 
+		 * @param {string[]} groupPath 
+		 */
+		_getBookmarksGroupItemsFromPath(items, groupPath) {
+			const groupTitle = groupPath.shift()
+
+			if (!groupTitle) return items
+
+			for (const item of items) {
+				if (item.type === "group" && item.title === groupTitle) {
+					return this._getBookmarksGroupItemsFromPath(item.items, groupPath)
+				}
+			}
+
+			throw new Error(`The bookmark group named ${groupTitle} couldn't be find`)
+		}
+
+		/**
+		 * @param {string[]} _.groupPath
+		 */
+		_getBookmarkGroupFilesFromPath(items, groupPath = []) {
+			if (!groupPath || groupPath.length === 0) {
+				return this._getBookmarkGroupFilesFromItems(items)
+			}
+
+			try {
+				const nestedItems = this._getBookmarksGroupItemsFromPath(items, groupPath)
+				return this._getBookmarkGroupFilesFromItems(nestedItems)
+			} catch (err) {
+				console.error(err)
+			}
+		}
+
+		/**
+		 * When calling this function, this._pages must be a standard array
+		 */
+		_sortPagesByBookmarks(bookmarksFiles) {
+			const pages = [...this._pages]
+
+			/* https://stackoverflow.com/a/44063445 + https://gomakethings.com/how-to-get-the-index-of-an-object-in-an-array-with-vanilla-js/ */
+			pages.sort((a, b) => {
+				return bookmarksFiles.findIndex((spage) => spage.path === a.file.path)
+				- bookmarksFiles.findIndex((spage) => spage.path === b.file.path)
+			});
+
+			
+			this._pages = this.dv.array(pages)
+			console.log(this._pages)
+		}
+
+		/**
+		 * Filter pages to correspond to links found in the bookmark group passed as parameter (global "Bookmarks" by default)
+		 * @param {object} _
+		 * @param {string[]} _.groupPath - It isn't an array of groups but the hierarchy that let me access to a nested group.
+		 * Since a bookmark group can have a '/' inside (any character actually), I can't rely on a classic group.split('/')
+		 * @param {boolean} _.in_ - inside or outside
+		 */
+		_bookmarkGroup({ groupPath = [], in_ = true } = {}) {
+			const bookmarksItems = this.dv.app.internalPlugins.plugins.bookmarks.instance.items
+
+			const filteredBookmarksFiles = this._getBookmarkGroupFilesFromPath(bookmarksItems, groupPath)
+
+			const convertBookmarksFilesArrayToSetOfPaths = (items) => {
+				const set = new Set()
+				items.forEach(item => {
+					set.add(item.path)
+				})
+				return set
+			}
+			const setOfPaths = convertBookmarksFilesArrayToSetOfPaths(filteredBookmarksFiles)
+
+			this._pages = this._pages.filter((p) => setOfPaths.has(p.file.path) === in_)
+
+			return filteredBookmarksFiles
+		}
+
+		inBookmarkGroup(value) {
+			const bookmarksFiles = this._bookmarkGroup({ groupPath: value?.split('/') })
+			this._sortPagesByBookmarks(bookmarksFiles)
+			return this;
+		}
+		
+		notInBookmarkGroup(value) {
+			return this._bookmarkGroup({ groupPath: value?.split('/'), in_: false })
+		}
+		//#endregion
 
 
 		/**

@@ -719,6 +719,10 @@ scoreQueryFilterFunctionsMap.set('star', (qs, value) => {
 	return qs.withFileFieldOfValue({ name: "starred", value: !!value })
 })
 
+scoreQueryFilterFunctionsMap.set('bookmarks', (qs, value) => {
+	return qs.inBookmarkGroup(value)
+})
+
 /**
  * Needed to profit of Dataview implementation of backlinks
  * @warning This function mutate the filter argument
@@ -841,6 +845,23 @@ function valueToDateTime(value) {
 	return dv.date(value)
 }
 
+const _specialStringSort = (value, pages) => {
+	switch (value) {
+		case "shuffle":
+		case "random":
+			shuffleArray(pages)
+			return true
+
+		case "filter":
+		case "none":
+			return true
+	
+		default:
+			console.warn(`The '${value}' sort value isn't recognized by this view`);
+			return false
+	}
+}
+
 /**
  * @param {object} _ 
  * @param {object} _.sort
@@ -849,6 +870,10 @@ function valueToDateTime(value) {
 const sortPages = async ({ sort, pages }) => {
 	if (typeof sort === "function") {
 		return pages.sort(sort)
+	}
+
+	if (typeof sort === "string") {
+		return _specialStringSort(sort, pages)
 	}
 
 	if (sort?.manual) {
