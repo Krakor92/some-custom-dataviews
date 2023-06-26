@@ -2,6 +2,7 @@
  * @file Render a grid of music from your vault. Files can have an mp3 embedded, an url or both
  * @depends on DataviewJS
  * @author Krakor <krakor.faivre@gmail.com>
+ * @link https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox
  */
 
 //#region Debug
@@ -80,6 +81,29 @@ const hideEditButtonLogic = (editBlockNode) => {
 }
 
 const hideEditButton = () => {
+	/*
+	How is formatted a live preview callout?
+
+	...
+	<div class="cm-embed-block cm-callout" ...>
+		<div class="markdown-rendered ...">
+			<div data-callout="..." class="callout ...">
+				<div class="callout-title">...</div>
+				<div class="callout-content">
+					<div class="block-language-dataviewjs ...">
+						...
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	...
+
+
+	So there are 3 intermediary parent tags between the dvjs tag and the code-mirror callout one
+	The root node is just below the dvjs one
+
+	*/
 
 	// Hide the edit button so it doesn't trigger anymore in preview mode
 	const rootParentNode = rootNode.parentNode
@@ -88,7 +112,7 @@ const hideEditButton = () => {
 	// We haven't been loaded yet in the DOM, are we in a callout?
 	const calloutContentNode = rootParentNode?.parentNode
 	const calloutNode = calloutContentNode?.parentNode
-	
+
 	// Not a callout, we are inside a long file and got lazyloaded by Obsidian
 	if (!calloutNode) return false
 
@@ -101,6 +125,10 @@ const hideEditButton = () => {
 			|| e.target === rootNode
 			|| e.target === rootNode.querySelector(".buttons")
 			|| e.target === rootNode.querySelector(".grid")
+			|| e.target.tagName === "ARTICLE"
+			|| e.target.className === "file-link"
+			|| e.target.tagName === "INPUT"
+			|| e.target.className === "timecode" || e.target?.parentNode.className === "timecode"
 		) {
 			e.stopPropagation()
 		}
@@ -163,7 +191,7 @@ const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
 // Only used by the orphan system
 const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
 
-// How many more pages do you want to render each time you reach the end of the grid
+// How many pages do you want to render at first and each time you reach the end of the grid
 const NB_SCORE_BATCH_PER_PAGE = 20
 
 // It only works in the context of the page, if you have another page opened with another mp3 playing
@@ -263,6 +291,11 @@ const micOffIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${s
 const mic2Icon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12"></path><circle cx="17" cy="7" r="5"></circle></svg>`
 
 const venetianMaskIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V7h-5a8 8 0 0 0-5 2 8 8 0 0 0-5-2H2Z"></path><path d="M6 11c1.5 0 3 .5 3 2-2 0-3 0-3-2Z"></path><path d="M18 11c-1.5 0-3 .5-3 2 2 0 3 0 3-2Z"></path></svg>`
+
+const imageOffIcon = (size) => `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-image-off'><line x1='2' x2='22' y1='2' y2='22'/><path d='M10.41 10.41a2 2 0 1 1-2.83-2.83'/><line x1='13.5' x2='6' y1='13.5' y2='21'/><line x1='18' x2='21' y1='12' y2='15'/><path d='M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59'/><path d='M21 15V5a2 2 0 0 0-2-2H9'/></svg>`
+
+const newObsidianIcon = `<svg id="custom-logo" viewBox="0 0 512 512" fill="none" style="height:100%;width:100%;" version="1.1" sodipodi:docname="obsidian-icon (1).svg" inkscape:version="1.2.2 (732a01da63, 2022-12-09)" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"> <sodipodi:namedview id="namedview304" pagecolor="#505050" bordercolor="#eeeeee" borderopacity="1" inkscape:showpageshadow="0" inkscape:pageopacity="0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#505050" showgrid="false" inkscape:zoom="1.5898438" inkscape:cx="232.09828" inkscape:cy="252.54054" inkscape:window-width="1920" inkscape:window-height="1001" inkscape:window-x="-9" inkscape:window-y="509" inkscape:window-maximized="1" inkscape:current-layer="custom-logo" /> <defs id="defs279">  <radialGradient id="b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-48 -185 123 -32 179 429.7)">  <stop stop-color="#fff" stop-opacity=".4" id="stop230" />  <stop offset="1" stop-opacity=".1" id="stop232" />  </radialGradient>  <radialGradient id="c" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(41 -310 229 30 341.6 351.3)">  <stop stop-color="#fff" stop-opacity=".6" id="stop235" />  <stop offset="1" stop-color="#fff" stop-opacity=".1" id="stop237" />  </radialGradient>  <radialGradient id="d" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(57 -261 178 39 190.5 296.3)">  <stop stop-color="#fff" stop-opacity=".8" id="stop240" />  <stop offset="1" stop-color="#fff" stop-opacity=".4" id="stop242" />  </radialGradient>  <radialGradient id="e" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-79 -133 153 -90 321.4 464.2)">  <stop stop-color="#fff" stop-opacity=".3" id="stop245" />  <stop offset="1" stop-opacity=".3" id="stop247" />  </radialGradient>  <radialGradient id="f" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-29 136 -92 -20 300.7 149.9)">  <stop stop-color="#fff" stop-opacity="0" id="stop250" />  <stop offset="1" stop-color="#fff" stop-opacity=".2" id="stop252" />  </radialGradient>  <radialGradient id="g" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(72 73 -155 153 137.8 225.2)">  <stop stop-color="#fff" stop-opacity=".2" id="stop255" />  <stop offset="1" stop-color="#fff" stop-opacity=".4" id="stop257" />  </radialGradient>  <radialGradient id="h" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(20 118 -251 43 215.1 273.7)">  <stop stop-color="#fff" stop-opacity=".1" id="stop260" />  <stop offset="1" stop-color="#fff" stop-opacity=".3" id="stop262" />  </radialGradient>  <radialGradient id="i" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-162 -85 268 -510 374.4 371.7)">  <stop stop-color="#fff" stop-opacity=".2" id="stop265" />  <stop offset=".5" stop-color="#fff" stop-opacity=".2" id="stop267" />  <stop offset="1" stop-color="#fff" stop-opacity=".3" id="stop269" />  </radialGradient>  <filter id="a" x="80.1" y="37" width="351.1" height="443.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">  <feFlood flood-opacity="0" result="BackgroundImageFix" id="feFlood272" />  <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape" id="feBlend274" />  <feGaussianBlur stdDeviation="6.5" result="effect1_foregroundBlur_744_9191" id="feGaussianBlur276" />  </filter> </defs> <g filter="url(#a)" id="g284">  <path d="M359.2 437.5c-2.6 19-21.3 33.9-40 28.7-26.5-7.2-57.2-18.6-84.8-20.7l-42.4-3.2a28 28 0 0 1-18-8.3l-73-74.8a27.7 27.7 0 0 1-5.4-30.7s45-98.6 46.8-103.7c1.6-5.1 7.8-49.9 11.4-73.9a28 28 0 0 1 9-16.5L249 57.2a28 28 0 0 1 40.6 3.4l72.6 91.6a29.5 29.5 0 0 1 6.2 18.3c0 17.3 1.5 53 11.2 76a301.3 301.3 0 0 0 35.6 58.2 14 14 0 0 1 1 15.6c-6.3 10.7-18.9 31.3-36.6 57.6a142.2 142.2 0 0 0-20.5 59.6Z" fill="#000" fill-opacity=".3" id="path282" /> </g> <path id="arrow" d="M359.9 434.3c-2.6 19.1-21.3 34-40 28.9-26.4-7.3-57-18.7-84.7-20.8l-42.3-3.2a27.9 27.9 0 0 1-18-8.4l-73-75a27.9 27.9 0 0 1-5.4-31s45.1-99 46.8-104.2c1.7-5.1 7.8-50 11.4-74.2a28 28 0 0 1 9-16.6l86.2-77.5a28 28 0 0 1 40.6 3.5l72.5 92a29.7 29.7 0 0 1 6.2 18.3c0 17.4 1.5 53.2 11.1 76.3a303 303 0 0 0 35.6 58.5 14 14 0 0 1 1.1 15.7c-6.4 10.8-18.9 31.4-36.7 57.9a143.3 143.3 0 0 0-20.4 59.8Z" fill="#000000" /> <path d="m 182.7,436.4 c 33.9,-68.7 33,-118 18.5,-153 -13.2,-32.4 -37.9,-52.8 -57.3,-65.5 -0.4,1.9 -1,3.7 -1.8,5.4 10.70004,30.95555 -29.38413,67.55379 -45.6,101.5 -4.729101,10.47952 -2.545527,22.78694 5.5,31 l 72.9,75 c 2.3,2.3 5,4.2 7.8,5.6 z" fill="url(#b)" id="path287" sodipodi:nodetypes="cccccccc" /> <path d="M274.9 297c9.1.9 18 2.9 26.8 6.1 27.8 10.4 53.1 33.8 74 78.9 1.5-2.6 3-5.1 4.6-7.5a1222 1222 0 0 0 36.7-57.9 14 14 0 0 0-1-15.7 303 303 0 0 1-35.7-58.5c-9.6-23-11-58.9-11.1-76.3 0-6.6-2.1-13.1-6.2-18.3l-72.5-92-1.2-1.5c5.3 17.5 5 31.5 1.7 44.2-3 11.8-8.6 22.5-14.5 33.8-2 3.8-4 7.7-5.9 11.7a140 140 0 0 0-15.8 58c-1 24.2 3.9 54.5 20 95Z" fill="url(#c)" id="path289" /> <path d="M274.8 297c-16.1-40.5-21-70.8-20-95 1-24 8-42 15.8-58l6-11.7c5.8-11.3 11.3-22 14.4-33.8a78.5 78.5 0 0 0-1.7-44.2 28 28 0 0 0-39.4-2l-86.2 77.5a28 28 0 0 0-9 16.6L144.2 216c0 .7-.2 1.3-.3 2 19.4 12.6 44 33 57.3 65.3 2.6 6.4 4.8 13.1 6.4 20.4a200 200 0 0 1 67.2-6.8Z" fill="url(#d)" id="path291" /> <path d="M320 463.2c18.6 5.1 37.3-9.8 39.9-29a153 153 0 0 1 15.9-52.2c-21-45.1-46.3-68.5-74-78.9-29.5-11-61.6-7.3-94.2.6 7.3 33.1 3 76.4-24.8 132.7 3.1 1.6 6.6 2.5 10.1 2.8l43.9 3.3c23.8 1.7 59.3 14 83.2 20.7Z" fill="url(#e)" id="path293" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M255 200.5c-1.1 24 1.9 51.4 18 91.8l-5-.5c-14.5-42.1-17.7-63.7-16.6-88 1-24.3 8.9-43 16.7-59 2-4 6.6-11.5 8.6-15.3 5.8-11.3 9.7-17.2 13-27.5 4.8-14.4 3.8-21.2 3.2-28 3.7 24.5-10.4 45.8-21 67.5a145 145 0 0 0-17 59Z" fill="url(#f)" id="path295" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M206 285.1c2 4.4 3.7 8 4.9 13.5l-4.3 1c-1.7-6.4-3-11-5.5-16.5-14.6-34.3-38-52-57-65 23 12.4 46.7 31.9 61.9 67Z" fill="url(#g)" id="path297" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M211.1 303c8 37.5-1 85.2-27.5 131.6 22.2-46 33-90.1 24-131l3.5-.7Z" fill="url(#h)" id="path299" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M302.7 299.5c43.5 16.3 60.3 52 72.8 81.9-15.5-31.2-37-65.7-74.4-78.5-28.4-9.8-52.4-8.6-93.5.7l-.9-4c43.6-10 66.4-11.2 96 0Z" fill="url(#i)" id="path301" /> </svg>`
+
 //#endregion
 
 //#region Utils
@@ -391,6 +424,8 @@ const normalizeArrayOfObjectField = (field) => {
 
 //#region Rendering functions
 
+const imgBaseAttributes = `referrerpolicy="no-referrer"`
+
 const _resolveThumbnailStyle = (display) => {
 	const thumbnailY = parseFloat(display)
 	if (isNaN(thumbnailY)) return null
@@ -434,19 +469,19 @@ const _resolveThumbnailUrlFrom3rdParty = (url) => {
 	if (url.includes("youtu.be")) {
 		const startOfId = url.indexOf("youtu.be/") + 9
 		const id = url.substring(startOfId, startOfId + 11)
-		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
+		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" ${imgBaseAttributes}>`
 	}
 
 	if (url.includes("www.youtube.com")) {
 		const startOfId = url.indexOf("?v=") + 3
 		const id = url.substring(startOfId, startOfId + 11)
-		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" referrerpolicy="no-referrer">`
+		return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" ${imgBaseAttributes}>`
 	}
 
 	if (url.includes("dailymotion")) {
 		const startOfId = url.lastIndexOf('/') + 1
 		const id = url.substring(startOfId)
-		return `<img src="https://www.dailymotion.com/thumbnail/video/${id}" referrerpolicy="no-referrer">`
+		return `<img src="https://www.dailymotion.com/thumbnail/video/${id}" ${imgBaseAttributes}>`
 	}
 
 	return null
@@ -470,7 +505,7 @@ const renderThumbnailFromUrl = (url) => {
 		url = url.substring(startOfUrl, url.length - 1)
 	}
 
-	return `<img src="${url}" referrerpolicy="no-referrer" ${style ?? ""}>`
+	return `<img src="${url}" ${imgBaseAttributes} ${style ?? ""}>`
 }
 
 /**
@@ -506,7 +541,7 @@ const renderThumbnailFromVault = (thumb) => {
 
 	const style = _resolveVaultThumbnailStyle(thumb);
 
-	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}" ${style ?? ""}>`
+	return `<img src="${window.app.vault.adapter.getResourcePath(thumb.path)}" ${imgBaseAttributes} ${style ?? ""}>`
 }
 
 /**
@@ -547,10 +582,6 @@ const renderInternalFileAnchor = ({ path, name } = {}) => {
 	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${path}" data-href="${path}" href="${path}">${name}</a>`
 }
 
-const renderMediaTag = (media) => {
-	return `<a class="internal-link" target="_blank" rel="noopener" aria-label-position="top" aria-label="${media.path}" data-href="${media.path}" href="${media.path}">${mediaIcon}</a>`
-}
-
 const renderTimelineTrack = () => {
 	return `<input type="range" class="timeline" max="100" value="0">`
 }
@@ -560,7 +591,6 @@ const renderTimecode = (length) => {
 }
 
 /**
- * 
  * @param {object} _
  * @param {import('../view').ScoreFile)} _.page
  * @param {object} _.options
@@ -569,7 +599,7 @@ const _resolveArticleStyle = ({page, options}) => {
 	if (!options) return ""
 
 	const {align} = options
-	
+
 	let style = ""
 	style += align ? `align-self: ${align};` : ""
 	return style !== "" ? `style="${style}"` : ""
@@ -988,7 +1018,7 @@ const setButtonEvents = (pages) => {
 		else if (btn.className == "add-file") {
 			handleAddScoreButtonClick({ filters: { ...filter }, customFields: CUSTOM_FIELDS, os })
 		}
-		
+
 		e.stopPropagation() // used for preventing callout default behavior in live preview
 		btn.blur()
 	})));
@@ -1074,7 +1104,7 @@ const buildGridArticles = async (pages) => {
 		MP3 player bugs on Android unfortunately 😩 (at least on my personal android phone which runs on Android 13)
 		Some music might load and play entirely without any issue
 		while other have an incorrect duration in the timestamp and freeze at some point when played
-	
+
 		This strange behaviour simply make the mp3 players on Android unreliable thus unusable (since you can't predict it)
 		So i prefer disabling it completely rather than having a buggy feature
 		Remove the `os !== "Android"` if you want to try it on yours
@@ -1114,19 +1144,12 @@ logPerf("Building the string array of article")
 
 removeTagChildDVSpan(rootNode)
 
-let nbPageBatchesFetched = 1
-
-const buildGridDOM = (disableLazyRendering = false) => {
-	if (disableLazyRendering) {
-		return dv.el("div", gridArticles.join(""), { cls: "grid" })
-	}
-	return dv.el("div", gridArticles.slice(0, NB_SCORE_BATCH_PER_PAGE).join(""), { cls: "grid" })
-}
+let nbPageBatchesFetched = 0
 
 /** @type {HTMLDivElement} */
-const grid = buildGridDOM(DISABLE_LAZY_RENDERING)
+const grid = dv.el("div", null, { cls: "grid" })
 
-logPerf(`Converting the string array to DOM object`)
+insertNewChunkInGrid(DISABLE_LAZY_RENDERING)
 
 rootNode.appendChild(grid);
 // logPerf("Appending the first built grid to the DOM")
@@ -1249,20 +1272,37 @@ async function handleAddScoreButtonClick({ filters, customFields, os }) {
 //#endregion
 
 //#region Infinite scroll custom implementation (it doesn't handle freeing passed articles yet)
-const _insertNewChunkInGrid = () => {
-	const newChunk = gridArticles.slice(
+function handleImageFallback(img) {
+	if (!img) return
+
+	img.onerror = () => {
+		console.log({img})
+		img.onerror = null;
+		img.outerHTML = newObsidianIcon;
+		// img.outerHTML = imageOffIcon(24);
+	}
+}
+
+function insertNewChunkInGrid(loadAll = false) {
+	const newChunk = loadAll ? gridArticles.join("") : gridArticles.slice(
 		nbPageBatchesFetched * NB_SCORE_BATCH_PER_PAGE,
 		(nbPageBatchesFetched + 1) * NB_SCORE_BATCH_PER_PAGE).join("")
 
 	// Needed for metadata-menu to trigger and render extra buttons
 	const newChunkDOM = dv.el("div", newChunk)
-
 	const newChunkFragment = document.createDocumentFragment();
 	newChunkDOM.querySelectorAll("article").forEach(article => {
+			handleImageFallback(article.querySelector("img"))
 		newChunkFragment.appendChild(article)
 	})
 
 	grid.querySelector("span").insertBefore(newChunkFragment, grid.querySelector("span").lastChild);
+
+	if (nbPageBatchesFetched === 0) {
+		// Removes the last <p> tag added automatically by dataview on grid creation
+		grid.querySelector("span").lastChild.remove()
+	}
+
 	nbPageBatchesFetched++
 }
 
@@ -1273,7 +1313,7 @@ function handleLastScoreIntersection(entries) {
 
 			scoreObserver.unobserve(entries[0].target);
 
-			_insertNewChunkInGrid()
+			insertNewChunkInGrid()
 
 			logPerf("Appended new scores at the end of the grid")
 
@@ -1292,7 +1332,6 @@ function handleLastScoreIntersection(entries) {
 
 				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, { filters: {...filter}, customFields: CUSTOM_FIELDS, os })
 			}
-
 		}
 	});
 }
@@ -1331,7 +1370,7 @@ const changeSeek = (timeline, audio) => {
  * @param {HTMLButtonElement[]} _.playButtons
  */
 const playAudio = async ({ index, audios, playButtons }) => {
-	if (!ENABLE_SIMULTANEOUS_MP3_PLAYING && currentMP3Playing !== -1) {
+	if (!ENABLE_SIMULTANEOUS_MP3_PLAYING && currentMP3Playing !== -1 && currentMP3Playing !== index) {
 		pauseAudio({ audio: audios[currentMP3Playing], playButton: playButtons[currentMP3Playing] })
 	}
 
@@ -1397,7 +1436,7 @@ function manageMp3Scores(os) {
 	startTime = performance.now();
 
 	/** @type {HTMLAudioElement[]} */
-	const audios = grid.querySelectorAll(`audio`)
+	const audios = grid.querySelectorAll('audio')
 
 	/** @type {HTMLButtonElement[]} */
 	const playButtons = grid.querySelectorAll('.audio-player button')
@@ -1421,6 +1460,10 @@ function manageMp3Scores(os) {
 		}
 
 		audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
+
+		audios[i].onplay = playAudio.bind(this, { index: i, audios, playButtons })
+
+		audios[i].onpause = pauseAudio.bind(this, { playButton: playButtons[i], audio: audios[i] })
 
 		playButtons[i].onclick = handlePlayButtonClick.bind(this, { index: i, audios, playButtons })
 
@@ -1479,7 +1522,7 @@ function checkLoadedMp3Status(audio) {
 		return
 	}
 
-	// Modifying the src property after is has been loaded doesn't do anything (https://stackoverflow.com/a/68797896)
+	// Modifying the src property after it has been loaded doesn't do anything (https://stackoverflow.com/a/68797896)
 	audio.classList.add("corrupt")
 	timecodeTag.style.backgroundColor = "#F808"
 
