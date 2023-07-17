@@ -10,7 +10,7 @@ let inceptionTime = performance.now()
 let startTime = performance.now()
 let perfTime = null;
 
-// For demonstration purpose only
+// Debug settings
 const DISABLE_LAZY_RENDERING = false
 const DISABLE_LOG_PERF = true
 
@@ -37,7 +37,7 @@ const {
 	disable = "",
 
 	// voir ce post https://stackoverflow.com/a/18939803 pour avoir un système de debug robuste
-	debug = false
+	debug = false,
 	//@ts-ignore
 } = input || {};
 
@@ -129,6 +129,10 @@ const hideEditButton = () => {
 			|| e.target.className === "file-link"
 			|| e.target.tagName === "INPUT"
 			|| e.target.className === "timecode" || e.target?.parentNode.className === "timecode"
+
+			// We click on the player button
+			|| e.target.tagName === "path"
+			|| e.target.tagName === "svg"
 		) {
 			e.stopPropagation()
 		}
@@ -164,6 +168,14 @@ async function renderView() {
 
 console.log("=----------------------=")
 
+//#region Initialization
+const store = {
+	filter,
+	sort,
+	disable,
+	debug,
+}
+
 //#region Settings
 
 // The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
@@ -173,6 +185,7 @@ CUSTOM_FIELDS.set('release', 'date')
 CUSTOM_FIELDS.set('from', 'link')
 CUSTOM_FIELDS.set('in', 'link')
 CUSTOM_FIELDS.set('artist', 'link')
+store.customFields = CUSTOM_FIELDS
 
 // These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
 const TITLE_FIELD = "title"
@@ -838,6 +851,7 @@ if (!disableSet.has("query")) {
 }
 
 const pages = [...queriedPages, ...orphanPages]
+store.pages = pages
 
 //#endregion
 
@@ -970,54 +984,116 @@ const header = `<header>
 
 //#region Build buttons but don't apply events yet
 
-const clickPlaylistButton = (pages) => {
+// From left to right
+const buttonsOrder = [
+	'playlist',
+	disableSet.has("addscore") ? '' : 'add-file',
+]
 
-	const maxLengthAccepted = convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
-	const baseUrl = "https://www.youtube.com/watch_videos?video_ids="
-	const aggregatedYoutubeUrls = pages.reduce((prev, cur) => {
-		const { url, length, file } = cur;
+/** @type {Map<string, import('../view').ViewButton>} */
+const buttonsMap = new Map()
 
-		if (!url || !url.includes("youtu")) return prev;
+buttonsMap.set('playlist', {
+	icon: listMusicIcon,
+	event: () => {
+		const maxLengthAccepted = convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
+		const baseUrl = "https://www.youtube.com/watch_videos?video_ids="
+		const aggregatedYoutubeUrls = store.pages.reduce((prev, cur) => {
+			const { url, length, file } = cur;
 
-		let id = url.indexOf("watch_videos")
-		if (id !== -1) {
-			return prev + ',' + url.substring(id + 23)
-		}
+			if (!url || !url.includes("youtu")) return prev;
 
-		id = url.indexOf("?t=")
-		if (id !== -1) {
-			const t = url.substring(id + 3)
-			if (parseInt(t) > MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST) {
-				console.warn(`The 't' argument is too deep inside the video of url: '${url}' to be added in the playlist`)
+			let id = url.indexOf("watch_videos")
+			if (id !== -1) {
+				return prev + ',' + url.substring(id + 23)
+			}
+
+			id = url.indexOf("?t=")
+			if (id !== -1) {
+				const t = url.substring(id + 3)
+				if (parseInt(t) > MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST) {
+					console.warn(`The 't' argument is too deep inside the video of url: '${url}' to be added in the playlist`)
+					return prev
+				}
+			}
+
+			if (convertTimecodeToDuration(length) > maxLengthAccepted) {
+				console.warn(`${file.name} is too long to be added in the playlist`)
 				return prev
 			}
+
+			const sep = prev !== "" ? ',' : ''
+
+			return prev + sep + url.substring(17, 28)
+		}, "")
+
+		// Only open in default browser
+		// document.location = `https://www.youtube.com/watch_videos?video_ids=` + "qAzebXdaAKk,AxI0wTQLMLI"
+
+		// Does open in Obsidian browser (using Surfing plugin)
+		window.open(baseUrl + aggregatedYoutubeUrls)
+	}
+})
+
+buttonsMap.set('add-file', {
+	icon: filePlusIcon(20),
+	event: async () => {
+		const {filter: filters, os} = store
+		const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
+		const newFile = await createNewNote(newFilePath)
+
+		const mmenuPlugin = dv.app.plugins.plugins["metadata-menu"]?.api
+		if (!mmenuPlugin) {
+			return console.warn("You don't have metadata-menu enabled so you can't benefit from the smart tag completion")
 		}
 
-		if (convertTimecodeToDuration(length) > maxLengthAccepted) {
-			console.warn(`${file.name} is too long to be added in the playlist`)
-			return prev
+
+		await waitUntilFileMetadataAreLoaded(newFilePath)
+
+		// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
+		await delay(2500)
+
+		console.log("At last, we can start the autocomplete")
+		console.log({ filters, os })
+
+		const fieldsPayload = []
+
+		const textInClipboard = await navigator.clipboard.readText();
+
+		if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
+			fieldsPayload.push({
+				name: URL_FIELD,
+				payload: { value: textInClipboard }
+			})
 		}
 
-		const sep = prev !== "" ? ',' : ''
+		const current = dv.current()
 
-		return prev + sep + url.substring(17, 28)
-	}, "")
-
-	// Only open in default browser
-	// document.location = `https://www.youtube.com/watch_videos?video_ids=` + "qAzebXdaAKk,AxI0wTQLMLI"
-
-	// Does open in Obsidian browser (using Surfing plugin)
-	window.open(baseUrl + aggregatedYoutubeUrls)
-}
-
-const setButtonEvents = (pages) => {
-	rootNode.querySelectorAll('button').forEach(btn => btn.addEventListener('click', ((e) => {
-		if (btn.className == "playlist") {
-			clickPlaylistButton(pages)
+		if (filters?.current) {
+			fieldsPayload.push({
+				name: filters.current,
+				payload: { value: `[[${current.file.name}]]` }
+			})
+			delete filters.current
 		}
-		else if (btn.className == "add-file") {
-			handleAddScoreButtonClick({ filters: { ...filter }, customFields: CUSTOM_FIELDS, os })
+
+		for (const field in filters) {
+			console.log(`${field}: ${filters[field]}`)
+			if (CUSTOM_FIELDS.get(field) === "date") continue;
+			fieldsPayload.push({
+				name: field,
+				payload: { value: Array.isArray(filters[field]) ? `[${filters[field].join(", ")}]` : filters[field] }
+			})
 		}
+
+		await mmenuPlugin.postValues(newFile.path, fieldsPayload)
+	}
+})
+
+const setButtonEvents = () => {
+	rootNode.querySelectorAll('button').forEach(btn => btn.addEventListener('click', (async (e) => {
+		const button = buttonsMap.get(btn.className)
+		await button?.event()
 
 		e.stopPropagation() // used for preventing callout default behavior in live preview
 		btn.blur()
@@ -1025,13 +1101,23 @@ const setButtonEvents = (pages) => {
 }
 
 const buildButtons = () => {
-	const addFileButton = `<button class='add-file'>${filePlusIcon(20)}</button>`
+	let html = ''
 
-	return `<button class='playlist'>
-		${listMusicIcon}
-	</button>
-	${disableSet.has("addscore") ? "" : addFileButton}
-	`
+	for (const buttonId of buttonsOrder) {
+		if (!buttonId) continue
+
+		const button = buttonsMap.get(buttonId)
+		if (!button) {
+			console.warn(`${buttonId} isn't a valid view button`)
+			continue
+		}
+
+		html += `<button class='${buttonId}'>
+			${button.icon}
+		</button>
+		`
+	}
+	return html
 }
 
 if (!disableSet.has("buttons")) {
@@ -1043,6 +1129,7 @@ if (!disableSet.has("buttons")) {
 //#endregion
 
 const os = getOS();
+store.os = os
 //#region Build the grid of score for the DOM
 
 /**
@@ -1155,7 +1242,7 @@ rootNode.appendChild(grid);
 // logPerf("Appending the first built grid to the DOM")
 //#endregion
 
-setButtonEvents(pages)
+setButtonEvents()
 
 //#region Functions to handle the add class button
 /**
@@ -1211,63 +1298,6 @@ const waitUntilFileMetadataAreLoaded = async (pathToFile) => {
 			dvFile = null
 		}
 	}
-}
-
-/**
- * 
- * @param {object} _
- * @param {object[]} _.filters - Careful this function modify this variable on certain condition
- * @param {Map<string, string>} _.customFields
- * @param {string} _.os
- */
-async function handleAddScoreButtonClick({ filters, customFields, os }) {
-	const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
-	const newFile = await createNewNote(newFilePath)
-
-	const mmenuPlugin = dv.app.plugins.plugins["metadata-menu"]?.api
-	if (!mmenuPlugin) {
-		return console.warn("You don't have metadata-menu enabled so you can't benefit from the smart tag completion")
-	}
-
-	await waitUntilFileMetadataAreLoaded(newFilePath)
-
-	// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
-	await delay(2500)
-
-	console.log("At last, we can start the autocomplete")
-	console.log({filters, os})
-
-	const fieldsPayload = []
-
-	const textInClipboard = await navigator.clipboard.readText();
-
-	if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
-		fieldsPayload.push({
-			name: URL_FIELD,
-			payload: { value: textInClipboard }
-		})
-	}
-
-	const current = dv.current()
-
-	if (filters?.current) {
-		fieldsPayload.push({
-			name: filters.current,
-			payload: { value: `[[${current.file.name}]]` }
-		})
-		delete filters.current
-	}
-
-	for (const field in filters) {
-		console.log(`${field}: ${filters[field]}`)
-		if (customFields.get(field) === "date") continue;
-		fieldsPayload.push({
-			name: field,
-			payload: { value: Array.isArray(filters[field]) ? `[${filters[field].join(", ")}]` : filters[field] }
-		})
-	}
-
-	await mmenuPlugin.postValues(newFile.path, fieldsPayload)
 }
 //#endregion
 
@@ -1348,7 +1378,7 @@ if (lastScore && !DISABLE_LAZY_RENDERING) {
  * @param {HTMLInputElement} timeline
  * @param {HTMLAudioElement} audio
  */
-const changeTimelinePosition = (timeline, audio) => {
+const onChangeTimelinePosition = (timeline, audio) => {
 	const percentagePosition = (100 * audio.currentTime) / audio.duration;
 	timeline.style.backgroundSize = `${percentagePosition}% 100%`;
 	timeline.value = percentagePosition;
@@ -1358,7 +1388,7 @@ const changeTimelinePosition = (timeline, audio) => {
  * @param {HTMLInputElement} timeline
  * @param {HTMLAudioElement} audio
  */
-const changeSeek = (timeline, audio) => {
+const onChangeSeek = (timeline, audio) => {
 	const time = (timeline.value * audio.duration) / 100;
 	audio.currentTime = time;
 }
@@ -1369,9 +1399,9 @@ const changeSeek = (timeline, audio) => {
  * @param {HTMLAudioElement[]} _.audios
  * @param {HTMLButtonElement[]} _.playButtons
  */
-const playAudio = async ({ index, audios, playButtons }) => {
-	if (!ENABLE_SIMULTANEOUS_MP3_PLAYING && currentMP3Playing !== -1 && currentMP3Playing !== index) {
-		pauseAudio({ audio: audios[currentMP3Playing], playButton: playButtons[currentMP3Playing] })
+const onPlayAudio = async ({ index, audios, playButtons }) => {
+	if (!ENABLE_SIMULTANEOUS_MP3_PLAYING && store.currentMP3Playing !== -1 && store.currentMP3Playing !== index) {
+		audios[store.currentMP3Playing].pause()
 	}
 
 	// Handle volume
@@ -1383,11 +1413,11 @@ const playAudio = async ({ index, audios, playButtons }) => {
 		audios[index].volume = clamp(DEFAULT_VOLUME, 0.1, 1)
 	}
 
-	currentMP3Playing = index;
+	store.currentMP3Playing = index;
 
 	await reloadMp3IfCorrupt(audios[index])
 
-	audios[index].play()
+	await audios[index].play()
 	playButtons[index].innerHTML = pauseIcon;
 }
 
@@ -1397,8 +1427,11 @@ const playAudio = async ({ index, audios, playButtons }) => {
  * @param {HTMLButtonElement} _.playButton 
  * @param {HTMLAudioElement} _.audio 
  */
-const pauseAudio = ({ playButton, audio }) => {
-	currentMP3Playing = -1;
+const onPauseAudio = ({ playButton, audio, index }) => {
+	if (store.currentMP3Playing === index) {
+		// This if check is needed to not break the 'disable simultaneous playing of mp3' feature
+		store.currentMP3Playing = -1;
+	}
 	audio.pause();
 	playButton.innerHTML = playIcon;
 }
@@ -1407,17 +1440,16 @@ const pauseAudio = ({ playButton, audio }) => {
  * @param {object} _
  * @param {number} _.index
  * @param {HTMLAudioElement[]} _.audios
- * @param {HTMLButtonElement[]} _.playButtons 
  */
-const handlePlayButtonClick = async ({ index, audios, playButtons }) => {
+const onPlayButtonClick = async ({ index, audios }) => {
 	if (audios[index].paused) {
-		await playAudio({ playButtons, audios, index })
+		await audios[index].play()
 	} else {
-		pauseAudio({ playButton: playButtons[index], audio: audios[index] })
+		audios[index].pause()
 	}
 }
 
-let currentMP3Playing = -1;
+store.currentMP3Playing = -1;
 let numberOfAudiosLoaded = -1;
 
 manageMp3Scores(os)
@@ -1459,17 +1491,18 @@ function manageMp3Scores(os) {
 			audios[i].onloadedmetadata = checkLoadedMp3Status.bind(this, audios[i])
 		}
 
-		audios[i].ontimeupdate = changeTimelinePosition.bind(this, trackTimelines[i], audios[i])
+		audios[i].ontimeupdate = onChangeTimelinePosition.bind(this, trackTimelines[i], audios[i])
 
-		audios[i].onplay = playAudio.bind(this, { index: i, audios, playButtons })
+		audios[i].onplay = onPlayAudio.bind(this, { index: i, audios, playButtons })
 
-		audios[i].onpause = pauseAudio.bind(this, { playButton: playButtons[i], audio: audios[i] })
+		audios[i].onpause = onPauseAudio.bind(this, { playButton: playButtons[i], audio: audios[i], index: i })
 
-		playButtons[i].onclick = handlePlayButtonClick.bind(this, { index: i, audios, playButtons })
+		playButtons[i].onclick = onPlayButtonClick.bind(this, { index: i, audios })
 
-		trackTimelines[i].onchange = changeSeek.bind(this, trackTimelines[i], audios[i])
+		trackTimelines[i].onchange = onChangeSeek.bind(this, trackTimelines[i], audios[i])
 
 		audios[i].onended = async () => {
+			store.currentMP3Playing = -1
 			playButtons[i].innerHTML = playIcon
 			trackTimelines[i].value = 0
 			trackTimelines[i].style.backgroundSize = "0% 100%"
@@ -1490,7 +1523,7 @@ function manageMp3Scores(os) {
 			await reloadMp3IfCorrupt(audios[j])
 
 			playButtons[j].innerHTML = pauseIcon;
-			audios[j].play()
+			await audios[j].play()
 		};
 	}
 
