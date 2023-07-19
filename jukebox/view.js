@@ -1037,57 +1037,7 @@ buttonsMap.set('playlist', {
 
 buttonsMap.set('add-file', {
 	icon: filePlusIcon(20),
-	event: async () => {
-		const {filter: filters, os} = store
-		const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
-		const newFile = await createNewNote(newFilePath)
-
-		const mmenuPlugin = dv.app.plugins.plugins["metadata-menu"]?.api
-		if (!mmenuPlugin) {
-			return console.warn("You don't have metadata-menu enabled so you can't benefit from the smart tag completion")
-		}
-
-
-		await waitUntilFileMetadataAreLoaded(newFilePath)
-
-		// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
-		await delay(2500)
-
-		console.log("At last, we can start the autocomplete")
-		console.log({ filters, os })
-
-		const fieldsPayload = []
-
-		const textInClipboard = await navigator.clipboard.readText();
-
-		if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
-			fieldsPayload.push({
-				name: URL_FIELD,
-				payload: { value: textInClipboard }
-			})
-		}
-
-		const current = dv.current()
-
-		if (filters?.current) {
-			fieldsPayload.push({
-				name: filters.current,
-				payload: { value: `[[${current.file.name}]]` }
-			})
-			delete filters.current
-		}
-
-		for (const field in filters) {
-			console.log(`${field}: ${filters[field]}`)
-			if (CUSTOM_FIELDS.get(field) === "date") continue;
-			fieldsPayload.push({
-				name: field,
-				payload: { value: Array.isArray(filters[field]) ? `[${filters[field].join(", ")}]` : filters[field] }
-			})
-		}
-
-		await mmenuPlugin.postValues(newFile.path, fieldsPayload)
-	}
+	event: handleAddScoreFile
 })
 
 const setButtonEvents = () => {
@@ -1299,6 +1249,58 @@ const waitUntilFileMetadataAreLoaded = async (pathToFile) => {
 		}
 	}
 }
+
+async function handleAddScoreFile() {
+	const {filter: filters, os} = store
+	const newFilePath = `${DEFAULT_SCORE_DIRECTORY}/Untitled`
+	const newFile = await createNewNote(newFilePath)
+
+	const mmenuPlugin = dv.app.plugins.plugins["metadata-menu"]?.api
+	if (!mmenuPlugin) {
+		return console.warn("You don't have metadata-menu enabled so you can't benefit from the smart tag completion")
+	}
+
+
+	await waitUntilFileMetadataAreLoaded(newFilePath)
+
+	// If I don't wait long enough to apply auto-complete, it's sent into oblivion by some mystical magic I can't control.
+	await delay(2500)
+
+	console.log("At last, we can start the autocomplete")
+	console.log({ filters, os })
+
+	const fieldsPayload = []
+
+	const textInClipboard = await navigator.clipboard.readText();
+
+	if (httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
+		fieldsPayload.push({
+			name: URL_FIELD,
+			payload: { value: textInClipboard }
+		})
+	}
+
+	const current = dv.current()
+
+	if (filters?.current) {
+		fieldsPayload.push({
+			name: filters.current,
+			payload: { value: `[[${current.file.name}]]` }
+		})
+		delete filters.current
+	}
+
+	for (const field in filters) {
+		console.log(`${field}: ${filters[field]}`)
+		if (CUSTOM_FIELDS.get(field) === "date") continue;
+		fieldsPayload.push({
+			name: field,
+			payload: { value: Array.isArray(filters[field]) ? `[${filters[field].join(", ")}]` : filters[field] }
+		})
+	}
+
+	await mmenuPlugin.postValues(newFile.path, fieldsPayload)
+}
 //#endregion
 
 //#region Infinite scroll custom implementation (it doesn't handle freeing passed articles yet)
@@ -1326,11 +1328,16 @@ function insertNewChunkInGrid(loadAll = false) {
 		newChunkFragment.appendChild(article)
 	})
 
-	grid.querySelector("span").insertBefore(newChunkFragment, grid.querySelector("span").lastChild);
-
 	if (nbPageBatchesFetched === 0) {
 		// Removes the last <p> tag added automatically by dataview on grid creation
 		grid.querySelector("span").lastChild.remove()
+	}
+
+	const addScoreCellDOM = grid.querySelector("article.add-file")
+	if (addScoreCellDOM) {
+		grid.querySelector("span").insertBefore(newChunkFragment, grid.querySelector("span").lastChild);
+	} else {
+		grid.querySelector("span").appendChild(newChunkFragment);
 	}
 
 	nbPageBatchesFetched++
@@ -1360,7 +1367,7 @@ function handleLastScoreIntersection(entries) {
 				const addScoreCellDOM = dv.el("article", filePlusIcon(24), { cls: "add-file" })
 				grid.querySelector("span").appendChild(addScoreCellDOM);
 
-				addScoreCellDOM.onclick = handleAddScoreButtonClick.bind(this, { filters: {...filter}, customFields: CUSTOM_FIELDS, os })
+				addScoreCellDOM.onclick = handleAddScoreFile
 			}
 		}
 	});
