@@ -235,6 +235,13 @@ const THUMBNAIL_IS_URL_LINK = true
 /** @type {'auto', 'top', 'center', 'bottom'} */
 const ARTICLE_ALIGN = 'center'
 
+/**
+ * Note the following:
+ * - This layout require the article align variable specified above to be equal to 'center'
+ * - The computing involved in order to make the Masonry layout work add some lag to the rendering phase
+ */
+const MASONRY_LAYOUT = true
+
 // CustomJS related - look at the readme for more info
 const DEFAULT_CUSTOMJS_CLASS = "DataviewJS"
 const DEFAULT_CUSTOMJS_SUBCLASS = "Query"
@@ -1190,6 +1197,63 @@ insertNewChunkInGrid(DISABLE_LAZY_RENDERING)
 
 rootNode.appendChild(grid);
 // logPerf("Appending the first built grid to the DOM")
+//#endregion
+
+//#region Masonry layout
+if (MASONRY_LAYOUT) {
+	/**
+	 * Apply a masonry layout to a grid layout
+	 * @author vikramsoni
+	 * @link https://codepen.io/vikramsoni/pen/gOvOKNz
+	 */
+	class VGrid {
+		constructor(container) {
+			// you can pass DOM object or the css selector for the grid element
+			this.grid = container instanceof HTMLElement ? container : document.querySelector(container);
+
+			// get HTMLCollection of all direct children of the grid span created by dv.el()
+			this.gridItemCollection = this.grid.firstChild.children;
+		}
+
+		#resizeGridItem(item, gridRowGap) {
+			// the higher this value, the less the layout will look masonry
+			const rowBasicHeight = 0
+
+			// get grid's row gap properties, so that we could add it to children
+			// to add some extra space to avoid overflowing of content
+			const rowGap = gridRowGap ?? parseInt(window.getComputedStyle(this.grid).getPropertyValue('grid-row-gap'))
+
+			// clientHeight represents the height of the container with contents.
+			// we divide it by the rowGap to calculate how many rows it needs to span on
+			const rowSpan = Math.ceil((item.clientHeight + rowGap) / (rowBasicHeight + rowGap))
+
+			// set the span numRow css property for this child with the calculated one.
+			item.style.gridRowEnd = "span " + rowSpan
+		}
+
+		resizeAllGridItems() {
+			const gridRowGap = parseInt(window.getComputedStyle(this.grid).getPropertyValue('grid-row-gap'))
+
+			for (const item of this.gridItemCollection) {
+				this.#resizeGridItem(item, gridRowGap)
+			}
+		}
+	}
+
+	const vgrid = new VGrid(grid)
+	
+	const resizeObserver = new ResizeObserver(() => {
+		vgrid.resizeAllGridItems()
+	});
+
+	/**
+	 * Since I don't unobserve anywhere, it could give memory leaks...
+	 * According to this SO post: https://stackoverflow.com/questions/67581868/should-i-call-resizeobserver-unobserve-for-removed-elements
+	 * The garbage collector should disconnect it once the grid has been removed from the DOM :)
+	 */
+	resizeObserver.observe(vgrid.grid)
+}
+
 //#endregion
 
 setButtonEvents()

@@ -18,6 +18,8 @@ Here are the overarching principles of how this view works:
 	- On *Mobile*, it will open in the application if you have it installed (or open it in your default browser)
 - Files with a mp3 tag get rendered with a minimal player (simple play/pause button and a timeline)
 - Almost all visual elements can be disabled at the global level or per code block (check `disable` property)
+- This view has been built with scaling in mind: Cards are loaded per batch of 20 by default.
+  - To clarify, it's not the computation of the query that is lazy loaded but the rendering phase. This means it won't overload your CPU even if your query returns a thousand files
 - Since its a dvjs view and not a plugin, there aren't any settings page but there is a `Settings` region at the beginning of the `view.js`. Each option is capitalized and contains a comment above that explains what they do. You can change their value if needed (note: it will affect every occurence of this view obviously)
 
 
@@ -26,7 +28,7 @@ Here are the overarching principles of how this view works:
 
 This custom view both supports mp3 (also every other audio files supported by Obsidian) and url links inside your markdown music file but there are some caveats to have in mind:
 
-- The **mp3** user experience on **Android** is not reliable 😞:
+- The **mp3** user experience on *Android* is not reliable 😞:
 	- Some (if not most) mp3 don't load at all (i've opened an [issue on Obsidian Forums](https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684) about it):
 		- Those either play until the end but don't trigger the autoplay
 		- Or stop playing before the end
@@ -42,22 +44,25 @@ This custom view both supports mp3 (also every other audio files supported by Ob
 
 - If you are listening to mp3 files and modifiying your vault at the same time then you'll want to remove the **auto refresh of Dataview** or else it will reset the music everytime dv refreshes
 
--  If you have scrolled far enough inside a page and a lot of musics have been rendered (> 200) and you decide to switch to another tab, then you may experience a screen freeze for few seconds when switching back to this tab (This phenomenon was only really experienced on my Android phone)
+- If you have scrolled far enough inside a page and a lot of musics have been rendered (> 200) and you decide to **switch to another tab**, then you may experience a screen freeze for few seconds when switching back to this tab (This phenomenon was only really experienced on my Android phone)
+
+- It's an already known phenomenon (cf. https://forum.obsidian.md/t/audio-stops-while-scrolling/7966) but **scrolling too far deep** in the file where this view sit (or up depending on where the codeblock is positionned) will pause the music if it's played by an audio player inside a card. It's because of Obsidian's infinite scrolling strategy. Basicly, the output of this view is removed from the DOM when you've scrolled too far from it
+
 
 ## 🎯 Motivations
 
-The three main reasons why i've started building this are:
+The three main reasons why I've started building this are:
 
 - **I can't trust any music service** to store indefinitly all the music i listen (especially Youtube)
-	Why? Because it can decide for any specific reason (copyright claim most of the time) to delete any music i've added to one of my playlist without warning
+	Why? Because it can decide for any specific reason (copyright claim most of the time) to delete any music I've added to one of my playlist without warning
 
 - I want musics **to populate "playlists" on the fly** (based on custom metadata) without me having to manually insert them inside (while still having the ability to do so).
-	imho the traditional playlist system main flaw is exactly that: It doesn't take into account that the human brain connects musics together in a variety of ways and not just by artist, genre or album.
+	IMHO the traditional playlist system main flaw is exactly that: It doesn't take into account that the human brain connects musics together in a variety of ways and not just by artist, genre or album.
 
 - I want to put all the music I listen to **on a unified platform accessible on all my devices**.
 	It's not my top reason but i find it very cool to have soundcloud and other external service musics next to my regular youtube links
 
-N.B.
+*N.B.*
 If you do not recognize yourself in neither of these statements, then I am happy for you: Traditional music services answer your needs and that's great. You don't need to read any further. Have a good day!
 
 
@@ -552,7 +557,7 @@ As for the performance improvement promised by the [readme](https://github.com/b
 
 ## 🙏 Acknowledgements
 
-This dvjs view was made possible thanks to these different ressources:
+This dvjs view was made possible thanks to these different resources:
 
 ### Logic
 
@@ -567,6 +572,8 @@ This dvjs view was made possible thanks to these different ressources:
 ### Styling
 
 - [Kepano's minimal card](https://github.com/kepano/obsidian-minimal/blob/master/Minimal.css#L1647-L1889)
+
+- [vikramsoni's Masonry layout implementation](https://codepen.io/vikramsoni/pen/gOvOKNz)
 
 - [Dataview table as cards](https://obsidian-snippets.pages.dev/snippets/dataview-table-as-cards/)
 	- It isn't used in the final product but it helped me understand better the HTML DOM constructed by dataview's custom functions
