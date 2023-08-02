@@ -105,6 +105,7 @@ But i didn't know where to start because imo, a plugin would be too overkill for
 
 
 > [!NOTE] You won't find a tutorial on how to configure these optional plugins below
+> 
 > This section is just here to give some insights
 
 ---
@@ -131,9 +132,9 @@ So I have an architecture that looks like this:
 
 #### CustomJS
 
-In addition to this folder containing the two files, you need to copy the `query.js` at the root of this repository and place it in a folder in your vault (I recommend the same `_js` folder).
+In addition to this folder containing the two files, you need to copy the `Krakor.js` at the root of this repository and place it in a folder in your vault (I recommend the same `_js` folder).
 
-Then you'll have to go into the CustomJs plugin settings to designate the `query.js` file as compatible.
+Then you'll have to go into the CustomJs plugin settings to designate the `Krakor.js` file as compatible.
 
 
 So in the end, my complete architecture looks like this:
@@ -143,24 +144,10 @@ So in the end, my complete architecture looks like this:
 ┃  ┣━ 📂 jukebox
 ┃  ┃  ┣━ 📄 view.js
 ┃  ┃  ┗━ 📄 view.css
-┃  ┗━ 📄 query.js
+┃  ┗━ 📄 Krakor.js
 ┃
 ... (rest of my vault)
 ```
-
-
-> [!WARNING] If you had CustomJs already installed, read the following
-> *The following issues are very unlikely to happen but still*
-> 
-> If you already have a js file used with CustomJs and that it appeared it already define the class `DataviewJs` inside then you have two options:
-> 
-> - 1st option (The merge one) 👉 Instead of putting the query.js inside your vault, only copy the `Query = class` part and put it inside your already existing file defining the class CustomJs
-> 
-> Then if it appears (it's even less likely) that you already defined the Query class inside your file, then you'll need to modify the name of the one you've copied and set the `DEFAULT_QUERY_CLASS` inside `view.js` according to the name you gave it
-> 
->
-> - 2nd option (The lazy one) 👉 Simply rename the `DataviewJS` class to something that you've not defined in any of your custom js files then change the `DEFAULT_CUSTOMJS_CLASS` value to the name you've set
-
 
 #### Global Settings
 
@@ -183,7 +170,7 @@ this codeblock is gonna render a grid of all the files marked as music inside yo
 
 As stated earlier, each music file can have a variety of metadata. Right now, there are certain metadata that are handled specially by this view, others that you can define with a specific type and the rest that are considered as strings.
 
-> [!NOTE] If you have doubt on how to define your metadata, read the following...
+> [!NOTE] If you have doubt on how to define your metadata, read the following:
 > 
 >You can define your metadata either in the yaml frontmatter or as dataview inline fields in your file. This means that both `field: value` (inside frontmatter) and `field:: value` are perfectly valid and understood in the context of this view
 >
@@ -359,7 +346,7 @@ The pros of this method compared to the previous notation is that if at some poi
 
 Instead of passing an object to `filter` or `sort` properties, you can actually pass a javascript function and do the whole filtering/sorting yourself.
 
-- The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the query service defined in the query.js file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look inside query.js to see every methods that are already implemented and call them accordingly to your needs
+- The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the query service defined in the `Krakor.js` file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look inside `Krakor.js` to see every methods that are already implemented and call them accordingly to your needs
 - The function passed to `sort` takes a file `a` and a file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering 
 
 
@@ -386,7 +373,7 @@ For ease of use, you can also pass a string as the `sort` property instead of an
 
 ##### Disable values
 
-| Values | Description                                                                                                  |
+| Values                      | Description                                                                                                  |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | autoplay                    | The end of an mp3 will not launch the next one in the grid                                                   |
 | audioPlayer                 | Don't show audio player for files with audio field                                                           |
@@ -400,6 +387,7 @@ For ease of use, you can also pass a string as the `sort` property instead of an
 | border                      | Removes the borders around each cell in the grid                                                             |
 | query                       | Don't query pages at all (useful to show orphans only)                                                       |
 | orphans                     | Doesn't show orphans                                                                                         |
+| masonry                     | You'll have a default grid layout (with vertical empty space between your cards)                               |
 
 *Note: The values aren't sensitive to casse*
 

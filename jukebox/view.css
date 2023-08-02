@@ -8,7 +8,8 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 	/* --jukebox-cards-min-width: 160px; */
 	--jukebox-cards-max-width: 1fr;
 	--jukebox-cards-mobile-width: 120px;
-	--jukebox-cards-image-height: 140px;
+	--jukebox-cards-image-height: 200px;
+	--jukebox-cards-add-file-height: 140px;
 	--jukebox-cards-padding: 1.2em;
 	--jukebox-cards-image-fit: cover;
 	--jukebox-cards-background: transparent;
@@ -221,7 +222,7 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 }
 
 .jukebox article.add-file {
-	min-height: var(--jukebox-cards-image-height);
+	height: var(--jukebox-cards-add-file-height);
 	cursor: pointer;
 	padding: 0;
 	justify-content: center;
