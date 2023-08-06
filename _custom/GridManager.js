@@ -3,7 +3,7 @@ class GridManager {
      * @implements {import('../view').CollectionManager}
      */
     GridManager = class {
-        constructor({dv, logger, utils, icons, fileManager, disableSet, numberOfPagePerBatch = 20, extraLogicOnNewChunk = []}) {
+        constructor({dv, logger, utils, icons, fileManager, disableSet, numberOfElementsPerBatch = 20, extraLogicOnNewChunk = []}) {
             this.dv = dv
             this.logger = logger
             this.icons = icons
@@ -17,8 +17,8 @@ class GridManager {
             this.articles = []
 
             // 
-            this.nbPageBatchesFetched = 0
-            this.numberOfPagePerBatch = numberOfPagePerBatch
+            this.batchesFetchedCount = 0
+            this.numberOfElementsPerBatch = numberOfElementsPerBatch
 
             /** @type {Array<function(GridManager): Promise<void>>} */
             this.extraLogicOnNewChunk = extraLogicOnNewChunk
@@ -28,7 +28,7 @@ class GridManager {
 
         getParent = () => (this.grid)
 
-        everyArticlesHaveBeenInsertedInTheDOM = () => (this.nbPageBatchesFetched * this.numberOfPagePerBatch >= this.articles.length)
+        everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.articles.length)
 
         /**
          * Build the complete list of article that will eventually be rendered on the screen
@@ -62,7 +62,7 @@ class GridManager {
         }
 
         initInfiniteLoading() {
-            if (this.everyArticlesHaveBeenInsertedInTheDOM()) return
+            if (this.everyElementsHaveBeenInsertedInTheDOM()) return
 
             const lastArticle = this.grid?.querySelector('article:last-of-type');
             this.logger.log({lastArticle})
@@ -84,8 +84,8 @@ class GridManager {
 
         async insertNewChunkInGrid(loadAll = false) {
             const newChunk = loadAll ? this.articles.join("") : this.articles.slice(
-                this.nbPageBatchesFetched * this.numberOfPagePerBatch,
-                (this.nbPageBatchesFetched + 1) * this.numberOfPagePerBatch
+                this.batchesFetchedCount * this.numberOfElementsPerBatch,
+                (this.batchesFetchedCount + 1) * this.numberOfElementsPerBatch
             ).join("")
 
 
@@ -102,9 +102,9 @@ class GridManager {
             }
             this.grid.appendChild(newChunkFragment);
 
-            this.nbPageBatchesFetched++
+            this.batchesFetchedCount++
 
-            this.logger.log({nbPageBatchesFetched: this.nbPageBatchesFetched})
+            this.logger.log({batchesFetchedCount: this.batchesFetchedCount})
 
             for (const fn of this.extraLogicOnNewChunk) {
                 await fn(this)
@@ -122,8 +122,8 @@ class GridManager {
 
                     this.logger.logPerf("Appending new articles at the end of the grid")
 
-                    if (this.nbPageBatchesFetched * this.numberOfPagePerBatch < this.articles.length) {
-                        this.logger?.log(`Batch to load next: ${this.nbPageBatchesFetched * this.nbPageBatchesFetched}`)
+                    if (this.batchesFetchedCount * this.numberOfElementsPerBatch < this.articles.length) {
+                        this.logger?.log(`Batch to load next: ${this.batchesFetchedCount * this.batchesFetchedCount}`)
                         const lastArticle = this.grid.querySelector('article:last-of-type')
                         this.articleObserver.observe(lastArticle)
                     }

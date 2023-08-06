@@ -125,13 +125,23 @@ class Query {
         }
 
         /**
-         * @param {import("./view").Link} link
+         * @param {import("../view").Link} link
          */
         _convertLinkToTFile(link) {
             if (!link.path) return null
             return this.dv.page(link.path)
         }
+        
+        /**
+         * TODO: same as setLinks but parse the links using dv.parse before
+         * @param {string[] | string} links
+         */
+        // setLinksFromString(links) {
+        // }
 
+        /**
+         * @param {import("../view").Link | import("../view").Link[]} links
+         */
         setLinks(links) {
             if (!Array.isArray(links)) {
                 this._pages = [this._convertLinkToTFile(links)]

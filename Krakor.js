@@ -425,7 +425,7 @@ class Krakor {
      * @implements {import('./view').CollectionManager}
      */
     GridManager = class {
-        constructor({dv, logger, utils, icons, fileManager, disableSet, numberOfPagePerBatch = 20, extraLogicOnNewChunk = []}) {
+        constructor({dv, logger, utils, icons, fileManager, disableSet, numberOfElementsPerBatch = 20, extraLogicOnNewChunk = []}) {
             this.dv = dv
             this.logger = logger
             this.icons = icons
@@ -439,8 +439,8 @@ class Krakor {
             this.articles = []
 
             // 
-            this.nbPageBatchesFetched = 0
-            this.numberOfPagePerBatch = numberOfPagePerBatch
+            this.batchesFetchedCount = 0
+            this.numberOfElementsPerBatch = numberOfElementsPerBatch
 
             /** @type {Array<function(GridManager): Promise<void>>} */
             this.extraLogicOnNewChunk = extraLogicOnNewChunk
@@ -450,7 +450,7 @@ class Krakor {
 
         getParent = () => (this.grid)
 
-        everyArticlesHaveBeenInsertedInTheDOM = () => (this.nbPageBatchesFetched * this.numberOfPagePerBatch >= this.articles.length)
+        everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.articles.length)
 
         /**
          * Build the complete list of article that will eventually be rendered on the screen
@@ -484,7 +484,7 @@ class Krakor {
         }
 
         initInfiniteLoading() {
-            if (this.everyArticlesHaveBeenInsertedInTheDOM()) return
+            if (this.everyElementsHaveBeenInsertedInTheDOM()) return
 
             const lastArticle = this.grid?.querySelector('article:last-of-type');
             this.logger.log({lastArticle})
@@ -506,8 +506,8 @@ class Krakor {
 
         async insertNewChunkInGrid(loadAll = false) {
             const newChunk = loadAll ? this.articles.join("") : this.articles.slice(
-                this.nbPageBatchesFetched * this.numberOfPagePerBatch,
-                (this.nbPageBatchesFetched + 1) * this.numberOfPagePerBatch
+                this.batchesFetchedCount * this.numberOfElementsPerBatch,
+                (this.batchesFetchedCount + 1) * this.numberOfElementsPerBatch
             ).join("")
 
 
@@ -524,9 +524,9 @@ class Krakor {
             }
             this.grid.appendChild(newChunkFragment);
 
-            this.nbPageBatchesFetched++
+            this.batchesFetchedCount++
 
-            this.logger.log({nbPageBatchesFetched: this.nbPageBatchesFetched})
+            this.logger.log({batchesFetchedCount: this.batchesFetchedCount})
 
             for (const fn of this.extraLogicOnNewChunk) {
                 await fn(this)
@@ -544,8 +544,8 @@ class Krakor {
 
                     this.logger.logPerf("Appending new articles at the end of the grid")
 
-                    if (this.nbPageBatchesFetched * this.numberOfPagePerBatch < this.articles.length) {
-                        this.logger?.log(`Batch to load next: ${this.nbPageBatchesFetched * this.nbPageBatchesFetched}`)
+                    if (this.batchesFetchedCount * this.numberOfElementsPerBatch < this.articles.length) {
+                        this.logger?.log(`Batch to load next: ${this.batchesFetchedCount * this.batchesFetchedCount}`)
                         const lastArticle = this.grid.querySelector('article:last-of-type')
                         this.articleObserver.observe(lastArticle)
                     }
@@ -829,10 +829,10 @@ class Krakor {
      * It's build on top of the Query class
      * 
      * What's the difference between both?
-     * The Query class is an agnostic service that enhanced the default capability of dataview querying by adding new "primitive" to it.
+     * The Query class is an agnostic service that enhance the default capability of dataview querying by adding new "primitives" to it.
      * 
      * This class on the other hand leverage these functions to use them at a higher level of abstraction in the shape of a simple filter/sort object
-     * Also it doesn't store the state of the query unlike Query
+     * Also it doesn't store the state of the query unlike the Query object
      */
     PageManager = class {
         /**
@@ -867,84 +867,16 @@ class Krakor {
                 )
             }
 
-            this.customFields = customFields ?? new Map()
-            this.userFields = userFields ?? new Map()
             this.defaultFrom = defaultFrom
 
-            this.queryFilterFunctionsMap = new Map()
-            this.queryFilterFunctionsMap.set("manual", async (qs, value) => {
-                const links = this.dv.current()[value]
-                if (!links) {
-                    return console.warn(
-                        "You must set an inline field inside your file containing pages links for the manual filter to work"
-                    )
-                }
-                await qs.setLinks(links)
-            })
-            this.queryFilterFunctionsMap.set("current", (qs, value) => {
-                const currentPath = this.dv.current().file.path
-                qs.withLinkFieldOfPath({ field: value, path: currentPath })
-            })
-            this.queryFilterFunctionsMap.set("tags", (qs, value) => {
-                qs.withTags(value)
-            })
-            this.queryFilterFunctionsMap.set('bookmarks', (qs, value) => {
-                qs.inBookmarkGroup(value)
-            })
-
+            this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
+            this.customFields = customFields ?? new Map()
             this.customFields.forEach((value, key) =>
                 this.queryFilterFunctionsMap.set(key, value)
             )
 
-            this.queryDefaultFilterFunctionsMap = new Map()
-            this.queryDefaultFilterFunctionsMap.set("date", (qs, field, value) => {
-                this.logger?.log({ value })
-
-                if (!this.utils.isObject(value)) {
-                    return qs.withDateFieldOfTime({ name: field, value })
-                }
-
-                if (value.before)
-                    qs.withDateFieldOfTime({
-                        name: field,
-                        value: value.before,
-                        compare: "lt",
-                    })
-                if (value.after)
-                    qs.withDateFieldOfTime({
-                        name: field,
-                        value: value.after,
-                        compare: "gt",
-                    })
-            })
-
-            this.queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
-                const inLink = this.dv.parse(value) // transform [[value]] into a link
-                this.logger?.log({ inLink })
-
-                if (this.utils.isObject(inLink)) {
-                    const page = this.dv.page(inLink.path)
-                    if (!page) {
-                        qs.withLinkFieldOfPath({
-                            field,
-                            path: inLink.path,
-                            acceptStringField: true,
-                        })
-                    } else {
-                        qs.withLinkFieldOfPath({
-                            field,
-                            path: page.file.path,
-                            acceptStringField: false,
-                        })
-                    }
-                } else {
-                    qs.withLinkFieldOfPathRegex({
-                        field,
-                        path: value,
-                        acceptStringField: true,
-                    })
-                }
-            })
+            this.queryDefaultFilterFunctionsMap = this.#buildDefaultQueryFilterFunctionMap()
+            this.userFields = userFields ?? new Map()
 
             // Draft for special sort functions just like filters above
             this.querySortFunctionsMap = new Map()
@@ -994,6 +926,90 @@ class Krakor {
             })
         }
 
+        #buildQueryFilterFunctionMap = () => {
+            const queryFilterFunctionsMap = new Map()
+
+            queryFilterFunctionsMap.set("manual", async (qs, value) => {
+                const links = this.dv.current()[value]
+                if (!links) {
+                    return console.warn(
+                        "You must set an inline field inside your file containing pages links for the manual filter to work"
+                    )
+                }
+                await qs.setLinks(links)
+            })
+
+            queryFilterFunctionsMap.set("current", (qs, value) => {
+                const currentPath = this.dv.current().file.path
+                qs.withLinkFieldOfPath({ field: value, path: currentPath })
+            })
+
+            queryFilterFunctionsMap.set("tags", (qs, value) => {
+                qs.withTags(value)
+            })
+
+            queryFilterFunctionsMap.set('bookmarks', (qs, value) => {
+                qs.inBookmarkGroup(value)
+            })
+
+            return queryFilterFunctionsMap
+        }
+
+        #buildDefaultQueryFilterFunctionMap = () => {
+            const queryDefaultFilterFunctionsMap = new Map()
+            
+            queryDefaultFilterFunctionsMap.set("date", (qs, field, value) => {
+                this.logger?.log({ value })
+
+                if (!this.utils.isObject(value)) {
+                    return qs.withDateFieldOfTime({ name: field, value })
+                }
+
+                if (value.before)
+                    qs.withDateFieldOfTime({
+                        name: field,
+                        value: value.before,
+                        compare: "lt",
+                    })
+                if (value.after)
+                    qs.withDateFieldOfTime({
+                        name: field,
+                        value: value.after,
+                        compare: "gt",
+                    })
+            })
+
+            queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
+                const inLink = this.dv.parse(value) // transform [[value]] into a link
+                this.logger?.log({ inLink })
+
+                if (this.utils.isObject(inLink)) {
+                    const page = this.dv.page(inLink.path)
+                    if (!page) {
+                        qs.withLinkFieldOfPath({
+                            field,
+                            path: inLink.path,
+                            acceptStringField: true,
+                        })
+                    } else {
+                        qs.withLinkFieldOfPath({
+                            field,
+                            path: page.file.path,
+                            acceptStringField: false,
+                        })
+                    }
+                } else {
+                    qs.withLinkFieldOfPathRegex({
+                        field,
+                        path: value,
+                        acceptStringField: true,
+                    })
+                }
+            })
+
+            return queryDefaultFilterFunctionsMap
+        }
+
         /**
          * Needed to profit of Dataview's implementation of backlinks
          * @warning This function mutate the filter argument
@@ -1001,10 +1017,7 @@ class Krakor {
          * @param {object} filter
          */
         #updateFromStringBasedOnSpecialFilters = (from, filter) => {
-            if (!filter) return from
-
-            this.logger?.log({ from, filter })
-            if (filter.current === "backlinks") {
+            if (filter?.current === "backlinks") {
                 delete filter.current
                 return (from += ` AND [[${this.dv.current().file.path}]]`)
             }
@@ -1013,59 +1026,104 @@ class Krakor {
         }
 
         /**
+         * @param {object} _
+         * @param {string} _.filter - 
+         * @param {Query} _.qs
+         */
+        #runStringFilterQuery = ({filter, qs}) => {
+            switch (filter) {
+                case "backlinks":
+                    qs.from(`${this.defaultFrom} AND [[${this.dv.current().file.path}]]`)
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        /**
+         * @param {object} _
+         * @param {string[]} _.filter
+         * @param {Query} _.qs
+         */
+        #runArrayFilterQuery = async ({filter, qs}) => {
+            // TODO: Add support for array of link representation
+            // await qs.setLinksFromString(filter)
+        }
+
+        /**
+         * @param {object} _
+         * @param {object} _.filter
+         * @param {Query} _.qs
+         */
+        #runObjectFilterQuery = async ({filter, qs}) => {
+            let fromQuery = filter?.from ?? this.defaultFrom
+            fromQuery = this.#updateFromStringBasedOnSpecialFilters(
+                fromQuery,
+                filter
+            )
+
+            qs.from(fromQuery)
+
+            for (const prop in filter) {
+                this.logger?.log(`filter.${prop} = ${filter[prop]}`)
+
+                if (prop === "from") continue
+
+                // The property has a special meaning. It's either a default property (manual, tags, ...) or a custom one (mp3Only, voice, ...)
+                let propFilterFunc = this.queryFilterFunctionsMap.get(prop)
+                if (propFilterFunc) {
+                    // The queryService and the value (note that the value isn't necessarly used by the func)
+                    await propFilterFunc(qs, filter[prop])
+                    continue
+                }
+
+                // The property is in the userFields so it has a special meaning (example: link, date, ...)
+                propFilterFunc = this.queryDefaultFilterFunctionsMap.get(this.userFields.get(prop))
+                this.logger?.log({ propFilterFunc })
+                if (propFilterFunc) {
+                    // The queryService, the field name and the value
+                    await propFilterFunc(qs, prop, filter[prop])
+                    continue
+                }
+
+                // Default filter
+                if (Array.isArray(filter[prop])) {
+                    filter[prop].forEach((value) => {
+                        qs.withFieldOfValue({ name: prop, value })
+                    })
+                } else if (this.utils.isObject(filter[prop])) {
+                    if (filter[prop].not) {
+                        qs.withoutFieldOfValue({
+                            name: prop,
+                            value: filter[prop].not,
+                        })
+                    }
+                } else {
+                    qs.withFieldOfValue({
+                        name: prop,
+                        value: filter[prop],
+                    })
+                }
+            }
+        }
+
+        /**
          * Build and query the pages from your vault based on some filters
          *
          * @param {object} _
-         * @param {object} [_.filter]
+         * @param {*} [_.filter]
          * @param {Query} _.qs
          * @returns {import('./view').UserFile[]}
          */
         buildAndRunFileQuery = async ({ filter, qs }) => {
             if (typeof filter === "function") {
                 await filter(qs)
+            } else if (typeof filter === "string") {
+                this.#runStringFilterQuery({filter, qs})
+            } else if (Array.isArray(filter)) {
+                this.#runArrayFilterQuery({filter, qs})
             } else {
-                let fromQuery = filter?.from ?? this.defaultFrom
-                fromQuery = this.#updateFromStringBasedOnSpecialFilters(
-                    fromQuery,
-                    filter
-                )
-
-                qs.from(fromQuery)
-
-                for (const prop in filter) {
-                    this.logger?.log(`filter.${prop} = ${filter[prop]}`)
-
-                    if (prop === "from") continue
-
-                    // The property has a special meaning. It's either a default property (manual, tags, ...) or a custom one (mp3Only, voice, ...)
-                    let propFilterFunc = this.queryFilterFunctionsMap.get(prop)
-                    if (propFilterFunc) {
-                        // The queryService and the value (note that the value isn't necessarly used by the func)
-                        await propFilterFunc(qs, filter[prop])
-                        continue
-                    }
-
-                    // The property is in the userFields so it has a special meaning (example: link, date, ...)
-                    propFilterFunc = this.queryDefaultFilterFunctionsMap.get(this.userFields.get(prop))
-                    this.logger?.log({ propFilterFunc })
-                    if (propFilterFunc) {
-                        // The queryService, the field name and the value
-                        await propFilterFunc(qs, prop, filter[prop])
-                        continue
-                    }
-
-                    // Default filter
-                    if (Array.isArray(filter[prop])) {
-                        filter[prop].forEach((value) => {
-                            qs.withFieldOfValue({ name: prop, value })
-                        })
-                    } else {
-                        qs.withFieldOfValue({
-                            name: prop,
-                            value: filter[prop],
-                        })
-                    }
-                }
+                await this.#runObjectFilterQuery({filter, qs})
             }
 
             this.logger?.logPerf("Dataview js query: filtering")
@@ -1306,7 +1364,17 @@ class Krakor {
             if (!link.path) return null
             return this.dv.page(link.path)
         }
+        
+        /**
+         * TODO: same as setLinks but parse the links using dv.parse before
+         * @param {string[] | string} links
+         */
+        // setLinksFromString(links) {
+        // }
 
+        /**
+         * @param {import('./view').Link | import('./view').Link[]} links
+         */
         setLinks(links) {
             if (!Array.isArray(links)) {
                 this._pages = [this._convertLinkToTFile(links)]
@@ -2303,6 +2371,7 @@ class Krakor {
      * It does the following:
      *  - Lazy load the view until its visible in the viewport
      *  - Free most of the view memory usage at page/popover closing (since Dataview doesn't do it)
+     *  - Prevent the editing mechanism that occur when clicking inside the view within a callout in Live Preview
      */
     ViewManager = class {
         /**
@@ -2327,9 +2396,9 @@ class Krakor {
                 }
             })
             utils.removeTagChildDVSpan(this.rootNode)
+            this.managedToHideEditButton = this.#hideEditButton()
 
             this.observer = new IntersectionObserver(this.handleViewIntersection.bind(this))
-            this.managedToHideEditButton = this.#hideEditButton()
 
             this.leaf = null
 
@@ -2440,11 +2509,10 @@ class Krakor {
                 ?.classList.contains("popover")
         }
 
-
         #amiInCallout() {
             return !!this.utils.getParentWithClass(this.rootNode.parentNode, "callout-content")
         }
-        
+
         /**
          * It will only return true if the container closest parent is a callout
         */
@@ -2498,6 +2566,9 @@ class Krakor {
             return false
         }
 
+        /**
+         * Hide the edit button so it doesn't trigger anymore in preview mode
+         */
         #hideEditButton = () => {
             /*
             How is formatted a live preview callout?
@@ -2520,12 +2591,11 @@ class Krakor {
             The root node is just below the dvjs one
             */
 
-            // Hide the edit button so it doesn't trigger anymore in preview mode
-            const rootParentNode = this.rootNode.parentNode
-            if (this.#hideEditButtonLogic(rootParentNode?.nextSibling)) return true
+            const container = this.rootNode.parentNode
+            if (this.#hideEditButtonLogic(container?.nextSibling)) return true
 
             // We haven't been loaded yet in the DOM, are we in a callout?
-            const calloutContentNode = rootParentNode?.parentNode
+            const calloutContentNode = container?.parentNode
             const calloutNode = calloutContentNode?.parentNode
 
             // Not a callout, we are inside a long file and got lazyloaded by Obsidian

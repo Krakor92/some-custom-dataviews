@@ -69,7 +69,7 @@ const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
 const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
 
 // How many pages do you want to render at first and each time you reach the end of the grid
-const NB_SCORE_BATCH_PER_PAGE = 20
+const NUMBER_OF_SCORES_PER_BATCH = 20
 
 // It only works in the context of the page, if you have another page opened with another mp3 playing
 // then it won't stop it if you play one in the current page
@@ -207,47 +207,6 @@ customFields.set('mp3Only', async (qs) => {
 	await qs.asyncFilter(async (page) => await utils.linkExists(page[AUDIO_FILE_FIELD]))
 })
 
-/**
- * Pour l'instant, {{voice}} ne peut être qu'un objet de type
- * {yes: true, chorus: true, few: false, no: true}
- */
-customFields.set('voice', (qs, value) => {
-	/**
-	 * CAS 1
-	 * En gros si sur les valeurs données, il y a ne serait ce que un false, alors toutes les autres valeurs seront affiché
-	 * Donc {yes: false} équivaut à {yes: false, chorus: true, few: true, no: true}
-	 * 
-	 * CAS 2
-	 * Au contraire, s'il n'y a qu'un true, c'est l'inverse:
-	 * {yes: true} équivaut à {yes: true, chorus: false, few: false, no: false}
-	 * 
-	 */
-
-	let defaultValue = Object.values(value).some(v => !v);
-
-	let voiceFilters = {
-		yes: defaultValue,
-		chorus: defaultValue,
-		few: defaultValue,
-		no: defaultValue,
-		...value
-	}
-
-	if (defaultValue) {
-		for (const [key, value] of Object.entries(voiceFilters)) {
-			if (!value) {
-				qs.withoutFieldOfValue({ name: "voice", value: key })
-			}
-		}
-	} else {
-		for (const [key, value] of Object.entries(voiceFilters)) {
-			if (value) {
-				qs.withFieldOfValue({ name: "voice", value: key })
-			}
-		}
-	}
-})
-
 const qs = new customJS[DEFAULT_CUSTOMJS_CLASS].Query({ dv })
 
 const orphanage = new customJS[DEFAULT_CUSTOMJS_CLASS].Orphanage({
@@ -257,10 +216,9 @@ const orphanage = new customJS[DEFAULT_CUSTOMJS_CLASS].Orphanage({
 })
 const orphanPages = vm.disableSet.has("orphans") ? [] : orphanage.raise(dv.current().orphans)
 
-const pageManager =  new customJS[DEFAULT_CUSTOMJS_CLASS].PageManager({
+const pageManager = new customJS[DEFAULT_CUSTOMJS_CLASS].PageManager({
     dv, logger, utils, orphanage,
     customFields,
-	defaultFrom: DEFAULT_FROM,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
 })
@@ -347,16 +305,16 @@ const audioManager = new customJS[DEFAULT_CUSTOMJS_CLASS].AudioManager({
 
 const gridManager = new customJS[DEFAULT_CUSTOMJS_CLASS].GridManager({
     dv, logger, icons, utils, fileManager,
-	numberOfPagePerBatch: NB_SCORE_BATCH_PER_PAGE,
+	numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
     disableSet: vm.disableSet,
     extraLogicOnNewChunk: [
         (gm) => {
             audioManager.manageMp3Scores(gm)
         },
         (gm) => {
-            if (!gm.everyArticlesHaveBeenInsertedInTheDOM()) return
+            if (!gm.everyElementsHaveBeenInsertedInTheDOM()) return
 
-            gm.logger.log(`Finish to load: ${gm.nbPageBatchesFetched * gm.numberOfPagePerBatch}`)
+            gm.logger.log(`Finish to load: ${gm.batchesFetchedCount * gm.numberOfElementsPerBatch}`)
             if (gm.disableSet.has("addscore") || gm.disableSet.has("addscorecell")) return;
 
             const addScoreCellDOM = gm.dv.el("article", gm.icons.filePlusIcon(24), { cls: "add-file" })

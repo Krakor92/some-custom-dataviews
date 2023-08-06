@@ -3,10 +3,10 @@ class PageManager {
      * It's build on top of the Query class
      * 
      * What's the difference between both?
-     * The Query class is an agnostic service that enhanced the default capability of dataview querying by adding new "primitive" to it.
+     * The Query class is an agnostic service that enhance the default capability of dataview querying by adding new "primitives" to it.
      * 
      * This class on the other hand leverage these functions to use them at a higher level of abstraction in the shape of a simple filter/sort object
-     * Also it doesn't store the state of the query unlike Query
+     * Also it doesn't store the state of the query unlike the Query object
      */
     PageManager = class {
         /**
@@ -41,84 +41,16 @@ class PageManager {
                 )
             }
 
-            this.customFields = customFields ?? new Map()
-            this.userFields = userFields ?? new Map()
             this.defaultFrom = defaultFrom
 
-            this.queryFilterFunctionsMap = new Map()
-            this.queryFilterFunctionsMap.set("manual", async (qs, value) => {
-                const links = this.dv.current()[value]
-                if (!links) {
-                    return console.warn(
-                        "You must set an inline field inside your file containing pages links for the manual filter to work"
-                    )
-                }
-                await qs.setLinks(links)
-            })
-            this.queryFilterFunctionsMap.set("current", (qs, value) => {
-                const currentPath = this.dv.current().file.path
-                qs.withLinkFieldOfPath({ field: value, path: currentPath })
-            })
-            this.queryFilterFunctionsMap.set("tags", (qs, value) => {
-                qs.withTags(value)
-            })
-            this.queryFilterFunctionsMap.set('bookmarks', (qs, value) => {
-                qs.inBookmarkGroup(value)
-            })
-
+            this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
+            this.customFields = customFields ?? new Map()
             this.customFields.forEach((value, key) =>
                 this.queryFilterFunctionsMap.set(key, value)
             )
 
-            this.queryDefaultFilterFunctionsMap = new Map()
-            this.queryDefaultFilterFunctionsMap.set("date", (qs, field, value) => {
-                this.logger?.log({ value })
-
-                if (!this.utils.isObject(value)) {
-                    return qs.withDateFieldOfTime({ name: field, value })
-                }
-
-                if (value.before)
-                    qs.withDateFieldOfTime({
-                        name: field,
-                        value: value.before,
-                        compare: "lt",
-                    })
-                if (value.after)
-                    qs.withDateFieldOfTime({
-                        name: field,
-                        value: value.after,
-                        compare: "gt",
-                    })
-            })
-
-            this.queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
-                const inLink = this.dv.parse(value) // transform [[value]] into a link
-                this.logger?.log({ inLink })
-
-                if (this.utils.isObject(inLink)) {
-                    const page = this.dv.page(inLink.path)
-                    if (!page) {
-                        qs.withLinkFieldOfPath({
-                            field,
-                            path: inLink.path,
-                            acceptStringField: true,
-                        })
-                    } else {
-                        qs.withLinkFieldOfPath({
-                            field,
-                            path: page.file.path,
-                            acceptStringField: false,
-                        })
-                    }
-                } else {
-                    qs.withLinkFieldOfPathRegex({
-                        field,
-                        path: value,
-                        acceptStringField: true,
-                    })
-                }
-            })
+            this.queryDefaultFilterFunctionsMap = this.#buildDefaultQueryFilterFunctionMap()
+            this.userFields = userFields ?? new Map()
 
             // Draft for special sort functions just like filters above
             this.querySortFunctionsMap = new Map()
@@ -168,6 +100,90 @@ class PageManager {
             })
         }
 
+        #buildQueryFilterFunctionMap = () => {
+            const queryFilterFunctionsMap = new Map()
+
+            queryFilterFunctionsMap.set("manual", async (qs, value) => {
+                const links = this.dv.current()[value]
+                if (!links) {
+                    return console.warn(
+                        "You must set an inline field inside your file containing pages links for the manual filter to work"
+                    )
+                }
+                await qs.setLinks(links)
+            })
+
+            queryFilterFunctionsMap.set("current", (qs, value) => {
+                const currentPath = this.dv.current().file.path
+                qs.withLinkFieldOfPath({ field: value, path: currentPath })
+            })
+
+            queryFilterFunctionsMap.set("tags", (qs, value) => {
+                qs.withTags(value)
+            })
+
+            queryFilterFunctionsMap.set('bookmarks', (qs, value) => {
+                qs.inBookmarkGroup(value)
+            })
+
+            return queryFilterFunctionsMap
+        }
+
+        #buildDefaultQueryFilterFunctionMap = () => {
+            const queryDefaultFilterFunctionsMap = new Map()
+            
+            queryDefaultFilterFunctionsMap.set("date", (qs, field, value) => {
+                this.logger?.log({ value })
+
+                if (!this.utils.isObject(value)) {
+                    return qs.withDateFieldOfTime({ name: field, value })
+                }
+
+                if (value.before)
+                    qs.withDateFieldOfTime({
+                        name: field,
+                        value: value.before,
+                        compare: "lt",
+                    })
+                if (value.after)
+                    qs.withDateFieldOfTime({
+                        name: field,
+                        value: value.after,
+                        compare: "gt",
+                    })
+            })
+
+            queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
+                const inLink = this.dv.parse(value) // transform [[value]] into a link
+                this.logger?.log({ inLink })
+
+                if (this.utils.isObject(inLink)) {
+                    const page = this.dv.page(inLink.path)
+                    if (!page) {
+                        qs.withLinkFieldOfPath({
+                            field,
+                            path: inLink.path,
+                            acceptStringField: true,
+                        })
+                    } else {
+                        qs.withLinkFieldOfPath({
+                            field,
+                            path: page.file.path,
+                            acceptStringField: false,
+                        })
+                    }
+                } else {
+                    qs.withLinkFieldOfPathRegex({
+                        field,
+                        path: value,
+                        acceptStringField: true,
+                    })
+                }
+            })
+
+            return queryDefaultFilterFunctionsMap
+        }
+
         /**
          * Needed to profit of Dataview's implementation of backlinks
          * @warning This function mutate the filter argument
@@ -175,10 +191,7 @@ class PageManager {
          * @param {object} filter
          */
         #updateFromStringBasedOnSpecialFilters = (from, filter) => {
-            if (!filter) return from
-
-            this.logger?.log({ from, filter })
-            if (filter.current === "backlinks") {
+            if (filter?.current === "backlinks") {
                 delete filter.current
                 return (from += ` AND [[${this.dv.current().file.path}]]`)
             }
@@ -187,59 +200,104 @@ class PageManager {
         }
 
         /**
+         * @param {object} _
+         * @param {string} _.filter - 
+         * @param {Query} _.qs
+         */
+        #runStringFilterQuery = ({filter, qs}) => {
+            switch (filter) {
+                case "backlinks":
+                    qs.from(`${this.defaultFrom} AND [[${this.dv.current().file.path}]]`)
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        /**
+         * @param {object} _
+         * @param {string[]} _.filter
+         * @param {Query} _.qs
+         */
+        #runArrayFilterQuery = async ({filter, qs}) => {
+            // TODO: Add support for array of link representation
+            // await qs.setLinksFromString(filter)
+        }
+
+        /**
+         * @param {object} _
+         * @param {object} _.filter
+         * @param {Query} _.qs
+         */
+        #runObjectFilterQuery = async ({filter, qs}) => {
+            let fromQuery = filter?.from ?? this.defaultFrom
+            fromQuery = this.#updateFromStringBasedOnSpecialFilters(
+                fromQuery,
+                filter
+            )
+
+            qs.from(fromQuery)
+
+            for (const prop in filter) {
+                this.logger?.log(`filter.${prop} = ${filter[prop]}`)
+
+                if (prop === "from") continue
+
+                // The property has a special meaning. It's either a default property (manual, tags, ...) or a custom one (mp3Only, voice, ...)
+                let propFilterFunc = this.queryFilterFunctionsMap.get(prop)
+                if (propFilterFunc) {
+                    // The queryService and the value (note that the value isn't necessarly used by the func)
+                    await propFilterFunc(qs, filter[prop])
+                    continue
+                }
+
+                // The property is in the userFields so it has a special meaning (example: link, date, ...)
+                propFilterFunc = this.queryDefaultFilterFunctionsMap.get(this.userFields.get(prop))
+                this.logger?.log({ propFilterFunc })
+                if (propFilterFunc) {
+                    // The queryService, the field name and the value
+                    await propFilterFunc(qs, prop, filter[prop])
+                    continue
+                }
+
+                // Default filter
+                if (Array.isArray(filter[prop])) {
+                    filter[prop].forEach((value) => {
+                        qs.withFieldOfValue({ name: prop, value })
+                    })
+                } else if (this.utils.isObject(filter[prop])) {
+                    if (filter[prop].not) {
+                        qs.withoutFieldOfValue({
+                            name: prop,
+                            value: filter[prop].not,
+                        })
+                    }
+                } else {
+                    qs.withFieldOfValue({
+                        name: prop,
+                        value: filter[prop],
+                    })
+                }
+            }
+        }
+
+        /**
          * Build and query the pages from your vault based on some filters
          *
          * @param {object} _
-         * @param {object} [_.filter]
+         * @param {*} [_.filter]
          * @param {Query} _.qs
          * @returns {import('../view').UserFile[]}
          */
         buildAndRunFileQuery = async ({ filter, qs }) => {
             if (typeof filter === "function") {
                 await filter(qs)
+            } else if (typeof filter === "string") {
+                this.#runStringFilterQuery({filter, qs})
+            } else if (Array.isArray(filter)) {
+                this.#runArrayFilterQuery({filter, qs})
             } else {
-                let fromQuery = filter?.from ?? this.defaultFrom
-                fromQuery = this.#updateFromStringBasedOnSpecialFilters(
-                    fromQuery,
-                    filter
-                )
-
-                qs.from(fromQuery)
-
-                for (const prop in filter) {
-                    this.logger?.log(`filter.${prop} = ${filter[prop]}`)
-
-                    if (prop === "from") continue
-
-                    // The property has a special meaning. It's either a default property (manual, tags, ...) or a custom one (mp3Only, voice, ...)
-                    let propFilterFunc = this.queryFilterFunctionsMap.get(prop)
-                    if (propFilterFunc) {
-                        // The queryService and the value (note that the value isn't necessarly used by the func)
-                        await propFilterFunc(qs, filter[prop])
-                        continue
-                    }
-
-                    // The property is in the userFields so it has a special meaning (example: link, date, ...)
-                    propFilterFunc = this.queryDefaultFilterFunctionsMap.get(this.userFields.get(prop))
-                    this.logger?.log({ propFilterFunc })
-                    if (propFilterFunc) {
-                        // The queryService, the field name and the value
-                        await propFilterFunc(qs, prop, filter[prop])
-                        continue
-                    }
-
-                    // Default filter
-                    if (Array.isArray(filter[prop])) {
-                        filter[prop].forEach((value) => {
-                            qs.withFieldOfValue({ name: prop, value })
-                        })
-                    } else {
-                        qs.withFieldOfValue({
-                            name: prop,
-                            value: filter[prop],
-                        })
-                    }
-                }
+                await this.#runObjectFilterQuery({filter, qs})
             }
 
             this.logger?.logPerf("Dataview js query: filtering")

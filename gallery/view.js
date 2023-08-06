@@ -144,7 +144,7 @@ function resolveArticleStyle({ options }) {
 
 const gridManager = new customJS[DEFAULT_CUSTOMJS_CLASS].GridManager({
     dv, logger, icons, utils, fileManager,
-	numberOfPagePerBatch: NB_FILE_BATCH_PER_PAGE,
+	numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
     disableSet: vm.disableSet,
 })
 

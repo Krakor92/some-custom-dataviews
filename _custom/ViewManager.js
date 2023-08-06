@@ -6,6 +6,7 @@ class ViewManager {
      * It does the following:
      *  - Lazy load the view until its visible in the viewport
      *  - Free most of the view memory usage at page/popover closing (since Dataview doesn't do it)
+     *  - Prevent the editing mechanism that occur when clicking inside the view within a callout in Live Preview
      */
     ViewManager = class {
         /**
@@ -30,9 +31,9 @@ class ViewManager {
                 }
             })
             utils.removeTagChildDVSpan(this.rootNode)
+            this.managedToHideEditButton = this.#hideEditButton()
 
             this.observer = new IntersectionObserver(this.handleViewIntersection.bind(this))
-            this.managedToHideEditButton = this.#hideEditButton()
 
             this.leaf = null
 
@@ -143,11 +144,10 @@ class ViewManager {
                 ?.classList.contains("popover")
         }
 
-
         #amiInCallout() {
             return !!this.utils.getParentWithClass(this.rootNode.parentNode, "callout-content")
         }
-        
+
         /**
          * It will only return true if the container closest parent is a callout
         */
@@ -201,6 +201,9 @@ class ViewManager {
             return false
         }
 
+        /**
+         * Hide the edit button so it doesn't trigger anymore in preview mode
+         */
         #hideEditButton = () => {
             /*
             How is formatted a live preview callout?
@@ -223,12 +226,11 @@ class ViewManager {
             The root node is just below the dvjs one
             */
 
-            // Hide the edit button so it doesn't trigger anymore in preview mode
-            const rootParentNode = this.rootNode.parentNode
-            if (this.#hideEditButtonLogic(rootParentNode?.nextSibling)) return true
+            const container = this.rootNode.parentNode
+            if (this.#hideEditButtonLogic(container?.nextSibling)) return true
 
             // We haven't been loaded yet in the DOM, are we in a callout?
-            const calloutContentNode = rootParentNode?.parentNode
+            const calloutContentNode = container?.parentNode
             const calloutNode = calloutContentNode?.parentNode
 
             // Not a callout, we are inside a long file and got lazyloaded by Obsidian
