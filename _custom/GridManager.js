@@ -77,8 +77,8 @@ class GridManager {
             img.onerror = () => {
                 this.logger?.log({img})
                 img.onerror = null;
-                img.outerHTML = this.icons.newObsidianIcon;
-                // img.outerHTML = imageOffIcon(24);
+                const threeDigitColor = (Math.floor(Math.random() * 999)).toString()
+                img.outerHTML = this.icons.customObsidianIcon(`#${threeDigitColor.padStart(3, 0)}`);
             }
         }
 

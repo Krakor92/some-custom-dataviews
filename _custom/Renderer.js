@@ -138,6 +138,17 @@ class Renderer {
             </a>`
         }
 
+        #renderMP3Audio = ({src, preload, dataVolume = ""}) => (`
+            <div class="audio-player">
+                <button class="player-button">
+                    ${this.icons.playIcon}
+                </button>
+                <audio preload="${preload}" ${dataVolume}>
+                    <source src="${src}"/>
+                </audio>
+            </div>
+        `)
+
         /**
          * 
          * @param {object} _
@@ -149,19 +160,17 @@ class Renderer {
             if (!audioFile) return ""
 
             const mp3Exists = await this.utils.linkExists(audioFile)
-            if (!mp3Exists) return ""
 
             const dataVolume = volumeOffset ? `data-volume="${volumeOffset}"` : ""
 
-            return `
-            <div class="audio-player">
-                <button class="player-button">
-                    ${this.icons.playIcon}
-                </button>
-                <audio preload="${preload}" ${dataVolume}>
-                    <source src="${window.app.vault.adapter.getResourcePath(audioFile.path)}"/>
-                </audio>
-            </div>`;
+            // Expects it to be an http link pointing to a valid resource
+            if (!mp3Exists) return this.#renderMP3Audio({src: audioFile, preload, dataVolume})
+
+            return this.#renderMP3Audio({
+                src: window.app.vault.adapter.getResourcePath(audioFile.path),
+                preload,
+                dataVolume,
+            })
         }
 
         /**

@@ -1,5 +1,5 @@
 /**
- * @file Render a grid of music from your vault. Files can have an mp3 embedded, an url or both
+ * @file Render a grid of music from your vault. Files can have an audio embedded, an url or both
  * @depends on DataviewJS
  * @author Krakor <krakor.faivre@gmail.com>
  * @link https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox
@@ -54,7 +54,7 @@ USER_FIELDS.set('artist', 'link')
 // These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
 const TITLE_FIELD = "title"
 const THUMBNAIL_FIELD = "thumbnail"
-const AUDIO_FILE_FIELD = "mp3"
+const AUDIO_FILE_FIELD = "audio"
 const URL_FIELD = "url"
 const LENGTH_FIELD = "length"
 const VOLUME_FIELD = "volume"
@@ -71,9 +71,9 @@ const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
 // How many pages do you want to render at first and each time you reach the end of the grid
 const NUMBER_OF_SCORES_PER_BATCH = 20
 
-// It only works in the context of the page, if you have another page opened with another mp3 playing
+// It only works in the context of the page, if you have another page opened with another audio file playing
 // then it won't stop it if you play one in the current page
-const ENABLE_SIMULTANEOUS_MP3_PLAYING = false
+const ENABLE_SIMULTANEOUS_AUDIO_PLAYING = false
 
 // If false, then the end of the last loaded music will start the first one in the grid
 const STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC = true
@@ -201,10 +201,18 @@ if (!vm.disableSet.has("buttons")) {
 
 const customFields = new Map()
 
-customFields.set('mp3Only', async (qs) => {
-	logger.log(`%cFilter on mp3Only 🔊`, 'color: #7f6df2; font-size: 13px')
-	qs.withExistingField(AUDIO_FILE_FIELD)
-	await qs.asyncFilter(async (page) => await utils.linkExists(page[AUDIO_FILE_FIELD]))
+customFields.set('audioOnly', async (qs) => {
+    logger.log(`%cFilter on audioOnly 🔊`, 'color: #7f6df2; font-size: 13px')
+    qs.withExistingField(AUDIO_FILE_FIELD)
+    await qs.asyncFilter(async (page) => {
+        if (!utils.isObject(page[AUDIO_FILE_FIELD])) {
+            // That means it's a http link (or at least it should be one) so we consider it's valid
+            return true
+        }
+
+        // If it's a link then we accept it only if it exists inside the vault
+        return await utils.linkExists(page[AUDIO_FILE_FIELD])
+    })
 })
 
 const qs = new customJS[DEFAULT_CUSTOMJS_CLASS].Query({ dv })
@@ -214,7 +222,7 @@ const orphanage = new customJS[DEFAULT_CUSTOMJS_CLASS].Orphanage({
     directory: DEFAULT_SCORE_DIRECTORY,
     thumbnailDirectory: DEFAULT_THUMBNAIL_DIRECTORY,
 })
-const orphanPages = vm.disableSet.has("orphans") ? [] : orphanage.raise(dv.current().orphans)
+const orphanPages = vm.disableSet.has("orphans") ? [] : orphanage.raise(dv.current()?.orphans)
 
 const pageManager = new customJS[DEFAULT_CUSTOMJS_CLASS].PageManager({
     dv, logger, utils, orphanage,
@@ -296,7 +304,7 @@ function resolveArticleStyle({ options }) {
 }
 
 const audioManager = new customJS[DEFAULT_CUSTOMJS_CLASS].AudioManager({
-	enableSimultaneousPlaying: ENABLE_SIMULTANEOUS_MP3_PLAYING,
+	enableSimultaneousPlaying: ENABLE_SIMULTANEOUS_AUDIO_PLAYING,
 	autoplay: !vm.disableSet.has("autoplay"),
 	stopAutoplayWhenReachingLastMusic: STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC,
 	defaultVolume: DEFAULT_VOLUME,
@@ -358,16 +366,18 @@ await gridManager.buildArticles({pages, pageToArticle: async (p) => {
         }
     }
 
-    if (THUMBNAIL_IS_URL_LINK) {
-        imgTag = renderExternalUrlAnchor({
-            url: p[URL_FIELD],
-            children: imgTag,
-            noIcon: true,
-        })
-    } else if (p[URL_FIELD] && !vm.disableSet.has("urlicon")) {
-        urlTag = `<span class="url-link">
-            ${renderExternalUrlAnchor({ url: p[URL_FIELD] })}
-        </span>`
+    if (p[URL_FIELD]) {
+        if (THUMBNAIL_IS_URL_LINK) {
+            imgTag = renderExternalUrlAnchor({
+                url: p[URL_FIELD],
+                children: imgTag,
+                noIcon: true,
+            })
+        } else if (!vm.disableSet.has("urlicon")) {
+            urlTag = `<span class="url-link">
+                ${renderExternalUrlAnchor({ url: p[URL_FIELD] })}
+            </span>`
+        }
     }
 
     if (p[LENGTH_FIELD] && !vm.disableSet.has("timecode")) {
@@ -379,7 +389,7 @@ await gridManager.buildArticles({pages, pageToArticle: async (p) => {
     Some music might load and play entirely without any issue
     while other have an incorrect duration in the timestamp and freeze at some point when played
 
-    This strange behaviour simply make the mp3 players on Android unreliable thus unusable (since you can't predict it)
+    This strange behaviour simply make the audio file players on Android unreliable thus unusable (since you can't predict it)
     So i prefer disabling it completely rather than having a buggy feature
     Remove the `os !== "Android"` if you want to try it on yours
     */

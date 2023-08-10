@@ -11,28 +11,36 @@ A custom view built with [Obsidian-Dataview](https://github.com/blacksmithgu/obs
 
 Here are the overarching principles of how this view works:
 
-- You can filter your music files according to their metadata (url, artist, media, genre, instruments, audio file, custom tags, ...).
+- You can filter your music files according to their metadata (url, artist, media, genre, instruments, audio file, custom tags, ...)
+
 - The filters are **static**, you can't switch them without re-rendering the view
+
 - You can tap a card to open the YouTube video (or any url from another streaming service) associated with it.
 	- On *Desktop*, it will open it in your default browser (or in a Surfing tab if you have the plugin installed)
 	- On *Mobile*, it will open in the application if you have it installed (or open it in your default browser)
-- Files with an audio file set as property get rendered with a minimal player (simple play/pause button and a timeline)
-- Almost all visual elements can be disabled at the global level or per code block (check `disable` property)
+
+- Files with an audio set as property get rendered with a minimal player (simple play/pause button and a timeline). It can be either:
+	- A valid internal link to an asset with audio from your vault
+	- A valid url link pointing to an audio resource
+
+- Any visual element can be disabled at the global level or per code block (check `disable` property)
+
 - This view has been built with scaling in mind: Cards are loaded per batch of 20 by default.
-  - To clarify, it's not the computation of the query that is lazy loaded but the rendering phase. This means it won't overload your CPU even if your query returns a thousand files
+	- To clarify, it's not the computation of the query that is lazy loaded but the rendering phase. This means it won't overload your CPU even if your query returns a thousand files
+
 - Since its a dvjs view and not a plugin, there aren't any settings page but there is a `Settings` region at the beginning of the `view.js`. Each option is capitalized and contains a comment above that explains what they do. You can change their value if needed (note: it will affect every occurrence of this view obviously)
 
 
 ## 🚩 Some known caveats
 
-This custom view both supports mp3 (also every other audio files supported by Obsidian) and url links inside your markdown music file but there are some caveats to have in mind:
+Despite all the above points, there are some caveats to bear in mind:
 
-- The **mp3** user experience on *Android* is not reliable 😞:
-	- Some (if not most) mp3 don't load at all (i've opened an [issue on Obsidian Forums](https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684) about it):
+- The **audio player** user experience on *Android* is not reliable 😞:
+	- Some (if not most) audio files don't load at all (i've opened an [issue on Obsidian Forums](https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684) about it):
 		- Those either play until the end but don't trigger the autoplay
 		- Or stop playing before the end
-		- Edit: thanks to this : https://github.com/Majed6/android-audio-fixer, I've managed to decrease the likeliness of mp3 files having problem, but it still happens randomly...
-	- If you set an .mp4 as the source of the audio, besides sharing the same problem as above, you also can't lock your phone / switch app or the music will pause
+		- Edit: thanks to this : https://github.com/Majed6/android-audio-fixer, I've managed to decrease the likeliness of audio files having problem, but it still happens randomly...
+	- If you set a video as the source of the audio, besides sharing the same problem as above, you also can't lock your phone / switch app or the music will pause
 	- Audios aren't recognized by the phone's system (you can't pause them with your headset for example)
 
 - **Timelines** are mostly a gimmick:
@@ -41,7 +49,7 @@ This custom view both supports mp3 (also every other audio files supported by Ob
 - The url links support has been built with **Youtube links** in mind:
 	- You can still add any other web links to your markdown music file (soundcloud, dailymotion, ...) but you will not benefit from the youtube auto playlist feature while doing so.
 
-- If you are listening to mp3 files and modifiying your vault at the same time then you'll want to remove the **auto refresh of Dataview** or else it will reset the music everytime dv refreshes
+- If you are listening to audio files and modifiying your vault at the same time then you'll want to remove the **auto refresh of Dataview** or else it will reset the music everytime dv refreshes
 
 - If you have scrolled far enough inside a page and a lot of musics have been rendered (> 200) and you decide to **switch to another tab**, then you may experience a screen freeze for few seconds when switching back to this tab (This phenomenon was only really experienced on my Android phone)
 
@@ -190,16 +198,15 @@ There are currently 6 fields that have a special meaning inside this view:
 |:-------------:|:------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------:|
 |   **title**   | It serves as an alias. If set, it will replace the default name of the file in the grid (used by default for `orphans`)  |                                           "Shorter name"                                           |
 | **thumbnail** |    The music image. Can be three different values: a string, an url (embedded or not) or a filelink (embedded or not)    | https://example.com/my-image.jpg OR `![](https://example.com/my-image.jpg)` OR `![[my-image.jpg]]` |
-|    **mp3**    |                               It can be any audio file recognized by Obsidian (even video)                               |                                        `![[my-audio.mp3]]`                                         |
-|    **url**    |                      The url to the music. It can be anything but youtube links have extra supports                      |                                    https://youtu.be/dQw4w9WgXcQ                                    |
+|    **audio**	    |           It can be any audio file recognized by Obsidian (even video) or an url pointing to a valid resource            |                       `![[my-audio.mp3]]` OR `https://example.com/audio.mp4`                       |
+|    **url**    |                      The url to the music. It can be anything but youtube links have extra supports. *Warning*: the url shouldn't point to a file directly. If that's the case, use **audio** instead                      |                                    https://youtu.be/dQw4w9WgXcQ                                    |
 |  **length**   | The length of the music. It is displayed at the bottom right just like on Youtube. (Only 00:00 or 00:00:00 is supported) |                                              01:30:04                                              |
 |  **volume**   |                               The volume offset to apply to the audio file when playing it                               |                                                -0.1                                                |
 
 *Note that all these fields name can be modified in the global options of the view.js. To do so, check the const variables ending with `_FIELD`*
 
-Actually there is also the `voice` property that has a special meaning right now but I planned to remove it soon...
 
-Here are some precisions and special effects to keep in mind while using these metadata:
+Here are **some precisions** and special effects to keep in mind while using some of these metadata:
 
 ##### Url
 
@@ -219,13 +226,19 @@ If you are embedding your image in your `thumbnail` property like so: `thumbnail
 
 Note: The exact same method and workaround can be used for the wikilinks syntax (`thumbnail:: ![[my-image.jpg|0.5|400]]`) 
 
+- The file:/// URI scheme is recognized by this view, this means that you can set an image from outside your vault as a thumbnail since Obsidian accept it.
+	- Both file:///link/to/thumbnail.jpg and `[alt](file:///link/to/thumbnail.jpg)` are valid
+
 
 #### User Metadata
 
 Besides these 6 fields, you can obviously use your own. By default they'll be treated as strings fields but if you wish to, you can specify to the view what their types is.
 
-Right now, there is only two custom types available: `link` and `date`. To tell the view that one of your field is a link or date, you must go to the global options of the `view.js`. You'll see a variable named `USER_FIELDS` with several call to the `.set()` method below.
-To specify your own field, simply duplicate one line below and change the first string with the name of your field and the second string with its type
+Right now, there is only two custom types available: `link` and `date`.
+
+To tell the view that one of your field is a link or date, you must go to the global options of the `view.js`. You'll see a variable named `USER_FIELDS` with several call to the `.set()` method below.
+
+To specify your own field, simply duplicate one line and change the first string with the name of your field and the second string with its type
 
 
 ### 🔘 Buttons
@@ -297,22 +310,22 @@ await dv.view("_js/jukebox", {
 
 And here is the list of all the properties supported by this view:
 
-| Main option | Sub options   | Type                                                                                             | Default                                        | Description                                                                                                                                                                                                                                          | Example                | Status |
-| ----------- | ------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------ |
-| **filter**  | manual        | string                                                                                           | ""                                             | Defines precisely the musics you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the musics)                                                                                     | "scores"               | ✅     |
-|             | from          | string                                                                                           | `#🎼 AND -"_templates"`                        | To define a specific dvjs query instead of using the default one                                                                                                                                                                                     |                        | ✅     |
-|             | tags          | string / string[]                                                                                | ""                                             | To filter on tags                                                                                                                                                                                                                                    | "#song"                | ✅     |
-|             | in            | string                                                                                           | ""                                             | To filter on the `in` property. Only one at a time for now                                                                                                                                                                                           | "[[Arcane (2021)]]"    | ✅     |
-|             | artist        | string                                                                                           | ""                                             | To filter on the `artist` property. Only one at a time for now                                                                                                                                                                                       | "[[Joe Hisaishi]]"     | ✅     |
-|             | mp3Only       | boolean                                                                                          | false                                          | To get only the music with a non-null `mp3` field                                                                                                                                                                                                    |                        | ✅     |
-|             | release       | [Date Object](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#date-object) | {}                                             | To define a time period (either before, after, or an interval)                                                                                                                                                                                       | {before: "2022-12-31"} | ✅     |
-|             | current       | string                                                                                           | ""                                             | It expects the name of a field containing a link to the current file you're in. (More info in the text below this array). You can also pass the special `"backlinks"` string to filter on every music files that contains a link to the current file |                        | ✅     |
-|             | star          | boolean                                                                                          | false                                          | *Legacy*: To retrieve only musics that have been `Starred` by the user                                                                                                                                                                               |                        | ❌     |
-|             | bookmarks     | string                                                                                           | ""                                             | To filter on musics inside a bookmark folder. It doesn't search recursively in nested folder. **Warning**: You can't filter on a folder with a `/` in its name                                                                                      |                        | ✅     |
-| **sort**    | shuffle       | boolean                                                                                          | false                                          | To have a random sorting of the music                                                                                                                                                                                                                |                        | ✅     |
-|             | recentlyAdded | boolean                                                                                          |                                                | Move up to the first place the musics we have recently added (True) or the musics we have added at the very beginning (False)                                                                                                                        |                        |        |
-|             | manual        | string                                                                                           | ""                                             | To do a simple manual sort (works the same way as its namesake in **filter**)                                                                                                                                                                        | "scores"               | ✅     |
-| **disable** |               | string                                                                                           |                                                | To remove almost all visible features if you don't like them. You must separate the values with space. See the table below for more information on the possible values.                                                                              | "autoplay addscore"    | ✅     |
+| Main option | Sub options   | Type                                                                                             | Default                 | Description                                                                                                                                                                                                                                          | Example                | Status |
+| ----------- | ------------- | ------------------------------------------------------------------------------------------------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------ |
+| **filter**  | manual        | string                                                                                           | ""                      | Defines precisely the musics you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the musics)                                                                                     | "scores"               | ✅     |
+|             | from          | string                                                                                           | `#🎼 AND -"_templates"` | To define a specific dvjs query instead of using the default one                                                                                                                                                                                     |                        | ✅     |
+|             | tags          | string / string[]                                                                                | ""                      | To filter on tags                                                                                                                                                                                                                                    | "#song"                | ✅     |
+|             | in            | string                                                                                           | ""                      | To filter on the `in` property. Only one at a time for now                                                                                                                                                                                           | "[[Arcane (2021)]]"    | ✅     |
+|             | artist        | string                                                                                           | ""                      | To filter on the `artist` property. Only one at a time for now                                                                                                                                                                                       | "[[Joe Hisaishi]]"     | ✅     |
+|             | audioOnly      | boolean                                                                                          | false                   | To retrieve only music files with a non-null `audio` field. If a file has its `audio` property set to a non existing local link, this option will skip it                                                                                              |                        | ✅     |
+|             | release       | [Date Object](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#date-object) | {}                      | To define a time period (either before, after, or an interval)                                                                                                                                                                                       | {before: "2022-12-31"} | ✅     |
+|             | current       | string                                                                                           | ""                      | It expects the name of a field containing a link to the current file you're in. (More info in the text below this array). You can also pass the special `"backlinks"` string to filter on every music files that contains a link to the current file |                        | ✅     |
+|             | star          | boolean                                                                                          | false                   | *Legacy*: To retrieve only musics that have been `Starred` by the user                                                                                                                                                                               |                        | ❌     |
+|             | bookmarks     | string                                                                                           | ""                      | To filter on musics inside a bookmark folder. It doesn't search recursively in nested folder. **Warning**: You can't filter on a folder with a `/` in its name                                                                                       |                        | ✅     |
+| **sort**    | shuffle       | boolean                                                                                          | false                   | To have a random sorting of the music                                                                                                                                                                                                                |                        | ✅     |
+|             | recentlyAdded | boolean                                                                                          |                         | Move up to the first place the musics we have recently added (True) or the musics we have added at the very beginning (False)                                                                                                                        |                        |        |
+|             | manual        | string                                                                                           | ""                      | To do a simple manual sort (works the same way as its namesake in **filter**)                                                                                                                                                                        | "scores"               | ✅     |
+| **disable** |               | string                                                                                           |                         | To remove almost all visible features if you don't like them. You must separate the values with space. See the table below for more information on the possible values.                                                                              | "autoplay addscore"    | ✅     |
 
 In my opinion, the most important filter is the `current` one. To give you a clearer example of its use: Let's say you have a file named "Hans Zimmer.md".
 Apart from that, you have a bunch of music.md files with the following property: `artist: [[Hans Zimmer]]`.
@@ -383,7 +396,8 @@ For ease of use, you can also pass a string as the `filter` and `sort` property 
 
 Instead of passing an object to `filter` or `sort` properties, you can actually pass a javascript function and do the whole filtering/sorting yourself.
 
-- The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the query service defined in the `Krakor.js` file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look inside `Krakor.js` to see every methods that are already implemented and call them accordingly to your needs
+- The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the `Query`  class defined in the `Krakor.js` file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look inside `Krakor.js` to see every methods that are already implemented and call them accordingly to your needs
+
 - The function passed to `sort` takes a file `a` and a file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering 
 
 
@@ -401,7 +415,7 @@ Instead of passing an object to `filter` or `sort` properties, you can actually 
 | Values                      | Description                                                                                                  |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | autoplay                    | The end of an mp3 will not launch the next one in the grid                                                   |
-| audioPlayer                 | Don't show audio player for files with audio field                                                           |
+| audioPlayer                 | Don't show audio player for files with a valid `audio` field                                                           |
 | urlIcon                     | Remove the service icon that appears on the top right of the card                                            |
 | thumbnail                   | Removes the images                                                                                           |
 | fileLink                    | Removes file links                                                                                           |
@@ -513,6 +527,8 @@ ost:: [[End of the Prologue]]
 
 ![](https://github.com/Krakor92/some-custom-dataviews/assets/24924824/edd05cbf-2ed6-419a-9db4-bda3df4232f4)
 
+Note that I've disabled the masonry layout because it messes a bit (or a lot depending of the height differences between your thumbnails) with the order of the sort
+
 ---
 
 ~~~
@@ -611,6 +627,12 @@ I will eventually port this view to be compatible with [Datacore](https://github
 
 As for the performance improvement promised by the [readme](https://github.com/blacksmithgu/datacore#datacore), I doubt it will have any significant impact on this view, given how fast it already runs, even when querying thousands of files.
 
+### Better settings
+
+Right now, the settings are directly written inside the source code of the view. I know it's far from ideal so I've been thinking about building a plugin with the sole responsibility of managing views settings. It would solve two problems:
+
+- You would easily upgrade the view by replacing the old view.js with the updated one without losing your settings
+- It would let you set the settings directly from Obsidian's ui (just like a regular plugin) so any view could provide a form of validation on their settings
 
 ## 🙏 Acknowledgements
 

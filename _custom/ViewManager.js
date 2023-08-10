@@ -5,8 +5,8 @@ class ViewManager {
      * 
      * It does the following:
      *  - Lazy load the view until its visible in the viewport
-     *  - Free most of the view memory usage at page/popover closing (since Dataview doesn't do it)
-     *  - Prevent the editing mechanism that occur when clicking inside the view within a callout in Live Preview
+     *  - Free most of the view memory usage at page/popover closing (it doesn't seem to have a significant impact if I judge by the JS VM instance in Memory panel)
+     *  - Prevent the editing mechanism that occur in Live Preview when clicking inside the view if it sits within a callout
      */
     ViewManager = class {
         /**
@@ -56,7 +56,7 @@ class ViewManager {
         #monitorHealthCheck(timeBetweenEachHealthcheck = 2000) {
             this.healthcheckInterval = setInterval(() => {
                 if (this.healthcheck()) {
-                    this.logger?.log(this.tid, "👍")
+                    // this.logger?.log(this.tid, "👍")
                     return
                  }
 

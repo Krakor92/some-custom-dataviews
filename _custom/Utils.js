@@ -122,7 +122,8 @@ class Utils {
          * @param {import('./view').Link} link
          */
         async linkExists(link) {
-            return await window.app.vault.adapter.exists(link?.path)
+            if (!this.isObject(link)) return false
+            return await window.app.vault.adapter.exists(link.path)
         }
 
         /**
