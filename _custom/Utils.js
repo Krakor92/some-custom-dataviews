@@ -97,6 +97,7 @@ class Utils {
             const { isMobile } = this.app
 
             // I would like to use `navigator.userAgentData.platform` since `navigator.platform` is deprecated but it doesn't work on mobile
+            // TODO: see if I can use appVersion instead -> https://liamca.in/Obsidian/API+FAQ/OS/check+the+current+OS
             const { platform } = navigator
 
             if (platform.indexOf("Win") !== -1) return "Windows"

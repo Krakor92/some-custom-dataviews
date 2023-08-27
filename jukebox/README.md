@@ -7,7 +7,7 @@ A custom view built with [Obsidian-Dataview](https://github.com/blacksmithgu/obs
 
 ## 🎼 What to expect from this view
 
-> When I mention `music file`, I'm talking about a markdown file with custom (manually defined) metadata.
+> When I mention `music file`, I'm talking about a local markdown file with custom (manually defined) metadata.
 
 Here are the overarching principles of how this view works:
 
@@ -29,6 +29,8 @@ Here are the overarching principles of how this view works:
 	- To clarify, it's not the computation of the query that is lazy loaded but the rendering phase. This means it won't overload your CPU even if your query returns a thousand files
 
 - Since its a dvjs view and not a plugin, there aren't any settings page but there is a `Settings` region at the beginning of the `view.js`. Each option is capitalized and contains a comment above that explains what they do. You can change their value if needed (note: it will affect every occurrence of this view obviously)
+
+- The initial setup to make this view work can be a bit daunting, especially if you're not familiar at all with the Obsidian ecosystem or javascript syntax but I've tried my best to explain every step with enough amount of details so that anyone could follow
 
 
 ## 🚩 Some known caveats
@@ -596,7 +598,7 @@ orphans:: {"title": "Lacrimosa", "url": "https://youtu.be/k1-TrAvp_xs"}
 
 are identical **in the context of this view**. However, for the sake of durability/future-proofing, I recommend that you write them in the "frontmatter" format.
 
-You can add any fields you want in the orphan definition, but there is one important thing to keep in mind: **Orphans are only accessible in the file in which they are defined**. (This may change in the future)
+You can add any fields you want in the orphan definition, but there is one important thing to keep in mind: **Orphans are only accessible in the file in which they are defined** (This may change in the future)
 
 
 PS: If you prefer the yaml block style in the frontmatter, you can use the following instead of the json based syntax shown above
@@ -627,7 +629,7 @@ I will eventually port this view to be compatible with [Datacore](https://github
 
 As for the performance improvement promised by the [readme](https://github.com/blacksmithgu/datacore#datacore), I doubt it will have any significant impact on this view, given how fast it already runs, even when querying thousands of files.
 
-### Better settings
+### Better settings / Utility plugin
 
 Right now, the settings are directly written inside the source code of the view. I know it's far from ideal so I've been thinking about building a plugin with the sole responsibility of managing views settings. It would solve two problems:
 
@@ -650,7 +652,10 @@ This dvjs view was made possible thanks to these different resources:
 
 ### Styling
 
-- [Kepano's minimal card](https://github.com/kepano/obsidian-minimal/blob/master/Minimal.css#L1647-L1889)
+
+
+- [Kepano's minimal card snippet](https://forum.obsidian.md/t/snippet-so-you-can-use-dataview-cards-from-minimal-theme-in-any-theme/56866)
+	- Most of the css I have is directly inspired by Kepano’s minimal card snippet
 
 - [vikramsoni's Masonry layout implementation](https://codepen.io/vikramsoni/pen/gOvOKNz)
 

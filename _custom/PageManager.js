@@ -131,7 +131,7 @@ class PageManager {
 
         #buildDefaultQueryFilterFunctionMap = () => {
             const queryDefaultFilterFunctionsMap = new Map()
-            
+
             queryDefaultFilterFunctionsMap.set("date", (qs, field, value) => {
                 this.logger?.log({ value })
 

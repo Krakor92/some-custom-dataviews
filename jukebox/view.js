@@ -1,6 +1,6 @@
 /**
  * @file Render a grid of music from your vault. Files can have an audio embedded, an url or both
- * @depends on DataviewJS
+ * @depends on DataviewJS and CustomJS
  * @author Krakor <krakor.faivre@gmail.com>
  * @link https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox
  */
@@ -311,8 +311,8 @@ const audioManager = new customJS[DEFAULT_CUSTOMJS_CLASS].AudioManager({
 	logger, utils, icons,
 })
 
-const gridManager = new customJS[DEFAULT_CUSTOMJS_CLASS].GridManager({
-    dv, logger, icons, utils, fileManager,
+const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridManager({
+    dv, logger, icons, utils,
 	numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
     disableSet: vm.disableSet,
     extraLogicOnNewChunk: [
@@ -326,14 +326,26 @@ const gridManager = new customJS[DEFAULT_CUSTOMJS_CLASS].GridManager({
             if (gm.disableSet.has("addscore") || gm.disableSet.has("addscorecell")) return;
 
             const addScoreCellDOM = gm.dv.el("article", gm.icons.filePlusIcon(24), { cls: "add-file" })
-            gm.grid.appendChild(addScoreCellDOM);
+            gm.getParent().appendChild(addScoreCellDOM);
 
-            addScoreCellDOM.onclick = gm.fileManager.handleAddFile.bind(gm.fileManager)
+            addScoreCellDOM.onclick = fileManager.handleAddFile.bind(fileManager)
         }
     ],
 })
 
-await gridManager.buildArticles({pages, pageToArticle: async (p) => {
+const buildExtraChildrenHTML = (p) => {
+    const extra = {}
+
+    if (p[TITLE_FIELD]) {
+        extra[".file-link"] = Renderer.renderInternalFileAnchor({ path: p.file.path, name: p[TITLE_FIELD] })
+    } else {
+        extra[".file-link"] = Renderer.renderInternalFileAnchor(p.file)
+    }
+
+    return extra
+}
+
+await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
     let fileTag = ""
     let thumbTag = ""
     let imgTag = ""
@@ -344,15 +356,7 @@ await gridManager.buildArticles({pages, pageToArticle: async (p) => {
     let mediaTag = ""
 
     if (!vm.disableSet.has("filelink")) {
-        if (p[TITLE_FIELD]) {
-            fileTag = `<span class="file-link">
-                ${Renderer.renderInternalFileAnchor({ path: p.file.path, name: p[TITLE_FIELD] })}
-            </span>`
-        } else {
-            fileTag = `<span class="file-link">
-                ${Renderer.renderInternalFileAnchor(p.file)}
-            </span>`
-        }
+        fileTag = `<span class="file-link"></span>`
     }
 
     if (!vm.disableSet.has("thumbnail")) {
@@ -422,22 +426,25 @@ await gridManager.buildArticles({pages, pageToArticle: async (p) => {
         ${mediaTag ?? ""}
     </article>`
 
-    return article
+    return {
+        html: article,
+        extra: buildExtraChildrenHTML(p)
+    }
 }})
 
-gridManager.buildGrid()
-gridManager.insertNewChunkInGrid()
+gridManager.buildParent()
+await gridManager.insertNewChunk()
 
-vm.rootNode.appendChild(gridManager.grid);
+vm.rootNode.appendChild(gridManager.getParent());
 //#endregion
 
 //#region Masonry layout
 if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 
-	const vgrid = new customJS[DEFAULT_CUSTOMJS_CLASS].VGrid(gridManager.grid)
+	const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.getParent())
 
 	const resizeObserver = new ResizeObserver(() => {
-		vgrid.resizeAllGridItems()
+		masonryManager.resizeAllGridItems()
 	});
 
 	/**
@@ -446,7 +453,7 @@ if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 	 * The garbage collector should disconnect it once the grid has been removed from the DOM
      * But when does it get removed by Obsidian ¯\_(ツ)_/¯
 	 */
-	resizeObserver.observe(vgrid.grid)
+	resizeObserver.observe(masonryManager.grid)
 }
 //#endregion
 

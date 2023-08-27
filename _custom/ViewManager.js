@@ -183,6 +183,13 @@ class ViewManager {
             }
         }
 
+        whichDeviceAmi() {
+            const syncPlugin = this.dv.app.internalPlugins.getPluginById("sync")
+            if (!syncPlugin) return ""
+
+            return syncPlugin.instance.getDefaultDeviceName()
+        }
+
         /** @param {Set<string>} set */
         #computeClassName = () => {
             let className = this.name

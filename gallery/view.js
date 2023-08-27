@@ -142,27 +142,31 @@ function resolveArticleStyle({ options }) {
     return style !== "" ? `style="${style}"` : ""
 }
 
-const gridManager = new customJS[DEFAULT_CUSTOMJS_CLASS].GridManager({
-    dv, logger, icons, utils, fileManager,
-	numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
+const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridManager({
+    dv, logger, icons, utils,
+    numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
     disableSet: vm.disableSet,
 })
 
-await gridManager.buildArticles({pages, pageToArticle: async (p) => {
+const buildExtraChildrenHTML = (p) => {
+    const extra = {}
+
+    if (p[TITLE_FIELD]) {
+        extra[".file-link"] = Renderer.renderInternalFileAnchor({ path: p.file.path, name: p[TITLE_FIELD] })
+    } else {
+        extra[".file-link"] = Renderer.renderInternalFileAnchor(p.file)
+    }
+
+    return extra
+}
+
+await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
     let fileTag = ""
     let thumbTag = ""
     let imgTag = ""
 
     if (!vm.disableSet.has("filelink")) {
-        if (p[TITLE_FIELD]) {
-            fileTag = `<span class="file-link">
-            ${Renderer.renderInternalFileAnchor({ path: p.file.path, name: p[TITLE_FIELD] })}
-            </span>`
-        } else {
-            fileTag = `<span class="file-link">
-            ${Renderer.renderInternalFileAnchor(p.file)}
-            </span>`
-        }
+        fileTag = `<span class="file-link"></span>`
     }
 
     if (!vm.disableSet.has("thumbnail")) {
@@ -191,33 +195,28 @@ await gridManager.buildArticles({pages, pageToArticle: async (p) => {
     </article>
     `
 
-    return article
+    return {
+        html: article,
+        extra: buildExtraChildrenHTML(p),
+    }
 }})
 
-gridManager.buildGrid()
+gridManager.buildParent()
+await gridManager.insertNewChunk()
 
-gridManager.insertNewChunkInGrid()
-
-vm.rootNode.appendChild(gridManager.grid);
+vm.rootNode.appendChild(gridManager.getParent());
 //#endregion
 
 //#region Masonry layout
 if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
-
-    const vgrid = new customJS[DEFAULT_CUSTOMJS_CLASS].VGrid(gridManager.grid)
+    const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.getParent())
 
     const resizeObserver = new ResizeObserver(() => {
-        vgrid.resizeAllGridItems()
+        masonryManager.resizeAllGridItems()
     });
 
-    /**
-     * Since I don't unobserve anywhere, it could give memory leaks...
-     * According to this SO post: https://stackoverflow.com/questions/67581868/should-i-call-resizeobserver-unobserve-for-removed-elements
-     * The garbage collector should disconnect it once the grid has been removed from the DOM :)
-     */
-    resizeObserver.observe(vgrid.grid)
+    resizeObserver.observe(masonryManager.grid)
 }
-
 //#endregion
 
 gridManager.initInfiniteLoading()

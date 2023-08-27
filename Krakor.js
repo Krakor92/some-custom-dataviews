@@ -292,6 +292,275 @@ class Krakor {
     }
 
     /**
+     * @abstract
+     * @warning This class need CustomJS enabled to work since it uses MarkdownRenderer.renderMarkdown which is exposed by the plugin
+     * This class is the blueprint to use for classes that manage a collection of children node in the DOM
+     * Don't instantiate directly from its constructor. You should use one of the static methods at the bottom instead
+     * It handles:
+     * - Lazy rendering of a bunch of DOM elements for blazing fast performance
+     * - Custom rendering that bypass MarkdownRenderer.renderMarkdown capacity
+     * - Image fallback
+     */
+    CollectionManager = class {
+        /**
+         * @param {object} _
+         * @param {Function} _.buildParent - a function that build, insert in the DOM and set this.parent (must be a regular function)
+         * @param {() => HTMLElement} _.getParent - get the actual parent of all your children (must be a regular function)
+         */
+        constructor({
+            //Dependencies
+            dv,
+            logger,
+            utils,
+            icons,
+
+            //Optional
+            disableSet,
+            numberOfElementsPerBatch = 20,
+            extraLogicOnNewChunk = [],
+
+            //Child class injection
+            childTag,
+            buildParent,
+            getParent,
+        }) {
+            this.dv = dv
+            this.logger = logger
+            this.icons = icons
+            this.utils = utils
+            this.disableSet = disableSet
+
+            this.childTag = childTag
+            this.buildParent = buildParent.bind(this)
+            this.getParent = getParent.bind(this)
+
+
+            /** @type {HTMLElement} */
+            this.parent = null
+
+            /** @type {(string|object)[]} */
+            this.children = []
+
+            this.batchesFetchedCount = 0
+            this.numberOfElementsPerBatch = numberOfElementsPerBatch
+
+            /** @type {Array<function(TableManager): Promise<void>>} */
+            this.extraLogicOnNewChunk = extraLogicOnNewChunk
+
+            this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this));
+        }
+
+        everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.children.length)
+
+
+        /**
+         * Build the complete list of children that will eventually be rendered on the screen
+         * (if you scroll all the way down)
+         * This method params can be quite obscure and for a reason: The MarkdownRenderer.renderMarkdown method 
+         * @param {object} _
+         * @param {*} _.pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
+         * @param {Function} _.pageToChild - This function get a page as its parameter and is suppose to return an html string or an array of html strings
+         * @returns {string[]} Each value of the array contains some HTML equivalent to a cell on the grid
+         */
+        buildChildrenHTML = async ({ pages, pageToChild }) => {
+            let children = []
+
+            for (const p of pages) {
+                const child = await pageToChild(p)
+
+                if (Array.isArray(child)) {
+                    children = [...children, ...child]
+                } else {
+                    children.push(child)
+                }
+            }
+
+            this.children = children
+            this.logger?.log({ children })
+        }
+
+        initInfiniteLoading() {
+            if (this.everyElementsHaveBeenInsertedInTheDOM()) return
+
+            const lastChild = this.getParent().querySelector(`${this.childTag}:last-of-type`);
+            this.logger?.log({ lastChild })
+            if (lastChild) {
+                this.childObserver.observe(lastChild)
+            }
+        }
+
+        #handleImageFallback(img) {
+            if (!img) return
+
+            img.onerror = () => {
+                this.logger?.log({ img })
+                img.onerror = null;
+                const threeDigitColor = (Math.floor(Math.random() * 999)).toString()
+                img.outerHTML = this.icons.customObsidianIcon(`#${threeDigitColor.padStart(3, 0)}`);
+            }
+        }
+
+        /**
+         * @warning CustomJS plugin is needed to run this function
+         * 
+         * It might be difficult to understand what's going on but it could be reduced to a 20 lines long function max
+         * if MarkdownRenderer.renderMarkdown had a consistent behavior no matter what tags were passed to it
+         */
+        async insertNewChunk() {
+            const fromSliceIndex = this.batchesFetchedCount * this.numberOfElementsPerBatch
+            const toSliceIndex = (this.batchesFetchedCount + 1) * this.numberOfElementsPerBatch
+
+            const newChunk = this.children.slice(fromSliceIndex, toSliceIndex).reduce((acc, cur) => {
+                if (typeof cur === "string") {
+                    return acc + cur
+                }
+                // Here cur must be an object with an `html` property in it
+                return acc + cur.html
+            }, "")
+
+            // Needed for metadata-menu to trigger and render extra buttons
+            const extraChunkDOM = this.dv.container.createEl('div')
+            let extraChunkHTML = ''
+            for (let i = fromSliceIndex; i < toSliceIndex; i++) {
+                if (!this.children[i]?.extra) {
+                    extraChunkHTML += `<div></div>`
+                    continue;
+                }
+
+                extraChunkHTML += `<div>`
+                for (const [selector, html] of Object.entries(this.children[i].extra)) {
+                    extraChunkHTML += `<div data-selector="${selector}">`
+                    extraChunkHTML += html
+                    extraChunkHTML += `</div>`
+                }
+                extraChunkHTML += `</div>`
+            }
+            /** The root cause of all this madness. I could use dv.el instead but it would add an extra level of abstraction I don't control */
+            await customJS.obsidian.MarkdownRenderer.renderMarkdown(extraChunkHTML, extraChunkDOM, this.dv.currentFilePath, this.dv.component)
+            // ---
+
+            if (!this.getParent()) {
+                return console.error("Something went wrong, the collection parent element doesn't exist in the DOM")
+            }
+
+            this.getParent().insertAdjacentHTML('beforeend', newChunk)
+
+            // 2nd part with the extraChunkDOm
+            for (let i = 0; i < this.numberOfElementsPerBatch; i++) {
+                const extra = extraChunkDOM.children[i]
+                if (!extra) continue
+
+                const currentChild = this.getParent().children[i + fromSliceIndex]
+                // That means we've reach the end of the infinite loading
+                if (!currentChild) break
+
+                for (const extraChild of extra.children) {
+                    const targetEl = currentChild.querySelector(extraChild.dataset.selector)
+                    if (!targetEl) continue
+                    while (extraChild.hasChildNodes()) {
+                        targetEl.appendChild(extraChild.firstChild)
+                    }
+                }
+
+                // Fallback for images that don't load
+                for (const imgNode of currentChild.querySelectorAll("img")) {
+                    this.#handleImageFallback(imgNode)
+                }
+            }
+            extraChunkDOM.remove()
+            // ---
+
+            this.batchesFetchedCount++
+
+            this.logger?.log({ batchesFetchedCount: this.batchesFetchedCount })
+
+            for (const fn of this.extraLogicOnNewChunk) {
+                await fn(this)
+            }
+        }
+
+        handleLastChildIntersection(entries) {
+            entries.map(async (entry) => {
+                if (entry.isIntersecting) {
+                    this.logger.reset()
+
+                    this.childObserver.unobserve(entries[0].target);
+
+                    await this.insertNewChunk()
+
+                    this.logger.logPerf("Appending new children at the end of the grid")
+
+                    if (this.batchesFetchedCount * this.numberOfElementsPerBatch < this.children.length) {
+                        this.logger?.log(`Batch to load next: ${this.batchesFetchedCount * this.numberOfElementsPerBatch}`)
+                        const lastChild = this.getParent().querySelector(`${this.childTag}:last-of-type`)
+                        this.childObserver.observe(lastChild)
+                    }
+                }
+            });
+        }
+
+        static makeTableManager(dependencies) {
+            function buildParent(headers) {
+                const buildTHead = (headers) => {
+                    const trFragment = document.createDocumentFragment();
+                    headers.forEach(header => {
+                        const headerHTML = `<p>${header}</p>`
+                        const th = this.dv.container.createEl("th", { cls: "table-view-th" })
+                        th.insertAdjacentHTML('beforeend', headerHTML)
+                        trFragment.appendChild(th)
+                    })
+
+                    const tr = this.dv.container.createEl("tr", { cls: "table-view-tr-header" })
+                    tr.appendChild(trFragment)
+
+                    const thead = this.dv.container.createEl("thead", { cls: "table-view-thead" })
+                    thead.appendChild(tr)
+
+                    return thead
+                }
+
+                const thead = buildTHead(headers)
+                const tbody = this.dv.container.createEl("tbody", { cls: "table-view-tbody" })
+
+                const table = this.dv.container.createEl("table", { cls: "table-view-table" })
+                table.appendChild(thead)
+                table.appendChild(tbody)
+
+                this.parent = table
+            }
+
+            function getParent() {
+                return this.parent?.lastChild
+            }
+
+            return new customJS["Krakor"].CollectionManager({
+                ...dependencies,
+                buildParent,
+                getParent,
+                childTag: 'tr',
+            })
+        }
+
+        static makeGridManager(dependencies) {
+            function buildParent() {
+                this.parent = this.dv.container.createEl("div", { cls: "grid" })
+            }
+
+            function getParent() {
+                return this.parent
+            }
+
+            return new customJS["Krakor"].CollectionManager({
+                ...dependencies,
+                buildParent,
+                getParent,
+                childTag: 'article',
+            })
+        }
+
+    }
+
+    /**
      * Class used to create files and automatically insert metadata
      * based on the filters present in the view where the file creation is triggered
      */
@@ -418,182 +687,6 @@ class Krakor {
             }
 
             await mmenuPlugin.postValues(newFile.path, fieldsPayload)
-        }
-    }
-
-    /**
-     * @implements {import('./view').CollectionManager}
-     */
-    GridManager = class {
-        constructor({dv, logger, utils, icons, fileManager, disableSet, numberOfElementsPerBatch = 20, extraLogicOnNewChunk = []}) {
-            this.dv = dv
-            this.logger = logger
-            this.icons = icons
-            this.utils = utils
-            this.fileManager = fileManager
-            this.disableSet = disableSet
-
-            this.grid = null
-
-            /** @type {string[]} */
-            this.articles = []
-
-            // 
-            this.batchesFetchedCount = 0
-            this.numberOfElementsPerBatch = numberOfElementsPerBatch
-
-            /** @type {Array<function(GridManager): Promise<void>>} */
-            this.extraLogicOnNewChunk = extraLogicOnNewChunk
-
-            this.articleObserver = new IntersectionObserver(this.handleLastArticleIntersection.bind(this));
-        }
-
-        getParent = () => (this.grid)
-
-        everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.articles.length)
-
-        /**
-         * Build the complete list of article that will eventually be rendered on the screen
-         * (if you scroll all the way down)
-         * @param {object} _
-         * @param {*} _.pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
-         * @param {Function} _.pageToArticle - This function get a page as its parameter and is suppose to return an html string or an array of html strings
-         * @returns {string[]} Each value of the array contains some HTML equivalent to a cell on the grid
-         */
-        buildArticles = async ({pages, pageToArticle}) => {
-            let articles = []
-
-            for (const p of pages) {
-                const article = await pageToArticle(p)
-
-                if (Array.isArray(article)) {
-                    articles = [...articles, ...article]
-                } else {
-                    articles.push(article)
-                }
-            }
-
-            this.articles = articles
-            this.logger?.log({articles})
-        }
-
-        buildGrid = () => {
-            this.grid = this.dv.el("div", null, { cls: "grid" })
-            this.utils.removeTagChildDVSpan(this.grid)
-            this.grid.lastChild.remove()
-        }
-
-        initInfiniteLoading() {
-            if (this.everyElementsHaveBeenInsertedInTheDOM()) return
-
-            const lastArticle = this.grid?.querySelector('article:last-of-type');
-            this.logger.log({lastArticle})
-            if (lastArticle) {
-                this.articleObserver.observe(lastArticle)
-            }
-        }
-
-        #handleImageFallback(img) {
-            if (!img) return
-
-            img.onerror = () => {
-                this.logger?.log({img})
-                img.onerror = null;
-                const threeDigitColor = (Math.floor(Math.random() * 999)).toString()
-                img.outerHTML = this.icons.customObsidianIcon(`#${threeDigitColor.padStart(3, 0)}`);
-            }
-        }
-
-        async insertNewChunkInGrid(loadAll = false) {
-            const newChunk = loadAll ? this.articles.join("") : this.articles.slice(
-                this.batchesFetchedCount * this.numberOfElementsPerBatch,
-                (this.batchesFetchedCount + 1) * this.numberOfElementsPerBatch
-            ).join("")
-
-
-            // Needed for metadata-menu to trigger and render extra buttons
-            const newChunkDOM = this.dv.el("div", newChunk)
-            const newChunkFragment = document.createDocumentFragment();
-            newChunkDOM.querySelectorAll("article").forEach(article => {
-                this.#handleImageFallback(article.querySelector("img"))
-                newChunkFragment.appendChild(article)
-            })
-
-            if (!this.grid) {
-                return console.error("Something went wrong, the grid doesn't exist")
-            }
-            this.grid.appendChild(newChunkFragment);
-
-            this.batchesFetchedCount++
-
-            this.logger.log({batchesFetchedCount: this.batchesFetchedCount})
-
-            for (const fn of this.extraLogicOnNewChunk) {
-                await fn(this)
-            }
-        }
-
-        handleLastArticleIntersection(entries) {
-            entries.map(async (entry) => {
-                if (entry.isIntersecting) {
-                    this.logger.reset()
-
-                    this.articleObserver.unobserve(entries[0].target);
-
-                    await this.insertNewChunkInGrid()
-
-                    this.logger.logPerf("Appending new articles at the end of the grid")
-
-                    if (this.batchesFetchedCount * this.numberOfElementsPerBatch < this.articles.length) {
-                        this.logger?.log(`Batch to load next: ${this.batchesFetchedCount * this.batchesFetchedCount}`)
-                        const lastArticle = this.grid.querySelector('article:last-of-type')
-                        this.articleObserver.observe(lastArticle)
-                    }
-                }
-            });
-        }
-    }
-
-    /**
-     * Apply a masonry layout to a grid layout
-     * @author vikramsoni
-     * @link https://codepen.io/vikramsoni/pen/gOvOKNz
-     */
-    VGrid = class {
-        constructor(container) {
-            if (!container) throw new Error("Can't create a VGrid without a valid container")
-
-            // you can pass DOM object or the css selector for the grid element
-            this.grid = container instanceof HTMLElement ? container : document.querySelector(container);
-
-            // get HTMLCollection of all direct children of the grid span created by dv.el()
-            /** @type {HTMLCollection} */
-            this.gridItemCollection = this.grid.children;
-        }
-
-        #resizeGridItem(item, gridRowGap) {
-            // the higher this value, the less the layout will look masonry
-            const rowBasicHeight = 0
-
-            // get grid's row gap properties, so that we could add it to children
-            // to add some extra space to avoid overflowing of content
-            const rowGap = gridRowGap ?? parseInt(window.getComputedStyle(this.grid).getPropertyValue('grid-row-gap'))
-
-            // clientHeight represents the height of the container with contents.
-            // we divide it by the rowGap to calculate how many rows it needs to span on
-            const rowSpan = Math.ceil((item.clientHeight + rowGap) / (rowBasicHeight + rowGap))
-
-            // set the span numRow css property for this child with the calculated one.
-            item.style.gridRowEnd = "span " + rowSpan
-        }
-
-        resizeAllGridItems() {
-            const gridRowGap = parseInt(window.getComputedStyle(this.grid).getPropertyValue('grid-row-gap'))
-
-            for (const item of this.gridItemCollection) {
-
-                this.#resizeGridItem(item, gridRowGap)
-            }
         }
     }
 
@@ -786,6 +879,49 @@ class Krakor {
         }
     }
 
+    /**
+     * Apply a masonry layout to a grid layout
+     * @author vikramsoni
+     * @link https://codepen.io/vikramsoni/pen/gOvOKNz
+     */
+    Masonry = class {
+        constructor(container) {
+            if (!container) throw new Error("Can't create a Masonry layout without a valid container")
+
+            // you can pass DOM object or the css selector for the grid element
+            this.grid = container instanceof HTMLElement ? container : document.querySelector(container);
+
+            // get HTMLCollection of all direct children of the grid span created by dv.el()
+            /** @type {HTMLCollection} */
+            this.gridItemCollection = this.grid.children;
+        }
+
+        #resizeGridItem(item, gridRowGap) {
+            // the higher this value, the less the layout will look masonry
+            const rowBasicHeight = 0
+
+            // get grid's row gap properties, so that we could add it to children
+            // to add some extra space to avoid overflowing of content
+            const rowGap = gridRowGap ?? parseInt(window.getComputedStyle(this.grid).getPropertyValue('grid-row-gap'))
+
+            // clientHeight represents the height of the container with contents.
+            // we divide it by the rowGap to calculate how many rows it needs to span on
+            const rowSpan = Math.ceil((item.clientHeight + rowGap) / (rowBasicHeight + rowGap))
+
+            // set the span numRow css property for this child with the calculated one.
+            item.style.gridRowEnd = "span " + rowSpan
+        }
+
+        resizeAllGridItems() {
+            const gridRowGap = parseInt(window.getComputedStyle(this.grid).getPropertyValue('grid-row-gap'))
+
+            for (const item of this.gridItemCollection) {
+
+                this.#resizeGridItem(item, gridRowGap)
+            }
+        }
+    }
+
     Orphanage = class {
         /**
          * @param {Utils} _.utils
@@ -959,7 +1095,7 @@ class Krakor {
 
         #buildDefaultQueryFilterFunctionMap = () => {
             const queryDefaultFilterFunctionsMap = new Map()
-            
+
             queryDefaultFilterFunctionsMap.set("date", (qs, field, value) => {
                 this.logger?.log({ value })
 
@@ -1993,7 +2129,8 @@ class Krakor {
      * @author Krakor <krakor.faivre@gmail.com>
      */
     Renderer = class {
-        constructor({utils, icons}) {
+        constructor({dv, utils, icons}) {
+            this.dv = dv
             this.utils = utils
             this.icons = icons
         }
@@ -2102,6 +2239,27 @@ class Krakor {
             return `<img src="${window.app.vault.adapter.getResourcePath(
                 thumb.path
             )}" ${this.imgBaseAttributes} ${style ?? ""}>`
+        }
+
+        /**
+         * Get the HTML representation of an image
+         * It accepts either internal link or url
+         * @param {import('./view').Link | string} img 
+         */
+        renderImage(img) {
+            if (typeof img === "string") {
+                return this.renderThumbnailFromUrl(img)
+            }
+            return this.renderThumbnailFromVault(img)
+        }
+
+        /** Taken directly from Dataview */
+        renderMinimalDate(time) {
+            if (!this.utils.isObject(time)) return time
+
+            const locale = window.navigator?.language ?? "en-US"
+
+            return time.toLocal().toFormat(this.dv.settings.defaultDateTimeFormat, { locale });
         }
 
         /**
@@ -2280,6 +2438,7 @@ class Krakor {
             const { isMobile } = this.app
 
             // I would like to use `navigator.userAgentData.platform` since `navigator.platform` is deprecated but it doesn't work on mobile
+            // TODO: see if I can use appVersion instead -> https://liamca.in/Obsidian/API+FAQ/OS/check+the+current+OS
             const { platform } = navigator
 
             if (platform.indexOf("Win") !== -1) return "Windows"
@@ -2558,6 +2717,13 @@ class Krakor {
                callout : this.#amiInCallout(),
                embed : this.#amiInEmbed(),
             }
+        }
+
+        whichDeviceAmi() {
+            const syncPlugin = this.dv.app.internalPlugins.getPluginById("sync")
+            if (!syncPlugin) return ""
+
+            return syncPlugin.instance.getDefaultDeviceName()
         }
 
         /** @param {Set<string>} set */
