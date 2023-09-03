@@ -37,6 +37,8 @@ Here are the overarching principles of how this view works:
 
 Despite all the above points, there are some caveats to bear in mind:
 
+- This view and Dataview's **Automatic View Refreshing** aren't really compatible 😕. For example, if you are listening to audio files while modifiying your vault, it will reset the music everytime dv refreshes... There are no workaround around that unfortunatly. That's one of the few things I really hope Datacore will fix
+
 - The **audio player** user experience on *Android* is not reliable 😞:
 	- Some (if not most) audio files don't load at all (i've opened an [issue on Obsidian Forums](https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684) about it):
 		- Those either play until the end but don't trigger the autoplay
@@ -49,13 +51,13 @@ Despite all the above points, there are some caveats to bear in mind:
 	- What I mean is that they're useful to know at a glance the progress of the music, but the timecode does not update and it can be difficult to change its position, especially on mobile
 
 - The url links support has been built with **Youtube links** in mind:
-	- You can still add any other web links to your markdown music file (soundcloud, dailymotion, ...) but you will not benefit from the youtube auto playlist feature while doing so.
-
-- If you are listening to audio files and modifiying your vault at the same time then you'll want to remove the **auto refresh of Dataview** or else it will reset the music everytime dv refreshes
+	- You can still add any other web links to your markdown music file (soundcloud, dailymotion, ...) but you will not benefit from the youtube auto playlist feature while doing so
 
 - If you have scrolled far enough inside a page and a lot of musics have been rendered (> 200) and you decide to **switch to another tab**, then you may experience a screen freeze for few seconds when switching back to this tab (This phenomenon was only really experienced on my Android phone)
 
 - It's an already known phenomenon (cf. https://forum.obsidian.md/t/audio-stops-while-scrolling/7966) but **scrolling too far deep** in the file where this view sit (or up depending on where the codeblock is positionned) will pause the music if it's played by an audio player inside a card. It's because of Obsidian's infinite scrolling strategy. Basicly, the output of this view is removed from the DOM when you've scrolled too far from it
+
+- Compared to traditional plugins, this view doesn't have an easy way to tell you if it can be updated
 
 
 ## 🎯 Motivations
@@ -79,7 +81,7 @@ If you do not recognize yourself in neither of these statements, then I am happy
 
 I'm a huge anime and video game music enjoyer. Unfortunatly, traditional music services don't have the best catalog when it comes to this. So until now, i've been managing my music inside Youtube since it has the biggest number of music available overall.
 
-It worked great for a long time. Some music used to get striked once in a while but it wasn't a big deal. Then one day, Youtube decided that the striked/unavailable videos should be hidden immediatly for the end user, that way, they couldn't have a clue (except if they remembered their playlist by heart) what the video was. For me it was the straw that broke the camel's back: I had to find a solution.
+It worked great for a long time. Some music used to get striked once in a while but it wasn't a big deal. Then one day, YouTube decided that the striked/unavailable videos should be hidden immediately from the end user. That way, they wouldn't have a clue (unless they remembered their playlist by heart) what the video was. For me it was the straw that broke the camel's back: I HAD to find a solution.
 
 Around the same time, i've discovered Notion and the PKM world in general. For several months, I've built and progressively upgraded a music database system on Notion. It was definitly not the best tool for the job but I was really satisfied with it. Unfortunatly at some point, it became a burden to use and manage because of Notion's online-only strategy... The whole database was sluggish and difficult to populate but I forced myself to keep using it nonetheless.
 
@@ -101,13 +103,13 @@ But i didn't know where to start because imo, a plugin would be too overkill for
 **Plugins highly recommanded (but not required)**
 
 - Metadata Menu
->You'll be able to click on the icon for each music to instantly access their metadata instead of going in the file. Fantastic to quickly jump to an artist or a media link (especially on mobile)
+> To put a music icon next to each music link to instantly access their metadata instead of going in the file. Fantastic to quickly jump to an artist or a media link (especially on mobile)
 
 - Templater
->You could set a default music template on file created inside the default score directory after clicking on the `+` button
+> To set a default music template on file created inside the default score directory after clicking on the `+` button
 
 - Surfing (*Desktop only*)
-> Very helpful because it will open the music link directly inside Obsidian. Combined with YT Premium it transform your vault into a real music player
+> Very helpful because it will open the music link directly inside Obsidian. Unfortunatly it doesn't supports web extension yet (so no ad-blocker...). However if you have a premium subscription to the platform from which your url links come from (YT Premium in my case), this can turn your vault into a music player
 
 - Force Note View Mode
 > Simple but very convenient to automatically switch to reading mode. That way you don't have to scroll the yaml frontmatter if it is too big

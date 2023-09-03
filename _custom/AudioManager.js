@@ -15,7 +15,7 @@ class AudioManager {
             this.enableSimultaneousPlaying = enableSimultaneousPlaying
             this.autoplay = autoplay
             this.stopAutoplayWhenReachingLastMusic = stopAutoplayWhenReachingLastMusic
-            this.currentMP3Playing = -1
+            this.currentAudioPlaying = -1
             this.numberOfAudiosLoaded = -1
             this.defaultVolume = defaultVolume
         }
@@ -46,8 +46,8 @@ class AudioManager {
          * @param {HTMLButtonElement[]} _.playButtons
          */
         onPlayAudio = async ({ index, audios, playButtons }) => {
-            if (!this.enableSimultaneousPlaying && this.currentMP3Playing !== -1 && this.currentMP3Playing !== index) {
-                audios[this.currentMP3Playing].pause()
+            if (!this.enableSimultaneousPlaying && this.currentAudioPlaying !== -1 && this.currentAudioPlaying !== index) {
+                audios[this.currentAudioPlaying].pause()
             }
 
             // Handle volume
@@ -58,7 +58,7 @@ class AudioManager {
                 audios[index].volume = this.utils.clamp(this.defaultVolume, 0.1, 1)
             }
 
-            this.currentMP3Playing = index;
+            this.currentAudioPlaying = index;
 
             await this.reloadMp3IfCorrupt(audios[index])
 
@@ -72,9 +72,9 @@ class AudioManager {
          * @param {HTMLAudioElement} _.audio 
          */
         onPauseAudio = ({ playButton, audio, index }) => {
-            if (this.currentMP3Playing === index) {
+            if (this.currentAudioPlaying === index) {
                 // This if check is needed to not break the 'disable simultaneous playing of mp3' feature
-                this.currentMP3Playing = -1;
+                this.currentAudioPlaying = -1;
             }
             audio.pause();
             playButton.innerHTML = this.icons.playIcon;
@@ -94,7 +94,7 @@ class AudioManager {
         }
 
         onEnded = async ({audios, index, timeline, playButton,}) => {
-            this.currentMP3Playing = -1
+            this.currentAudioPlaying = -1
             playButton.innerHTML = this.icons.playIcon
             timeline.value = 0
             timeline.style.backgroundSize = "0% 100%"

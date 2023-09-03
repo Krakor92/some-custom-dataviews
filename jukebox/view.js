@@ -18,12 +18,20 @@ const {
 // CustomJS related - look at the readme for more info
 const DEFAULT_CUSTOMJS_CLASS = "Krakor"
 
+const LOGGER_TYPE = "both"
+const DEBUG_LOG_FILE = "🙈/Log.md"
+
 // You can add any disable values here to globally disable them in every view
 const GLOBAL_DISABLE = ""
 
 await forceLoadCustomJS()
 const utils = new customJS[DEFAULT_CUSTOMJS_CLASS].Utils({app: dv.app})
-const logger = new customJS[DEFAULT_CUSTOMJS_CLASS].Logger({app: dv.app, dry: !debug})
+const logger = new customJS[DEFAULT_CUSTOMJS_CLASS].Logger({
+    app: dv.app,
+    dry: !debug,
+    output: LOGGER_TYPE,
+    filepath: DEBUG_LOG_FILE
+})
 
 const vm = new customJS[DEFAULT_CUSTOMJS_CLASS].ViewManager({
     dv, logger, utils,
@@ -135,9 +143,37 @@ const fileManager = new customJS[DEFAULT_CUSTOMJS_CLASS].FileManager({
 
 const icons = new customJS[DEFAULT_CUSTOMJS_CLASS].IconManager()
 
+const audioManager = new customJS[DEFAULT_CUSTOMJS_CLASS].AudioManager({
+    enableSimultaneousPlaying: ENABLE_SIMULTANEOUS_AUDIO_PLAYING,
+    autoplay: !vm.disableSet.has("autoplay"),
+    stopAutoplayWhenReachingLastMusic: STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC,
+    defaultVolume: DEFAULT_VOLUME,
+    logger, utils, icons,
+})
+
 //#region Buttons handling
 if (!vm.disableSet.has("buttons")) {
     const buttonBar = new customJS[DEFAULT_CUSTOMJS_CLASS].ButtonBar()
+
+    if (debug) {
+        buttonBar.addButton({
+            name: 'mp3-debug-info',
+            icon: 'info',
+            event: async () => {
+                await logger?.log(`currentAudioPlaying: ${audioManager.currentAudioPlaying}`)
+            }
+        })
+    }
+
+    if (debug) {
+        buttonBar.addButton({
+            name: 'clear-debug-file',
+            icon: icons.eraserIcon(22),
+            event: async () => {
+                await logger?.clear()
+            }
+        })
+    }
 
     buttonBar.addButton({
         name: 'playlist',
@@ -159,13 +195,13 @@ if (!vm.disableSet.has("buttons")) {
                 if (id !== -1) {
                     const t = url.substring(id + 3)
                     if (parseInt(t) > MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST) {
-                        console.warn(`The 't' argument is too deep inside the video of url: '${url}' to be added in the playlist`)
+                        logger?.warn(`The 't' argument is too deep inside the video of url: '${url}' to be added in the playlist`)
                         return prev
                     }
                 }
 
                 if (utils.convertTimecodeToDuration(length) > maxLengthAccepted) {
-                    console.warn(`${file.name} is too long to be added in the playlist`)
+                    logger?.warn(`${file.name} is too long to be added in the playlist`)
                     return prev
                 }
 
@@ -233,14 +269,14 @@ const pageManager = new customJS[DEFAULT_CUSTOMJS_CLASS].PageManager({
 
 let queriedPages = []
 if (!vm.disableSet.has("query")) {
-	queriedPages = await pageManager.buildAndRunFileQuery({filter, qs})
-	logger.log({ queriedPages })
+    queriedPages = await pageManager.buildAndRunFileQuery({filter, qs})
+    logger.log({ queriedPages })
 }
 
 const pages = [...queriedPages, ...orphanPages]
 
 if (!pages.length) {
-    console.warn("No pages queried...")
+    logger?.warn("No pages queried...")
     return
 }
 
@@ -250,11 +286,11 @@ await pageManager.sortPages({ pages, sort })
 
 //#region Build the grid of score for the DOM
 const renderTimelineTrack = () => {
-	return `<input type="range" class="timeline" max="100" value="0">`
+    return `<input type="range" class="timeline" max="100" value="0">`
 }
 
 const renderTimecode = (length) => {
-	return `<div class="timecode"><span>${length}</span></div>`
+    return `<div class="timecode"><span>${length}</span></div>`
 }
 
 /**
@@ -263,13 +299,13 @@ const renderTimecode = (length) => {
  * @param {string} url 
  */
 const _resolveAnchorServicePartFromUrl = (url) => {
-	if (url.includes("youtu")) return `data-service="youtube">${icons.youtubeIcon}`
-	if (url.includes("soundcloud")) return `data-service="soundcloud">${icons.soundcloudIcon}`
-	if (url.includes("dailymotion")) return `data-service="dailymotion">${icons.dailymotionIcon}`
-	if (url.includes("dropbox")) return `data-service="dropbox">${icons.dropboxIcon}`
-	if (url.includes("spotify")) return `data-service="spotify">${icons.spotifyIcon}`
-	// The icon doesn't hide when HIDE_ICONS is set to true...
-	// if (url.includes("deezer")) return `data-service="deezer">${deezerIcon}`
+    if (url.includes("youtu")) return `data-service="youtube">${icons.youtubeIcon}`
+    if (url.includes("soundcloud")) return `data-service="soundcloud">${icons.soundcloudIcon}`
+    if (url.includes("dailymotion")) return `data-service="dailymotion">${icons.dailymotionIcon}`
+    if (url.includes("dropbox")) return `data-service="dropbox">${icons.dropboxIcon}`
+    if (url.includes("spotify")) return `data-service="spotify">${icons.spotifyIcon}`
+    // The icon doesn't hide when HIDE_ICONS is set to true...
+    // if (url.includes("deezer")) return `data-service="deezer">${deezerIcon}`
 
     return `data-service="unknown">${icons.linkIcon}`
 }
@@ -280,10 +316,10 @@ const _resolveAnchorServicePartFromUrl = (url) => {
  * @param {string} _.url 
  */
 const renderExternalUrlAnchor = ({ url, children = "", noIcon = false }) => {
-	const base = `<a href="${url}" class="external-link" rel="noopener target="_blank"`
-	return noIcon ?
-		`${base}>${children}</a>` :
-		`${base}${_resolveAnchorServicePartFromUrl(url)}${children}</a>`;
+    const base = `<a href="${url}" class="external-link" rel="noopener target="_blank"`
+    return noIcon ?
+        `${base}>${children}</a>` :
+        `${base}${_resolveAnchorServicePartFromUrl(url)}${children}</a>`;
 }
 
 const Renderer = new customJS[DEFAULT_CUSTOMJS_CLASS].Renderer({utils, icons})
@@ -303,17 +339,9 @@ function resolveArticleStyle({ options }) {
     return style !== "" ? `style="${style}"` : ""
 }
 
-const audioManager = new customJS[DEFAULT_CUSTOMJS_CLASS].AudioManager({
-	enableSimultaneousPlaying: ENABLE_SIMULTANEOUS_AUDIO_PLAYING,
-	autoplay: !vm.disableSet.has("autoplay"),
-	stopAutoplayWhenReachingLastMusic: STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC,
-	defaultVolume: DEFAULT_VOLUME,
-	logger, utils, icons,
-})
-
 const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridManager({
     dv, logger, icons, utils,
-	numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
+    numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
     disableSet: vm.disableSet,
     extraLogicOnNewChunk: [
         (gm) => {
@@ -322,7 +350,7 @@ const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridM
         (gm) => {
             if (!gm.everyElementsHaveBeenInsertedInTheDOM()) return
 
-            gm.logger.log(`Finish to load: ${gm.batchesFetchedCount * gm.numberOfElementsPerBatch}`)
+            gm.logger?.log(`Finish to load: ${gm.batchesFetchedCount * gm.numberOfElementsPerBatch}`)
             if (gm.disableSet.has("addscore") || gm.disableSet.has("addscorecell")) return;
 
             const addScoreCellDOM = gm.dv.el("article", gm.icons.filePlusIcon(24), { cls: "add-file" })
@@ -441,19 +469,19 @@ vm.rootNode.appendChild(gridManager.getParent());
 //#region Masonry layout
 if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 
-	const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.getParent())
+    const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.getParent())
 
-	const resizeObserver = new ResizeObserver(() => {
-		masonryManager.resizeAllGridItems()
-	});
+    const resizeObserver = new ResizeObserver(() => {
+        masonryManager.resizeAllGridItems()
+    });
 
-	/**
-	 * Since I don't unobserve anywhere, it could give memory leaks...
-	 * According to this SO post: https://stackoverflow.com/questions/67581868/should-i-call-resizeobserver-unobserve-for-removed-elements
-	 * The garbage collector should disconnect it once the grid has been removed from the DOM
+    /**
+     * Since I don't unobserve anywhere, it could give memory leaks...
+     * According to this SO post: https://stackoverflow.com/questions/67581868/should-i-call-resizeobserver-unobserve-for-removed-elements
+     * The garbage collector should disconnect it once the grid has been removed from the DOM
      * But when does it get removed by Obsidian ¯\_(ツ)_/¯
-	 */
-	resizeObserver.observe(masonryManager.grid)
+     */
+    resizeObserver.observe(masonryManager.grid)
 }
 //#endregion
 

@@ -239,7 +239,7 @@ class PageManager {
             qs.from(fromQuery)
 
             for (const prop in filter) {
-                this.logger?.log(`filter.${prop} = ${filter[prop]}`)
+                this.logger?.log(`filter.${prop} =`, filter[prop])
 
                 if (prop === "from") continue
 
