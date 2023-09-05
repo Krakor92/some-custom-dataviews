@@ -117,6 +117,37 @@ class Renderer {
         }
 
         /**
+         * Get the HTML representation of an image
+         * It accepts either internal link or url
+         * @param {import('../view').Link | string} img 
+         */
+        renderImage(img) {
+            if (typeof img === "string") {
+                return this.renderThumbnailFromUrl(img)
+            }
+            return this.renderThumbnailFromVault(img)
+        }
+
+        /**
+         * 
+         * @param {object} _ 
+         * @param {string} _.url 
+         */
+        renderExternalUrlAnchor = (url) => {
+            const base = `<a href="${url}" class="external-link" rel="noopener target="_blank"`
+            return `${base}>${url}</a>`
+        }
+
+        /** Taken from Dataview */
+        renderMinimalDate(time, defaultDateTimeFormat = "HH:mm - dd MMMM yyyy") {
+            if (!this.utils.isObject(time)) return time
+
+            const locale = window.navigator?.language ?? "en-US"
+
+            return time.toLocal().toFormat(defaultDateTimeFormat, { locale });
+        }
+
+        /**
          * @param {object} file
          * @param {string} file.path
          * @param {string} file.name
@@ -167,6 +198,47 @@ class Renderer {
             if (!mp3Exists) return this.#renderMP3Audio({src: audioFile, preload, dataVolume})
 
             return this.#renderMP3Audio({
+                src: window.app.vault.adapter.getResourcePath(audioFile.path),
+                preload,
+                dataVolume,
+            })
+        }
+
+        #renderInternalEmbedAudio = ({ src, preload, dataVolume = "" }) => (`
+            <div
+                class="internal-embed media-embed audio-embed is-loaded"
+                tabindex="-1"
+                contenteditable="false"
+            >
+                <audio
+                    controls
+                    controlslist="nodownload"
+                    src="${src}"
+                    preload="${preload}"
+                    ${dataVolume}
+                >
+                </audio>
+            </div>
+        `)
+
+        /**
+         * Aim to replicate the way it is done by vanilla Obsidian
+         * @param {object} _
+         * @param {import('../view').Link} _.audioFile
+         * @param {number?} _.volumeOffset
+         * @param {'auto' | 'metadata' | 'none'} _.preload
+         */
+        renderInternalEmbedAudio = async ({ audioFile, volumeOffset, preload = "metadata" }) => {
+            if (!audioFile) return ""
+
+            const mp3Exists = await this.utils.linkExists(audioFile)
+
+            const dataVolume = volumeOffset ? `data-volume="${volumeOffset}"` : ""
+
+            // Expects it to be an http link pointing to a valid resource
+            if (!mp3Exists) return this.#renderInternalEmbedAudio({ src: audioFile, preload, dataVolume })
+
+            return this.#renderInternalEmbedAudio({
                 src: window.app.vault.adapter.getResourcePath(audioFile.path),
                 preload,
                 dataVolume,

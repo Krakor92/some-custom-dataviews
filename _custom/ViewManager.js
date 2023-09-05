@@ -14,8 +14,9 @@ class ViewManager {
          * @param {object} _ 
          * @param {string} _.name - The name of the view (must match with css class associated with it)
          */
-        constructor({disable = "", dv, utils, logger, name} = {}) {
-            this.container = dv.container
+        constructor({disable = "", app, container, utils, logger, name} = {}) {
+            this.app = app
+            this.container = container
             this.utils = utils
             this.logger = logger
             this.disableSet = new Set(disable.split(" ").map((v) => v.toLowerCase()))
@@ -23,7 +24,7 @@ class ViewManager {
 
             this.tid = (new Date()).getTime();
             /** @type {HTMLDivElement} */
-            this.rootNode = dv.el("div", "", {
+            this.rootNode = container.createEl("div", {
                 cls: this.#computeClassName(),
                 attr: {
                     id: name + this.tid,
@@ -74,7 +75,7 @@ class ViewManager {
         }
 
         init() {
-        	this.observer.observe(this.container)
+            this.observer.observe(this.container)
         }
 
         /**
@@ -122,7 +123,7 @@ class ViewManager {
 
             // Weird case: It happens when the view is burried in the popover file. It is in a strange dual state: Loaded but outside of the main DOM.
             if (!this.rootNode
-                ?.parentNode // dv.container
+                ?.parentNode // container
                 ?.parentNode // <div>
                 ?.parentNode // undefined
             ) return true
@@ -184,7 +185,7 @@ class ViewManager {
         }
 
         whichDeviceAmi() {
-            const syncPlugin = this.dv.app.internalPlugins.getPluginById("sync")
+            const syncPlugin = this.app.internalPlugins.getPluginById("sync")
             if (!syncPlugin) return ""
 
             return syncPlugin.instance.getDefaultDeviceName()

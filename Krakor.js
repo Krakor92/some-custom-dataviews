@@ -406,6 +406,35 @@ class Krakor {
             this.logger?.log({ children })
         }
 
+        /**
+         * TODO: finish this generator/yield implementation to have a true lazy generation of HTML
+         * Hence I need to modify handleLastChildIntersection and insertNewChunk
+         * Is it really worth it though? The current buildChildrenHTML isn't that slow
+         */
+        async *generateChildrenHTML({ pages, pageToChild }) {
+            let pageIndex = 0;
+
+            while (pageIndex < pages.length) {
+                const batchPages = pages.slice(pageIndex, pageIndex + this.numberOfElementsPerBatch);
+                const batchHTML = [];
+
+                for (const page of batchPages) {
+                    const child = await pageToChild(page)
+
+                    if (Array.isArray(child)) {
+                        batchHTML = [...batchHTML, ...child]
+                    } else {
+                        batchHTML.push(child)
+                    }
+                }
+
+                pageIndex += this.numberOfElementsPerBatch;
+
+                this.batchChildrenHTML = batchHTML
+                yield this.batchChildrenHTML; // Yield the batch of HTML strings
+            }
+        }
+
         initInfiniteLoading() {
             if (this.everyElementsHaveBeenInsertedInTheDOM()) return
 
@@ -2383,13 +2412,23 @@ class Krakor {
             return this.renderThumbnailFromVault(img)
         }
 
-        /** Taken directly from Dataview */
-        renderMinimalDate(time) {
+        /**
+         * 
+         * @param {object} _ 
+         * @param {string} _.url 
+         */
+        renderExternalUrlAnchor = (url) => {
+            const base = `<a href="${url}" class="external-link" rel="noopener target="_blank"`
+            return `${base}>${url}</a>`
+        }
+
+        /** Taken from Dataview */
+        renderMinimalDate(time, defaultDateTimeFormat = "HH:mm - dd MMMM yyyy") {
             if (!this.utils.isObject(time)) return time
 
             const locale = window.navigator?.language ?? "en-US"
 
-            return time.toLocal().toFormat(this.dv.settings.defaultDateTimeFormat, { locale });
+            return time.toLocal().toFormat(defaultDateTimeFormat, { locale });
         }
 
         /**
@@ -2449,6 +2488,47 @@ class Krakor {
             })
         }
 
+        #renderInternalEmbedAudio = ({ src, preload, dataVolume = "" }) => (`
+            <div
+                class="internal-embed media-embed audio-embed is-loaded"
+                tabindex="-1"
+                contenteditable="false"
+            >
+                <audio
+                    controls
+                    controlslist="nodownload"
+                    src="${src}"
+                    preload="${preload}"
+                    ${dataVolume}
+                >
+                </audio>
+            </div>
+        `)
+
+        /**
+         * Aim to replicate the way it is done by vanilla Obsidian
+         * @param {object} _
+         * @param {import('./view').Link} _.audioFile
+         * @param {number?} _.volumeOffset
+         * @param {'auto' | 'metadata' | 'none'} _.preload
+         */
+        renderInternalEmbedAudio = async ({ audioFile, volumeOffset, preload = "metadata" }) => {
+            if (!audioFile) return ""
+
+            const mp3Exists = await this.utils.linkExists(audioFile)
+
+            const dataVolume = volumeOffset ? `data-volume="${volumeOffset}"` : ""
+
+            // Expects it to be an http link pointing to a valid resource
+            if (!mp3Exists) return this.#renderInternalEmbedAudio({ src: audioFile, preload, dataVolume })
+
+            return this.#renderInternalEmbedAudio({
+                src: window.app.vault.adapter.getResourcePath(audioFile.path),
+                preload,
+                dataVolume,
+            })
+        }
+
         /**
          * 
          * @param {import('./view').Link} _.filelink
@@ -2467,6 +2547,126 @@ class Krakor {
 
             return `<video controls src="${window.app.vault.adapter.getResourcePath(filelink.path)}">
             </video>`;
+        }
+    }
+
+    /**
+     * Manages Shadow DOM in my views
+     */
+    Shikamaru = class {
+        constructor(container) {
+            // Create a Shadow DOM for the container
+            this.shadowRootNode = container.attachShadow({ mode: 'open' });
+
+            // Define styles and content within the Shadow DOM
+            const paragraph = this.shadowRootNode.createEl("p", {
+                attr: {
+                    part: "paragraph"
+                }
+            })
+            paragraph.textContent= "This is a <p> with scoped styles"
+
+            const style = this.shadowRootNode.createEl("style")
+            style.textContent = `
+p {
+    color: blue;
+}
+`
+        }
+
+        /**
+         * Attach a shadowDOM to the container and move all of its children inside
+         * @param {HTMLElement} container
+         */
+        static KagemaneNoJutsu(container) {
+            container.attachShadow({mode: 'open'})
+
+            while(container.firstChild) {
+                container.shadowRoot.appendChild(container.firstChild)
+            }
+        }
+
+        /**
+         * @param {ViewManager} ViewManager
+         */
+        static ViewKagemaneNoJutsu(viewManager) {
+            this.KagemaneNoJutsu(viewManager.rootNode)
+            
+            // Override the "root" getter in this specific instance of viewManager
+            Object.defineProperty(viewManager, "root", {
+                get: function () {
+                    return viewManager.rootNode.shadowRoot;
+                },
+            });
+        }
+    }
+
+    Stylist = class {
+
+        constructor({app, container}) {
+            this.app = app
+            this.container = container
+            this.style = container.createEl("style")
+        }
+
+        get rules() {
+            return this.style.sheet.cssRules
+        }
+
+        setTableStyle() {
+            this.style.textContent += `
+table {
+    background-color: red;
+}
+`
+        }
+
+        setPStyle() {
+            this.style.textContent += `
+p,::part(paragraph)
+{
+    background-color: red;
+    font-weight: 800;
+}
+
+/*
+div
+{
+    background-color: black;
+}
+*/
+`
+        }
+
+        async setStyleContentFromFile(filepath, currentFilePath) {
+            const cssFile = this.app.metadataCache.getFirstLinkpathDest(filepath, currentFilePath)
+            if (!cssFile) return false
+
+            const cssContents = await this.app.vault.read(cssFile)
+            this.style.textContent = cssContents
+            return true
+        }
+
+        static resolveArticleStyle(options) {
+            if (!options) return ""
+
+            const { align } = options
+
+            let style = ""
+            style += align ? `align-self: ${align};` : ""
+
+            return style !== "" ? `style="${style}"` : ""
+        }
+
+        static setTableStyle(table) {
+            table.parentNode.style.cssText = `
+                overflow-x: scroll;
+            `
+
+            table.style.cssText = `
+                table-layout: fixed;
+                width: 100%;
+            `
         }
     }
 
@@ -2680,8 +2880,9 @@ class Krakor {
          * @param {object} _ 
          * @param {string} _.name - The name of the view (must match with css class associated with it)
          */
-        constructor({disable = "", dv, utils, logger, name} = {}) {
-            this.container = dv.container
+        constructor({disable = "", app, container, utils, logger, name} = {}) {
+            this.app = app
+            this.container = container
             this.utils = utils
             this.logger = logger
             this.disableSet = new Set(disable.split(" ").map((v) => v.toLowerCase()))
@@ -2689,7 +2890,7 @@ class Krakor {
 
             this.tid = (new Date()).getTime();
             /** @type {HTMLDivElement} */
-            this.rootNode = dv.el("div", "", {
+            this.rootNode = container.createEl("div", {
                 cls: this.#computeClassName(),
                 attr: {
                     id: name + this.tid,
@@ -2740,7 +2941,7 @@ class Krakor {
         }
 
         init() {
-        	this.observer.observe(this.container)
+            this.observer.observe(this.container)
         }
 
         /**
@@ -2788,7 +2989,7 @@ class Krakor {
 
             // Weird case: It happens when the view is burried in the popover file. It is in a strange dual state: Loaded but outside of the main DOM.
             if (!this.rootNode
-                ?.parentNode // dv.container
+                ?.parentNode // container
                 ?.parentNode // <div>
                 ?.parentNode // undefined
             ) return true
@@ -2850,7 +3051,7 @@ class Krakor {
         }
 
         whichDeviceAmi() {
-            const syncPlugin = this.dv.app.internalPlugins.getPluginById("sync")
+            const syncPlugin = this.app.internalPlugins.getPluginById("sync")
             if (!syncPlugin) return ""
 
             return syncPlugin.instance.getDefaultDeviceName()

@@ -18,16 +18,18 @@ const {
 // CustomJS related - look at the readme for more info
 const DEFAULT_CUSTOMJS_CLASS = "Krakor"
 
+// You can add any disable values here to globally disable them in every view
 const GLOBAL_DISABLE = ""
 
 await forceLoadCustomJS()
 const utils = new customJS[DEFAULT_CUSTOMJS_CLASS].Utils({app: dv.app})
 const logger = new customJS[DEFAULT_CUSTOMJS_CLASS].Logger({app: dv.app, dry: !debug})
 
-// You can add any disable values here to globally disable them in every view
-
 const vm = new customJS[DEFAULT_CUSTOMJS_CLASS].ViewManager({
-    dv,logger, utils,
+    app: dv.app,
+    container: dv.container,
+    logger,
+    utils,
     name: 'gallery',
     disable: GLOBAL_DISABLE + " " + disable,
 })

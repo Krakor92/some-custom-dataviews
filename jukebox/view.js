@@ -34,7 +34,10 @@ const logger = new customJS[DEFAULT_CUSTOMJS_CLASS].Logger({
 })
 
 const vm = new customJS[DEFAULT_CUSTOMJS_CLASS].ViewManager({
-    dv, logger, utils,
+    app: dv.app,
+    container: dv.container,
+    logger,
+    utils,
     name: 'jukebox',
     disable: GLOBAL_DISABLE + " " + disable,
 })
