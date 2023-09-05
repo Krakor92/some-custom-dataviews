@@ -66,7 +66,7 @@ const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
 // How many pages do you want to render at first and each time you reach the end of the grid
 const NB_FILE_BATCH_PER_PAGE = 20
 
-/** @type {'auto', 'top', 'center', 'bottom'} */
+/** @type {'auto' | 'top' | 'center' | 'bottom'} */
 const ARTICLE_ALIGN = 'center'
 
 /**
@@ -78,16 +78,6 @@ const ARTICLE_ALIGN = 'center'
 const MASONRY_LAYOUT = true
 
 //#endregion
-
-
-const fileManager = new customJS[DEFAULT_CUSTOMJS_CLASS].FileManager({
-    dv, utils,
-    app: dv.app,
-    directoryWhereToAddFile: DEFAULT_FILE_DIRECTORY,
-    properties: filter,
-    userFields: USER_FIELDS,
-})
-
 
 const icons = new customJS[DEFAULT_CUSTOMJS_CLASS].IconManager()
 
@@ -143,7 +133,10 @@ function resolveArticleStyle({ options }) {
 }
 
 const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridManager({
-    dv, logger, icons, utils,
+    container: dv.container,
+    component: dv.component,
+    currentFilePath: dv.currentFilePath,
+    logger, icons, utils,
     numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
     disableSet: vm.disableSet,
 })
@@ -204,12 +197,12 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
 gridManager.buildParent()
 await gridManager.insertNewChunk()
 
-vm.rootNode.appendChild(gridManager.getParent());
+vm.rootNode.appendChild(gridManager.parent);
 //#endregion
 
 //#region Masonry layout
 if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
-    const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.getParent())
+    const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.parent)
 
     const resizeObserver = new ResizeObserver(() => {
         masonryManager.resizeAllGridItems()

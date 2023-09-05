@@ -18,7 +18,7 @@ const {
 // CustomJS related - look at the readme for more info
 const DEFAULT_CUSTOMJS_CLASS = "Krakor"
 
-const LOGGER_TYPE = "both"
+const LOGGER_TYPE = "console"
 const DEBUG_LOG_FILE = "🙈/Log.md"
 
 // You can add any disable values here to globally disable them in every view
@@ -104,7 +104,7 @@ const HIDE_ICONS = false
 // If true, it doesn't display any icon and the whole image become the link
 const THUMBNAIL_IS_URL_LINK = true
 
-/** @type {'auto', 'top', 'center', 'bottom'} */
+/** @type {'auto' | 'top' | 'center' | 'bottom'} */
 const ARTICLE_ALIGN = 'center'
 
 /**
@@ -340,7 +340,10 @@ function resolveArticleStyle({ options }) {
 }
 
 const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridManager({
-    dv, logger, icons, utils,
+    container: dv.container,
+    component: dv.component,
+    currentFilePath: dv.currentFilePath,
+    logger, icons, utils,
     numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
     disableSet: vm.disableSet,
     extraLogicOnNewChunk: [
@@ -353,8 +356,9 @@ const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridM
             gm.logger?.log(`Finish to load: ${gm.batchesFetchedCount * gm.numberOfElementsPerBatch}`)
             if (gm.disableSet.has("addscore") || gm.disableSet.has("addscorecell")) return;
 
-            const addScoreCellDOM = gm.dv.el("article", gm.icons.filePlusIcon(24), { cls: "add-file" })
-            gm.getParent().appendChild(addScoreCellDOM);
+            const addScoreCellDOM = gm.container.createEl("article", { cls: "add-file" })
+            addScoreCellDOM.innerHTML = gm.icons.filePlusIcon(24)
+            gm.parent.appendChild(addScoreCellDOM);
 
             addScoreCellDOM.onclick = fileManager.handleAddFile.bind(fileManager)
         }
@@ -463,13 +467,13 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
 gridManager.buildParent()
 await gridManager.insertNewChunk()
 
-vm.rootNode.appendChild(gridManager.getParent());
+vm.rootNode.appendChild(gridManager.parent);
 //#endregion
 
 //#region Masonry layout
 if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 
-    const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.getParent())
+    const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.parent)
 
     const resizeObserver = new ResizeObserver(() => {
         masonryManager.resizeAllGridItems()

@@ -2,6 +2,11 @@ class CollectionManager {
     /**
      * @abstract
      * @warning This class need CustomJS enabled to work since it uses MarkdownRenderer.renderMarkdown which is exposed by the plugin
+     * It is also needed because of the way the static generator functions are written
+     * 
+     * This class is no longer Dataview dependant. This makes it agnostic of the engine its running on
+     * It might be Dataview, Datacore or even JS-Engine, this class shouldn't care
+     * 
      * This class is the blueprint to use for classes that manage a collection of children node in the DOM
      * Don't instantiate directly from its constructor. You should use one of the static methods at the bottom instead
      * It handles:
@@ -13,11 +18,12 @@ class CollectionManager {
         /**
          * @param {object} _
          * @param {Function} _.buildParent - a function that build, insert in the DOM and set this.parent (must be a regular function)
-         * @param {() => HTMLElement} _.getParent - get the actual parent of all your children (must be a regular function)
          */
         constructor({
             //Dependencies
-            dv,
+            container,
+            component,
+            currentFilePath,
             logger,
             utils,
             icons,
@@ -30,9 +36,19 @@ class CollectionManager {
             //Child class injection
             childTag,
             buildParent,
-            getParent,
         }) {
-            this.dv = dv
+            /** 
+             * The parent element of this collection (most of the time, the codeblock div itself)
+             * @type {HTMLElement}
+             */
+            this.container = container
+
+            /** Correspond to the current plugin component where this object is instantiated */
+            this.component = component
+
+            /** @type {string} */
+            this.currentFilePath = currentFilePath
+
             this.logger = logger
             this.icons = icons
             this.utils = utils
@@ -40,11 +56,10 @@ class CollectionManager {
 
             this.childTag = childTag
             this.buildParent = buildParent.bind(this)
-            this.getParent = getParent.bind(this)
 
 
             /** @type {HTMLElement} */
-            this.parent = null
+            this.collection = null
 
             /** @type {(string|object)[]} */
             this.children = []
@@ -52,7 +67,7 @@ class CollectionManager {
             this.batchesFetchedCount = 0
             this.numberOfElementsPerBatch = numberOfElementsPerBatch
 
-            /** @type {Array<function(TableManager): Promise<void>>} */
+            /** @type {Array<function(CollectionManager): Promise<void>>} */
             this.extraLogicOnNewChunk = extraLogicOnNewChunk
 
             this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this));
@@ -60,6 +75,18 @@ class CollectionManager {
 
         everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.children.length)
 
+        /**
+         * Susceptible to be overriden by a more specialized Collection instance
+         * 
+         * *What are the differences with `this.collection`?*
+         * 
+         * this.collection is the main container of the Collection (`<table>` for Table, `<div>` for Grid, ...)  
+         * this.parent is the container that directly contains the children (for example, it should be `<tbody>` for Table)  
+         * Both can refer to the same HTML element but not necessarly
+         */
+        get parent() {
+            return this.collection
+        }
 
         /**
          * Build the complete list of children that will eventually be rendered on the screen
@@ -87,10 +114,39 @@ class CollectionManager {
             this.logger?.log({ children })
         }
 
+        /**
+         * TODO: finish this generator/yield implementation to have a true lazy generation of HTML
+         * Hence I need to modify handleLastChildIntersection and insertNewChunk
+         * Is it really worth it though? The current buildChildrenHTML isn't that slow
+         */
+        async *generateChildrenHTML({ pages, pageToChild }) {
+            let pageIndex = 0;
+
+            while (pageIndex < pages.length) {
+                const batchPages = pages.slice(pageIndex, pageIndex + this.numberOfElementsPerBatch);
+                const batchHTML = [];
+
+                for (const page of batchPages) {
+                    const child = await pageToChild(page)
+
+                    if (Array.isArray(child)) {
+                        batchHTML = [...batchHTML, ...child]
+                    } else {
+                        batchHTML.push(child)
+                    }
+                }
+
+                pageIndex += this.numberOfElementsPerBatch;
+
+                this.batchChildrenHTML = batchHTML
+                yield this.batchChildrenHTML; // Yield the batch of HTML strings
+            }
+        }
+
         initInfiniteLoading() {
             if (this.everyElementsHaveBeenInsertedInTheDOM()) return
 
-            const lastChild = this.getParent().querySelector(`${this.childTag}:last-of-type`);
+            const lastChild = this.parent.querySelector(`${this.childTag}:last-of-type`);
             this.logger?.log({ lastChild })
             if (lastChild) {
                 this.childObserver.observe(lastChild)
@@ -127,7 +183,7 @@ class CollectionManager {
             }, "")
 
             // Needed for metadata-menu to trigger and render extra buttons
-            const extraChunkDOM = this.dv.container.createEl('div')
+            const extraChunkDOM = this.container.createEl('div')
             let extraChunkHTML = ''
             for (let i = fromSliceIndex; i < toSliceIndex; i++) {
                 if (!this.children[i]?.extra) {
@@ -144,21 +200,21 @@ class CollectionManager {
                 extraChunkHTML += `</div>`
             }
             /** The root cause of all this madness. I could use dv.el instead but it would add an extra level of abstraction I don't control */
-            await customJS.obsidian.MarkdownRenderer.renderMarkdown(extraChunkHTML, extraChunkDOM, this.dv.currentFilePath, this.dv.component)
+            await customJS.obsidian.MarkdownRenderer.renderMarkdown(extraChunkHTML, extraChunkDOM, this.currentFilePath, this.component)
             // ---
 
-            if (!this.getParent()) {
+            if (!this.parent) {
                 return console.error("Something went wrong, the collection parent element doesn't exist in the DOM")
             }
 
-            this.getParent().insertAdjacentHTML('beforeend', newChunk)
+            this.parent.insertAdjacentHTML('beforeend', newChunk)
 
             // 2nd part with the extraChunkDOm
             for (let i = 0; i < this.numberOfElementsPerBatch; i++) {
                 const extra = extraChunkDOM.children[i]
                 if (!extra) continue
 
-                const currentChild = this.getParent().children[i + fromSliceIndex]
+                const currentChild = this.parent.children[i + fromSliceIndex]
                 // That means we've reach the end of the infinite loading
                 if (!currentChild) break
 
@@ -200,7 +256,7 @@ class CollectionManager {
 
                     if (this.batchesFetchedCount * this.numberOfElementsPerBatch < this.children.length) {
                         this.logger?.log(`Batch to load next: ${this.batchesFetchedCount * this.numberOfElementsPerBatch}`)
-                        const lastChild = this.getParent().querySelector(`${this.childTag}:last-of-type`)
+                        const lastChild = this.parent.querySelector(`${this.childTag}:last-of-type`)
                         this.childObserver.observe(lastChild)
                     }
                 }
@@ -213,55 +269,53 @@ class CollectionManager {
                     const trFragment = document.createDocumentFragment();
                     headers.forEach(header => {
                         const headerHTML = `<p>${header}</p>`
-                        const th = this.dv.container.createEl("th", { cls: "table-view-th" })
+                        const th = this.container.createEl("th", { cls: "table-view-th" })
                         th.insertAdjacentHTML('beforeend', headerHTML)
                         trFragment.appendChild(th)
                     })
 
-                    const tr = this.dv.container.createEl("tr", { cls: "table-view-tr-header" })
+                    const tr = this.container.createEl("tr", { cls: "table-view-tr-header" })
                     tr.appendChild(trFragment)
 
-                    const thead = this.dv.container.createEl("thead", { cls: "table-view-thead" })
+                    const thead = this.container.createEl("thead", { cls: "table-view-thead" })
                     thead.appendChild(tr)
 
                     return thead
                 }
 
                 const thead = buildTHead(headers)
-                const tbody = this.dv.container.createEl("tbody", { cls: "table-view-tbody" })
+                const tbody = this.container.createEl("tbody", { cls: "table-view-tbody" })
 
-                const table = this.dv.container.createEl("table", { cls: "table-view-table" })
+                const table = this.container.createEl("table", { cls: "table-view-table" })
                 table.appendChild(thead)
                 table.appendChild(tbody)
 
-                this.parent = table
+                this.collection = table
             }
 
-            function getParent() {
-                return this.parent?.lastChild
-            }
-
-            return new customJS["CollectionManager"].CollectionManager({
+            const tableManager = new customJS["CollectionManager"].CollectionManager({
                 ...dependencies,
                 buildParent,
-                getParent,
                 childTag: 'tr',
             })
+
+            Object.defineProperty(tableManager, "parent", {
+                get: function () {
+                    return tableManager.collection?.lastChild;
+                },
+            });
+
+            return tableManager
         }
 
         static makeGridManager(dependencies) {
             function buildParent() {
-                this.parent = this.dv.container.createEl("div", { cls: "grid" })
-            }
-
-            function getParent() {
-                return this.parent
+                this.collection = this.container.createEl("div", { cls: "grid" })
             }
 
             return new customJS["CollectionManager"].CollectionManager({
                 ...dependencies,
                 buildParent,
-                getParent,
                 childTag: 'article',
             })
         }

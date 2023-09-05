@@ -134,13 +134,13 @@ class AudioManager {
             this.logger?.reset()
 
             /** @type {HTMLAudioElement[]} */
-            const audios = collectionManager.getParent().querySelectorAll('audio')
+            const audios = collectionManager.parent.querySelectorAll('audio')
 
             /** @type {HTMLButtonElement[]} */
-            const playButtons = collectionManager.getParent().querySelectorAll('.audio-player button')
+            const playButtons = collectionManager.parent.querySelectorAll('.audio-player button')
 
             /** @type {HTMLInputElement[]} */
-            const trackTimelines = collectionManager.getParent().querySelectorAll('input.timeline')
+            const trackTimelines = collectionManager.parent.querySelectorAll('input.timeline')
 
             if (this.numberOfAudiosLoaded === audios.length) return;
             this.numberOfAudiosLoaded = audios.length
