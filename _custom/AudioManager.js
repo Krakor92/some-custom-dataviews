@@ -218,7 +218,7 @@ class AudioManager {
         * I guess it can't be patched like that 😕, so i should report this bug on obsidian forum
         * Edit: Here is the link to the issue i've created : https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684
         * Edit 2: Hahaha nobody cares (as expected 😅)
-        * Edit 3: @Majed6 on Discord said he had the same problem and he found a workaround, unfortunatly, it doesn't completely solve the issue 😞
+        * Edit 3: @Majed6 on Discord said he had the same problem and he found a workaround, unfortunately, it doesn't completely solve the issue 😞
         * @param {HTMLAudioElement} audio
         */
         reloadMp3IfCorrupt = async (audio) => {

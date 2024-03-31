@@ -218,7 +218,7 @@ class Krakor {
         * I guess it can't be patched like that 😕, so i should report this bug on obsidian forum
         * Edit: Here is the link to the issue i've created : https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684
         * Edit 2: Hahaha nobody cares (as expected 😅)
-        * Edit 3: @Majed6 on Discord said he had the same problem and he found a workaround, unfortunatly, it doesn't completely solve the issue 😞
+        * Edit 3: @Majed6 on Discord said he had the same problem and he found a workaround, unfortunately, it doesn't completely solve the issue 😞
         * @param {HTMLAudioElement} audio
         */
         reloadMp3IfCorrupt = async (audio) => {
@@ -291,11 +291,27 @@ class Krakor {
         }
     }
 
+
+    /**
+     * A function that takes an `HTMLElement` as input and do some computation on it
+     * @typedef {Function} HTMLCallback
+     * @property {HTMLElement} element
+     */
+
+    /**
+     * The object that should be returned by the `pageToChild` method of this class
+     * @typedef {object} PageToHTML
+     * @property {string} html
+     * @property {object} extra - A set of selectors to html. Needed for specific HTML tags behavior to happen on tag insertion
+     * @property {HTMLCallback} postInsertionCb - Used to do some computation on the element after it has been inserted in the DOM
+     */
+
     /**
      * @abstract
-     * @warning This class need CustomJS enabled to work since it uses MarkdownRenderer.renderMarkdown which is exposed by the plugin
+     * @warning This class need CustomJS enabled to work since it uses `MarkdownRenderer.renderMarkdown` which is exposed by the plugin.
      * It is also needed because of the way the static generator functions are written
      * 
+     * @description
      * This class is no longer Dataview dependant. This makes it agnostic of the engine its running on
      * It might be Dataview, Datacore or even JS-Engine, this class shouldn't care
      * 
@@ -303,8 +319,30 @@ class Krakor {
      * Don't instantiate directly from its constructor. You should use one of the static methods at the bottom instead
      * It handles:
      * - Lazy rendering of a bunch of DOM elements for blazing fast performance
-     * - Custom rendering that bypass MarkdownRenderer.renderMarkdown capacity
+     * - Custom rendering that bypass `MarkdownRenderer.renderMarkdown` capacity
      * - Image fallback
+     * 
+     * @example
+     * // Initializes the collection manager with all its needed dependencies
+     * const gridManager = CollectionManager.makeGridManager({
+     *      container,
+     *      component,
+     *      currentFilePath,
+     *      logger, icons, utils,
+     *      numberOfElementsPerBatch: 20,
+     *  })
+     * 
+     * // Internaly build the HTML representation of every elements thanks to blueprint
+     * await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {...}})
+     * 
+     * // Creates the HTML element that will hold every children and push it in the DOM
+     * gridManager.buildParent()
+     * 
+     * // Appends a chunk of element inside the DOM as children of the parent
+     * await gridManager.insertNewChunk()
+     * 
+     * // Initializes the infinite rendering that happens on scroll
+     * gridManager.initInfiniteLoading()
      */
     CollectionManager = class {
         /**
@@ -362,7 +400,13 @@ class Krakor {
             /** @type {Array<function(CollectionManager): Promise<void>>} */
             this.extraLogicOnNewChunk = extraLogicOnNewChunk
 
-            this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this));
+            const intersectionOptions = {
+                root: null, // relative to the viewport
+                rootMargin: '200px', // 200px below the viewport
+                threshold: 0,
+            }
+
+            this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this), intersectionOptions);
         }
 
         everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.children.length)
@@ -383,7 +427,8 @@ class Krakor {
         /**
          * Build the complete list of children that will eventually be rendered on the screen
          * (if you scroll all the way down)
-         * This method params can be quite obscure and for a reason: The MarkdownRenderer.renderMarkdown method 
+         * This method params can be quite obscure and for a reason: The `MarkdownRenderer.renderMarkdown` method
+         *
          * @param {object} _
          * @param {*} _.pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
          * @param {Function} _.pageToChild - This function get a page as its parameter and is suppose to return an html string or an array of html strings
@@ -460,7 +505,7 @@ class Krakor {
          * @warning CustomJS plugin is needed to run this function
          * 
          * It might be difficult to understand what's going on but it could be reduced to a 20 lines long function max
-         * if MarkdownRenderer.renderMarkdown had a consistent behavior no matter what tags were passed to it
+         * if `MarkdownRenderer.renderMarkdown` had a consistent behavior no matter what tags were passed to it
          */
         async insertNewChunk() {
             const fromSliceIndex = this.batchesFetchedCount * this.numberOfElementsPerBatch
@@ -538,6 +583,7 @@ class Krakor {
         handleLastChildIntersection(entries) {
             entries.map(async (entry) => {
                 if (entry.isIntersecting) {
+                    this.logger.log(entry)
                     this.logger.reset()
 
                     this.childObserver.unobserve(entries[0].target);
@@ -615,6 +661,7 @@ class Krakor {
     }
 
     /**
+     * TODO: see if I can easily remove dv dependency and use Obsidian internal API instead to access the created file
      * Class used to create files and automatically insert metadata
      * based on the filters present in the view where the file creation is triggered
      */
@@ -624,10 +671,11 @@ class Krakor {
          * @param {string?} _.directoryWhereToAddFile
          * @param {Array<Function>} _.logicOnAddFile
          */
-        constructor({dv, app, utils, properties, userFields, directoryWhereToAddFile, logicOnAddFile = []}) {
+        constructor({ dv, app, utils, currentFilePath, properties, userFields, directoryWhereToAddFile, logicOnAddFile = [] }) {
             this.dv = dv,
             this.app = app
             this.utils = utils
+            this.currentFilePath = currentFilePath
             this.directoryWhereToAddFile = directoryWhereToAddFile
             this.properties = properties
             this.userFields = userFields
@@ -699,7 +747,7 @@ class Krakor {
             const newFilePath = `${computed.directoryWhereToAddFile}/Untitled`
             const newFile = await this.createNewNote(newFilePath)
 
-            const mmenuPlugin = this.dv.app.plugins.plugins["metadata-menu"]?.api
+            const mmenuPlugin = this.app.plugins.plugins["metadata-menu"]?.api
             if (!mmenuPlugin) {
                 return console.warn("You don't have metadata-menu enabled so you can't benefit from the smart tag completion")
             }
@@ -717,7 +765,7 @@ class Krakor {
                 await fn(this, fieldsPayload)
             }
 
-            const current = this.dv.current()
+            const current = this.dv.page(this.currentFilePath)
 
             if (computed.properties?.current) {
                 fieldsPayload.push({
@@ -820,9 +868,30 @@ class Krakor {
 
         eraserIcon = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>`
 
-        newObsidianIcon = `<svg id="custom-logo" viewBox="0 0 512 512" fill="none" style="height:100%;width:100%;" version="1.1" sodipodi:docname="obsidian-icon (1).svg" inkscape:version="1.2.2 (732a01da63, 2022-12-09)" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"> <sodipodi:namedview id="namedview304" pagecolor="#505050" bordercolor="#eeeeee" borderopacity="1" inkscape:showpageshadow="0" inkscape:pageopacity="0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#505050" showgrid="false" inkscape:zoom="1.5898438" inkscape:cx="232.09828" inkscape:cy="252.54054" inkscape:window-width="1920" inkscape:window-height="1001" inkscape:window-x="-9" inkscape:window-y="509" inkscape:window-maximized="1" inkscape:current-layer="custom-logo" /> <defs id="defs279">  <radialGradient id="b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-48 -185 123 -32 179 429.7)">  <stop stop-color="#fff" stop-opacity=".4" id="stop230" />  <stop offset="1" stop-opacity=".1" id="stop232" />  </radialGradient>  <radialGradient id="c" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(41 -310 229 30 341.6 351.3)">  <stop stop-color="#fff" stop-opacity=".6" id="stop235" />  <stop offset="1" stop-color="#fff" stop-opacity=".1" id="stop237" />  </radialGradient>  <radialGradient id="d" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(57 -261 178 39 190.5 296.3)">  <stop stop-color="#fff" stop-opacity=".8" id="stop240" />  <stop offset="1" stop-color="#fff" stop-opacity=".4" id="stop242" />  </radialGradient>  <radialGradient id="e" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-79 -133 153 -90 321.4 464.2)">  <stop stop-color="#fff" stop-opacity=".3" id="stop245" />  <stop offset="1" stop-opacity=".3" id="stop247" />  </radialGradient>  <radialGradient id="f" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-29 136 -92 -20 300.7 149.9)">  <stop stop-color="#fff" stop-opacity="0" id="stop250" />  <stop offset="1" stop-color="#fff" stop-opacity=".2" id="stop252" />  </radialGradient>  <radialGradient id="g" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(72 73 -155 153 137.8 225.2)">  <stop stop-color="#fff" stop-opacity=".2" id="stop255" />  <stop offset="1" stop-color="#fff" stop-opacity=".4" id="stop257" />  </radialGradient>  <radialGradient id="h" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(20 118 -251 43 215.1 273.7)">  <stop stop-color="#fff" stop-opacity=".1" id="stop260" />  <stop offset="1" stop-color="#fff" stop-opacity=".3" id="stop262" />  </radialGradient>  <radialGradient id="i" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-162 -85 268 -510 374.4 371.7)">  <stop stop-color="#fff" stop-opacity=".2" id="stop265" />  <stop offset=".5" stop-color="#fff" stop-opacity=".2" id="stop267" />  <stop offset="1" stop-color="#fff" stop-opacity=".3" id="stop269" />  </radialGradient>  <filter id="a" x="80.1" y="37" width="351.1" height="443.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">  <feFlood flood-opacity="0" result="BackgroundImageFix" id="feFlood272" />  <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape" id="feBlend274" />  <feGaussianBlur stdDeviation="6.5" result="effect1_foregroundBlur_744_9191" id="feGaussianBlur276" />  </filter> </defs> <g filter="url(#a)" id="g284">  <path d="M359.2 437.5c-2.6 19-21.3 33.9-40 28.7-26.5-7.2-57.2-18.6-84.8-20.7l-42.4-3.2a28 28 0 0 1-18-8.3l-73-74.8a27.7 27.7 0 0 1-5.4-30.7s45-98.6 46.8-103.7c1.6-5.1 7.8-49.9 11.4-73.9a28 28 0 0 1 9-16.5L249 57.2a28 28 0 0 1 40.6 3.4l72.6 91.6a29.5 29.5 0 0 1 6.2 18.3c0 17.3 1.5 53 11.2 76a301.3 301.3 0 0 0 35.6 58.2 14 14 0 0 1 1 15.6c-6.3 10.7-18.9 31.3-36.6 57.6a142.2 142.2 0 0 0-20.5 59.6Z" fill="#000" fill-opacity=".3" id="path282" /> </g> <path id="arrow" d="M359.9 434.3c-2.6 19.1-21.3 34-40 28.9-26.4-7.3-57-18.7-84.7-20.8l-42.3-3.2a27.9 27.9 0 0 1-18-8.4l-73-75a27.9 27.9 0 0 1-5.4-31s45.1-99 46.8-104.2c1.7-5.1 7.8-50 11.4-74.2a28 28 0 0 1 9-16.6l86.2-77.5a28 28 0 0 1 40.6 3.5l72.5 92a29.7 29.7 0 0 1 6.2 18.3c0 17.4 1.5 53.2 11.1 76.3a303 303 0 0 0 35.6 58.5 14 14 0 0 1 1.1 15.7c-6.4 10.8-18.9 31.4-36.7 57.9a143.3 143.3 0 0 0-20.4 59.8Z" fill="#000000" /> <path d="m 182.7,436.4 c 33.9,-68.7 33,-118 18.5,-153 -13.2,-32.4 -37.9,-52.8 -57.3,-65.5 -0.4,1.9 -1,3.7 -1.8,5.4 10.70004,30.95555 -29.38413,67.55379 -45.6,101.5 -4.729101,10.47952 -2.545527,22.78694 5.5,31 l 72.9,75 c 2.3,2.3 5,4.2 7.8,5.6 z" fill="url(#b)" id="path287" sodipodi:nodetypes="cccccccc" /> <path d="M274.9 297c9.1.9 18 2.9 26.8 6.1 27.8 10.4 53.1 33.8 74 78.9 1.5-2.6 3-5.1 4.6-7.5a1222 1222 0 0 0 36.7-57.9 14 14 0 0 0-1-15.7 303 303 0 0 1-35.7-58.5c-9.6-23-11-58.9-11.1-76.3 0-6.6-2.1-13.1-6.2-18.3l-72.5-92-1.2-1.5c5.3 17.5 5 31.5 1.7 44.2-3 11.8-8.6 22.5-14.5 33.8-2 3.8-4 7.7-5.9 11.7a140 140 0 0 0-15.8 58c-1 24.2 3.9 54.5 20 95Z" fill="url(#c)" id="path289" /> <path d="M274.8 297c-16.1-40.5-21-70.8-20-95 1-24 8-42 15.8-58l6-11.7c5.8-11.3 11.3-22 14.4-33.8a78.5 78.5 0 0 0-1.7-44.2 28 28 0 0 0-39.4-2l-86.2 77.5a28 28 0 0 0-9 16.6L144.2 216c0 .7-.2 1.3-.3 2 19.4 12.6 44 33 57.3 65.3 2.6 6.4 4.8 13.1 6.4 20.4a200 200 0 0 1 67.2-6.8Z" fill="url(#d)" id="path291" /> <path d="M320 463.2c18.6 5.1 37.3-9.8 39.9-29a153 153 0 0 1 15.9-52.2c-21-45.1-46.3-68.5-74-78.9-29.5-11-61.6-7.3-94.2.6 7.3 33.1 3 76.4-24.8 132.7 3.1 1.6 6.6 2.5 10.1 2.8l43.9 3.3c23.8 1.7 59.3 14 83.2 20.7Z" fill="url(#e)" id="path293" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M255 200.5c-1.1 24 1.9 51.4 18 91.8l-5-.5c-14.5-42.1-17.7-63.7-16.6-88 1-24.3 8.9-43 16.7-59 2-4 6.6-11.5 8.6-15.3 5.8-11.3 9.7-17.2 13-27.5 4.8-14.4 3.8-21.2 3.2-28 3.7 24.5-10.4 45.8-21 67.5a145 145 0 0 0-17 59Z" fill="url(#f)" id="path295" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M206 285.1c2 4.4 3.7 8 4.9 13.5l-4.3 1c-1.7-6.4-3-11-5.5-16.5-14.6-34.3-38-52-57-65 23 12.4 46.7 31.9 61.9 67Z" fill="url(#g)" id="path297" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M211.1 303c8 37.5-1 85.2-27.5 131.6 22.2-46 33-90.1 24-131l3.5-.7Z" fill="url(#h)" id="path299" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M302.7 299.5c43.5 16.3 60.3 52 72.8 81.9-15.5-31.2-37-65.7-74.4-78.5-28.4-9.8-52.4-8.6-93.5.7l-.9-4c43.6-10 66.4-11.2 96 0Z" fill="url(#i)" id="path301" /> </svg>`
 
-        customObsidianIcon = (color = "#6C31E3") => `<svg id="custom-logo" width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" style="height:100%;width:100%;"><defs><radialGradient id="b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-48 -185 123 -32 179 429.7)"><stop stop-color="#fff" stop-opacity=".4"/><stop offset="1" stop-opacity=".1"/></radialGradient><radialGradient id="c" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(41 -310 229 30 341.6 351.3)"><stop stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></radialGradient><radialGradient id="d" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(57 -261 178 39 190.5 296.3)"><stop stop-color="#fff" stop-opacity=".8"/><stop offset="1" stop-color="#fff" stop-opacity=".4"/></radialGradient><radialGradient id="e" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-79 -133 153 -90 321.4 464.2)"><stop stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-opacity=".3"/></radialGradient><radialGradient id="f" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-29 136 -92 -20 300.7 149.9)"><stop stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".2"/></radialGradient><radialGradient id="g" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(72 73 -155 153 137.8 225.2)"><stop stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".4"/></radialGradient><radialGradient id="h" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(20 118 -251 43 215.1 273.7)"><stop stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#fff" stop-opacity=".3"/></radialGradient><radialGradient id="i" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-162 -85 268 -510 374.4 371.7)"><stop stop-color="#fff" stop-opacity=".2"/><stop offset=".5" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".3"/></radialGradient><filter id="a" x="80.1" y="37" width="351.1" height="443.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur stdDeviation="6.5" result="effect1_foregroundBlur_744_9191"/></filter></defs><g filter="url(#a)"><path d="M359.2 437.5c-2.6 19-21.3 33.9-40 28.7-26.5-7.2-57.2-18.6-84.8-20.7l-42.4-3.2a28 28 0 0 1-18-8.3l-73-74.8a27.7 27.7 0 0 1-5.4-30.7s45-98.6 46.8-103.7c1.6-5.1 7.8-49.9 11.4-73.9a28 28 0 0 1 9-16.5L249 57.2a28 28 0 0 1 40.6 3.4l72.6 91.6a29.5 29.5 0 0 1 6.2 18.3c0 17.3 1.5 53 11.2 76a301.3 301.3 0 0 0 35.6 58.2 14 14 0 0 1 1 15.6c-6.3 10.7-18.9 31.3-36.6 57.6a142.2 142.2 0 0 0-20.5 59.6Z" fill="#000" fill-opacity=".3"/></g><path id="arrow" d="M359.9 434.3c-2.6 19.1-21.3 34-40 28.9-26.4-7.3-57-18.7-84.7-20.8l-42.3-3.2a27.9 27.9 0 0 1-18-8.4l-73-75a27.9 27.9 0 0 1-5.4-31s45.1-99 46.8-104.2c1.7-5.1 7.8-50 11.4-74.2a28 28 0 0 1 9-16.6l86.2-77.5a28 28 0 0 1 40.6 3.5l72.5 92a29.7 29.7 0 0 1 6.2 18.3c0 17.4 1.5 53.2 11.1 76.3a303 303 0 0 0 35.6 58.5 14 14 0 0 1 1.1 15.7c-6.4 10.8-18.9 31.4-36.7 57.9a143.3 143.3 0 0 0-20.4 59.8Z" fill="${color}"/><path d="M182.7 436.4c33.9-68.7 33-118 18.5-153-13.2-32.4-37.9-52.8-57.3-65.5-.4 1.9-1 3.7-1.8 5.4L96.5 324.8a27.9 27.9 0 0 0 5.5 31l72.9 75c2.3 2.3 5 4.2 7.8 5.6Z" fill="url(#b)"/><path d="M274.9 297c9.1.9 18 2.9 26.8 6.1 27.8 10.4 53.1 33.8 74 78.9 1.5-2.6 3-5.1 4.6-7.5a1222 1222 0 0 0 36.7-57.9 14 14 0 0 0-1-15.7 303 303 0 0 1-35.7-58.5c-9.6-23-11-58.9-11.1-76.3 0-6.6-2.1-13.1-6.2-18.3l-72.5-92-1.2-1.5c5.3 17.5 5 31.5 1.7 44.2-3 11.8-8.6 22.5-14.5 33.8-2 3.8-4 7.7-5.9 11.7a140 140 0 0 0-15.8 58c-1 24.2 3.9 54.5 20 95Z" fill="url(#c)"/><path d="M274.8 297c-16.1-40.5-21-70.8-20-95 1-24 8-42 15.8-58l6-11.7c5.8-11.3 11.3-22 14.4-33.8a78.5 78.5 0 0 0-1.7-44.2 28 28 0 0 0-39.4-2l-86.2 77.5a28 28 0 0 0-9 16.6L144.2 216c0 .7-.2 1.3-.3 2 19.4 12.6 44 33 57.3 65.3 2.6 6.4 4.8 13.1 6.4 20.4a200 200 0 0 1 67.2-6.8Z" fill="url(#d)"/><path d="M320 463.2c18.6 5.1 37.3-9.8 39.9-29a153 153 0 0 1 15.9-52.2c-21-45.1-46.3-68.5-74-78.9-29.5-11-61.6-7.3-94.2.6 7.3 33.1 3 76.4-24.8 132.7 3.1 1.6 6.6 2.5 10.1 2.8l43.9 3.3c23.8 1.7 59.3 14 83.2 20.7Z" fill="url(#e)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M255 200.5c-1.1 24 1.9 51.4 18 91.8l-5-.5c-14.5-42.1-17.7-63.7-16.6-88 1-24.3 8.9-43 16.7-59 2-4 6.6-11.5 8.6-15.3 5.8-11.3 9.7-17.2 13-27.5 4.8-14.4 3.8-21.2 3.2-28 3.7 24.5-10.4 45.8-21 67.5a145 145 0 0 0-17 59Z" fill="url(#f)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M206 285.1c2 4.4 3.7 8 4.9 13.5l-4.3 1c-1.7-6.4-3-11-5.5-16.5-14.6-34.3-38-52-57-65 23 12.4 46.7 31.9 61.9 67Z" fill="url(#g)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M211.1 303c8 37.5-1 85.2-27.5 131.6 22.2-46 33-90.1 24-131l3.5-.7Z" fill="url(#h)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M302.7 299.5c43.5 16.3 60.3 52 72.8 81.9-15.5-31.2-37-65.7-74.4-78.5-28.4-9.8-52.4-8.6-93.5.7l-.9-4c43.6-10 66.4-11.2 96 0Z" fill="url(#i)"/></svg>`
+        customObsidianIcon = (color = "#6C31E3", id="") => `<svg id="custom-logo" width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" style="height:100%;width:100%;">
+            <defs>
+                <radialGradient id="b${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-48 -185 123 -32 179 429.7)"><stop stop-color="#fff" stop-opacity=".4"/><stop offset="1" stop-opacity=".1"/></radialGradient>
+                <radialGradient id="c${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(41 -310 229 30 341.6 351.3)"><stop stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></radialGradient>
+                <radialGradient id="d${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(57 -261 178 39 190.5 296.3)"><stop stop-color="#fff" stop-opacity=".8"/><stop offset="1" stop-color="#fff" stop-opacity=".4"/></radialGradient>
+                <radialGradient id="e${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-79 -133 153 -90 321.4 464.2)"><stop stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-opacity=".3"/></radialGradient>
+                <radialGradient id="f${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-29 136 -92 -20 300.7 149.9)"><stop stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".2"/></radialGradient>
+                <radialGradient id="g${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(72 73 -155 153 137.8 225.2)"><stop stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".4"/></radialGradient>
+                <radialGradient id="h${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(20 118 -251 43 215.1 273.7)"><stop stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#fff" stop-opacity=".3"/></radialGradient>
+                <radialGradient id="i${id}" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-162 -85 268 -510 374.4 371.7)"><stop stop-color="#fff" stop-opacity=".2"/><stop offset=".5" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".3"/></radialGradient>
+                <filter id="a${id}" x="80.1" y="37" width="351.1" height="443.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur stdDeviation="6.5" result="effect1_foregroundBlur_744_9191"/></filter>
+            </defs>
+            <g filter="url(#a${id})"><path d="M359.2 437.5c-2.6 19-21.3 33.9-40 28.7-26.5-7.2-57.2-18.6-84.8-20.7l-42.4-3.2a28 28 0 0 1-18-8.3l-73-74.8a27.7 27.7 0 0 1-5.4-30.7s45-98.6 46.8-103.7c1.6-5.1 7.8-49.9 11.4-73.9a28 28 0 0 1 9-16.5L249 57.2a28 28 0 0 1 40.6 3.4l72.6 91.6a29.5 29.5 0 0 1 6.2 18.3c0 17.3 1.5 53 11.2 76a301.3 301.3 0 0 0 35.6 58.2 14 14 0 0 1 1 15.6c-6.3 10.7-18.9 31.3-36.6 57.6a142.2 142.2 0 0 0-20.5 59.6Z" fill="#000" fill-opacity=".3"/></g>
+            <path id="arrow" d="M359.9 434.3c-2.6 19.1-21.3 34-40 28.9-26.4-7.3-57-18.7-84.7-20.8l-42.3-3.2a27.9 27.9 0 0 1-18-8.4l-73-75a27.9 27.9 0 0 1-5.4-31s45.1-99 46.8-104.2c1.7-5.1 7.8-50 11.4-74.2a28 28 0 0 1 9-16.6l86.2-77.5a28 28 0 0 1 40.6 3.5l72.5 92a29.7 29.7 0 0 1 6.2 18.3c0 17.4 1.5 53.2 11.1 76.3a303 303 0 0 0 35.6 58.5 14 14 0 0 1 1.1 15.7c-6.4 10.8-18.9 31.4-36.7 57.9a143.3 143.3 0 0 0-20.4 59.8Z" fill="${color}"/>
+            <path d="M182.7 436.4c33.9-68.7 33-118 18.5-153-13.2-32.4-37.9-52.8-57.3-65.5-.4 1.9-1 3.7-1.8 5.4L96.5 324.8a27.9 27.9 0 0 0 5.5 31l72.9 75c2.3 2.3 5 4.2 7.8 5.6Z" fill="url(#b${id})"/>
+            <path d="M274.9 297c9.1.9 18 2.9 26.8 6.1 27.8 10.4 53.1 33.8 74 78.9 1.5-2.6 3-5.1 4.6-7.5a1222 1222 0 0 0 36.7-57.9 14 14 0 0 0-1-15.7 303 303 0 0 1-35.7-58.5c-9.6-23-11-58.9-11.1-76.3 0-6.6-2.1-13.1-6.2-18.3l-72.5-92-1.2-1.5c5.3 17.5 5 31.5 1.7 44.2-3 11.8-8.6 22.5-14.5 33.8-2 3.8-4 7.7-5.9 11.7a140 140 0 0 0-15.8 58c-1 24.2 3.9 54.5 20 95Z" fill="url(#c${id})"/>
+            <path d="M274.8 297c-16.1-40.5-21-70.8-20-95 1-24 8-42 15.8-58l6-11.7c5.8-11.3 11.3-22 14.4-33.8a78.5 78.5 0 0 0-1.7-44.2 28 28 0 0 0-39.4-2l-86.2 77.5a28 28 0 0 0-9 16.6L144.2 216c0 .7-.2 1.3-.3 2 19.4 12.6 44 33 57.3 65.3 2.6 6.4 4.8 13.1 6.4 20.4a200 200 0 0 1 67.2-6.8Z" fill="url(#d${id})"/>
+            <path d="M320 463.2c18.6 5.1 37.3-9.8 39.9-29a153 153 0 0 1 15.9-52.2c-21-45.1-46.3-68.5-74-78.9-29.5-11-61.6-7.3-94.2.6 7.3 33.1 3 76.4-24.8 132.7 3.1 1.6 6.6 2.5 10.1 2.8l43.9 3.3c23.8 1.7 59.3 14 83.2 20.7Z" fill="url(#e${id})"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M255 200.5c-1.1 24 1.9 51.4 18 91.8l-5-.5c-14.5-42.1-17.7-63.7-16.6-88 1-24.3 8.9-43 16.7-59 2-4 6.6-11.5 8.6-15.3 5.8-11.3 9.7-17.2 13-27.5 4.8-14.4 3.8-21.2 3.2-28 3.7 24.5-10.4 45.8-21 67.5a145 145 0 0 0-17 59Z" fill="url(#f${id})"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M206 285.1c2 4.4 3.7 8 4.9 13.5l-4.3 1c-1.7-6.4-3-11-5.5-16.5-14.6-34.3-38-52-57-65 23 12.4 46.7 31.9 61.9 67Z" fill="url(#g${id})"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M211.1 303c8 37.5-1 85.2-27.5 131.6 22.2-46 33-90.1 24-131l3.5-.7Z" fill="url(#h${id})"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M302.7 299.5c43.5 16.3 60.3 52 72.8 81.9-15.5-31.2-37-65.7-74.4-78.5-28.4-9.8-52.4-8.6-93.5.7l-.9-4c43.6-10 66.4-11.2 96 0Z" fill="url(#i${id})"/>
+        </svg>`
     }
 
     /**
@@ -1124,18 +1193,19 @@ class Krakor {
     }
 
     /**
-     * It's build on top of the Query class
+     * It's build on top of the Query class which is itself built on top of DataviewAPI
      * 
-     * What's the difference between both?
+     * *What's the difference between both?*
+     * 
      * The Query class is an agnostic service that enhance the default capability of dataview querying by adding new "primitives" to it.
      * 
-     * This class on the other hand leverage these functions to use them at a higher level of abstraction in the shape of a simple filter/sort object
+     * This class on the other hand leverage the functions provided by the Query class to use them at a higher level of abstraction in the shape of a simple filter/sort object
      * Also it doesn't store the state of the query unlike the Query object
      */
     PageManager = class {
         /**
          * @param {object} _
-         * @param {DataviewInlineAPI} _.dv
+         * @param {DataviewAPI} _.dv
          * @param {Logger} _.logger
          * @param {Utils} _.utils
          * @param {Orphanage} _.orphanage
@@ -1144,6 +1214,7 @@ class Krakor {
          */
         constructor({
             dv, logger, utils, orphanage,
+            currentFilePath,
             customFields,
             userFields,
             defaultFrom = '-"_templates"',
@@ -1165,6 +1236,7 @@ class Krakor {
                 )
             }
 
+            this.currentFilePath = currentFilePath
             this.defaultFrom = defaultFrom
 
             this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
@@ -1179,8 +1251,7 @@ class Krakor {
             // Draft for special sort functions just like filters above
             this.querySortFunctionsMap = new Map()
             this.querySortFunctionsMap.set("manual", async (pages, field) => {
-                // this.logger?.log(dv.current())
-                const rawSortingPages = this.dv.current()[field]
+                const rawSortingPages = this.dv.page(this.currentFilePath)[field]
                 if (!rawSortingPages) {
                     console.warn(
                         `${value} property could not be found in your file`
@@ -1228,7 +1299,7 @@ class Krakor {
             const queryFilterFunctionsMap = new Map()
 
             queryFilterFunctionsMap.set("manual", async (qs, value) => {
-                const links = this.dv.current()[value]
+                const links = this.dv.page(this.currentFilePath)[value]
                 if (!links) {
                     return console.warn(
                         "You must set an inline field inside your file containing pages links for the manual filter to work"
@@ -1238,7 +1309,7 @@ class Krakor {
             })
 
             queryFilterFunctionsMap.set("current", (qs, value) => {
-                const currentPath = this.dv.current().file.path
+                const currentPath = this.dv.page(this.currentFilePath).file.path
                 qs.withLinkFieldOfPath({ field: value, path: currentPath })
             })
 
@@ -1317,7 +1388,7 @@ class Krakor {
         #updateFromStringBasedOnSpecialFilters = (from, filter) => {
             if (filter?.current === "backlinks") {
                 delete filter.current
-                return (from += ` AND [[${this.dv.current().file.path}]]`)
+                return (from += ` AND [[${this.dv.page(this.currentFilePath).file.path}]]`)
             }
 
             return from
@@ -1331,7 +1402,7 @@ class Krakor {
         #runStringFilterQuery = ({filter, qs}) => {
             switch (filter) {
                 case "backlinks":
-                    qs.from(`${this.defaultFrom} AND [[${this.dv.current().file.path}]]`)
+                    qs.from(`${this.defaultFrom} AND [[${this.dv.page(this.currentFilePath).file.path}]]`)
                     break;
                 default:
                     break;
@@ -1461,7 +1532,7 @@ class Krakor {
             }
 
             if (sort?.manual) {
-                const rawSortingPages = this.dv.current()[sort.manual]
+                const rawSortingPages = this.dv.page(this.currentFilePath)[sort.manual]
                 if (!rawSortingPages) {
                     console.warn(`${sort.manual} property could not be found in your file`)
                     return pages
@@ -2552,6 +2623,9 @@ class Krakor {
 
     /**
      * Manages Shadow DOM in my views
+     * 
+     * @warning file-links inside the SDOM can't be interacted with...
+     * That makes this whole thing a bit useless unfortunately :(
      */
     Shikamaru = class {
         constructor(container) {
@@ -2579,25 +2653,29 @@ p {
          * @param {HTMLElement} container
          */
         static KagemaneNoJutsu(container) {
-            container.attachShadow({mode: 'open'})
+            const shadowRootNode = container.attachShadow({mode: 'open'})
 
             while(container.firstChild) {
-                container.shadowRoot.appendChild(container.firstChild)
+                shadowRootNode.appendChild(container.firstChild)
             }
+
+            return shadowRootNode
         }
 
         /**
          * @param {ViewManager} ViewManager
          */
         static ViewKagemaneNoJutsu(viewManager) {
-            this.KagemaneNoJutsu(viewManager.rootNode)
+            const shadownRootNode = this.KagemaneNoJutsu(viewManager.host)
             
             // Override the "root" getter in this specific instance of viewManager
             Object.defineProperty(viewManager, "root", {
                 get: function () {
-                    return viewManager.rootNode.shadowRoot;
+                    return viewManager.host.shadowRoot;
                 },
             });
+
+            return shadownRootNode
         }
     }
 
@@ -2719,6 +2797,34 @@ div
         }
 
         /**
+         * Implementation given as is by ChatGPT
+         * It doesn't handle functions, circular reference or non enumerable properties
+         */
+        deepClone(obj) {
+            if (obj === null || typeof obj !== 'object') {
+                return obj; // Return primitives and null as is
+            }
+
+            if (Array.isArray(obj)) {
+                const newArray = [];
+                for (let i = 0; i < obj.length; i++) {
+                    newArray[i] = this.deepClone(obj[i]);
+                }
+                return newArray; // Clone arrays
+            }
+
+            if (typeof obj === 'object') {
+                const newObj = {};
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        newObj[key] = this.deepClone(obj[key]);
+                    }
+                }
+                return newObj; // Clone objects
+            }
+        }
+
+        /**
          * from https://stackoverflow.com/a/6274381
          * It alters the array
          * @param {Array} a.
@@ -2806,7 +2912,7 @@ div
             if (!field) return []
 
             // Single object in yaml frontmatter
-            if (this.isObject(field)) return [field]
+            if (this.isObject(field)) return [this.deepClone(field)]
 
             try {
                 // Single string as inline field
@@ -2817,7 +2923,7 @@ div
                         return [...a, ...this.normalizeArrayOfObjectField(c)]
                     }
 
-                    if (this.isObject(c)) return [...a, c]
+                    if (this.isObject(c)) return [...a, this.deepClone(c)]
 
                     return [...a, JSON.parse(c)]
                 }, [])
@@ -2862,6 +2968,15 @@ div
             return dv.date(value)
         }
 
+        /* from: https://stackoverflow.com/a/75988895 */
+        debounce(callback, wait = 300) {
+            let timeoutId = null;
+            return (...args) => {
+                window.clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => { callback(...args); }, wait);
+            };
+        }
+
         //#endregion
     }
 
@@ -2878,26 +2993,29 @@ div
         /**
          * 
          * @param {object} _ 
+         * @param {HTMLDivElement} _.container - The container to which the view will be appended
          * @param {string} _.name - The name of the view (must match with css class associated with it)
+         * @param {boolean} _.clearExisting - If true, it will remove all existing views inside the `container`
+         * with the same class as the new one
          */
-        constructor({disable = "", app, container, utils, logger, name} = {}) {
+        constructor({disable = "", app, container, utils, logger, name, clearExisting = false} = {}) {
             this.app = app
             this.container = container
             this.utils = utils
             this.logger = logger
             this.disableSet = new Set(disable.split(" ").map((v) => v.toLowerCase()))
             this.name = name
+            this.clearExisting = clearExisting
 
             this.tid = (new Date()).getTime();
             /** @type {HTMLDivElement} */
-            this.rootNode = container.createEl("div", {
+            this.host = container.createEl("div", {
                 cls: this.#computeClassName(),
                 attr: {
-                    id: name + this.tid,
+                    id: this.#computeId(),
                     style: 'position:relative;-webkit-user-select:none!important'
                 }
             })
-            utils.removeTagChildDVSpan(this.rootNode)
             this.managedToHideEditButton = this.#hideEditButton()
 
             this.observer = new IntersectionObserver(this.handleViewIntersection.bind(this))
@@ -2912,8 +3030,15 @@ div
             }
         }
 
+        /**
+         * Susceptible to be overriden by Shikamaru's ViewKagemaneNoJutsu
+         */
+        get root() {
+            return this.host
+        }
+
         #cleanView() {
-            this.rootNode = null
+            this.host = null
             this.leaf = null
             this.observer = null
             this.container = null
@@ -2953,13 +3078,13 @@ div
          * Then once I've found the leaf, I can correctly setup a naive garbage collector-like function for this view
          */
         #resolveCurrentLeaf() {
-            let leaf = this.utils.getParentWithClass(this.rootNode.parentNode, "workspace-leaf")
+            let leaf = this.utils.getParentWithClass(this.host.parentNode, "workspace-leaf")
             if (leaf) {
                 this.leaf = leaf
                 return this.logger?.log("We've found a leaf, and it looks like this view is in a classic tab 🗨️")
             }
 
-            leaf = this.utils.getParentWithClass(this.rootNode.parentNode, "popover")
+            leaf = this.utils.getParentWithClass(this.host.parentNode, "popover")
             if (leaf) {
                 this.leaf = leaf
                 return this.logger?.log("We've found a leaf, and it looks like this view is in a popover 🎈")
@@ -2971,24 +3096,24 @@ div
         /**
          * This function mutates `this.container` if it happens that the view is inside an embed.
          * It does that because for unknown reason, `this.observer.observe(this.container)` doesn't work
-         * if `this.container` is equal to `this.rootNode` or `dv.container` and the view is directly inside an embed...
+         * if `this.container` is equal to `this.host` or `dv.container` and the view is directly inside an embed...
          * So as a workaround, `this.container` is set to an embed div parent.
          * This make the view slightly less optimized when rendered via an embed since the rendering happens as soon as the embed is visible
          * (even if the actual view is not actually visible on the screen) but it's still better than nothing
          */
         #embedObserverWorkaround() {
             if (this.#amiInEmbed() && !this.#amiInPopover()) {
-                this.container = this.rootNode.parentNode
+                this.container = this.host.parentNode
                     ?.parentNode
                     ?.parentNode // No need to go up to the ".markdown-embed-content" one, it start to work with this one
             }
         }
 
         #amiInPopover() {
-            if (!!this.utils.getParentWithClass(this.rootNode.parentNode, "popover")) return true
+            if (!!this.utils.getParentWithClass(this.host.parentNode, "popover")) return true
 
             // Weird case: It happens when the view is burried in the popover file. It is in a strange dual state: Loaded but outside of the main DOM.
-            if (!this.rootNode
+            if (!this.host
                 ?.parentNode // container
                 ?.parentNode // <div>
                 ?.parentNode // undefined
@@ -3001,7 +3126,7 @@ div
          * Not sure if it really works...
          */
         #amiDirectlyInPopover() {
-            return this.rootNode.parentNode
+            return this.host.parentNode
                 ?.parentNode // <div class="markdown-preview-pusher">
                 ?.parentNode // <div class="markdown-preview-sizer markdown-preview-section">
                 ?.parentNode // <div class="markdown-preview-view markdown-rendered node-insert-event show-indentation-guide allow-fold-headings allow-fold-lists">
@@ -3012,25 +3137,25 @@ div
         }
 
         #amiInCallout() {
-            return !!this.utils.getParentWithClass(this.rootNode.parentNode, "callout-content")
+            return !!this.utils.getParentWithClass(this.host.parentNode, "callout-content")
         }
 
         /**
          * It will only return true if the container closest parent is a callout
         */
         #amiDirectlyInCallout() {
-           return this.rootNode.parentNode?.parentNode?.classList.contains("callout-content")
+           return this.host.parentNode?.parentNode?.classList.contains("callout-content")
         }
 
         #amiInEmbed() {
-            return !!this.utils.getParentWithClass(this.rootNode.parentNode, "markdown-embed-content")
+            return !!this.utils.getParentWithClass(this.host.parentNode, "markdown-embed-content")
         }
 
         /**
          * It will only return true if the container closest parent is an embed
          */
         #amiDirectlyInEmbed() {
-            const embedContent = this.rootNode.parentNode
+            const embedContent = this.host.parentNode
                 ?.parentNode // <div>
                 ?.parentNode // <div class="markdown-preview-sizer markdown-preview-section">
                 ?.parentNode // <div class="markdown-preview-view markdown-rendered node-insert-event show-indentation-guide allow-fold-headings allow-fold-lists">
@@ -3057,9 +3182,13 @@ div
             return syncPlugin.instance.getDefaultDeviceName()
         }
 
+        #computeId = () => {
+            return this.name + this.tid
+        }
+
         /** @param {Set<string>} set */
         #computeClassName = () => {
-            let className = this.name
+            let className = "custom-view " + this.name
             if (this.disableSet.has("border")) {
                 className += " no-border"
             }
@@ -3100,7 +3229,7 @@ div
             The root node is just below the dvjs one
             */
 
-            const container = this.rootNode.parentNode
+            const container = this.host.parentNode
             if (this.#hideEditButtonLogic(container?.nextSibling)) return true
 
             // We haven't been loaded yet in the DOM, are we in a callout?
@@ -3116,9 +3245,9 @@ div
             calloutNode.onclick = (e) => {
                 if (// we click on something that usually trigger the edit of callout in live preview, do nothing
                     e.target === calloutContentNode
-                    || e.target === this.rootNode
-                    || e.target === this.rootNode.querySelector(".buttons")
-                    || e.target === this.rootNode.querySelector(".grid")
+                    || e.target === this.host
+                    || e.target === this.host.querySelector(".buttons")
+                    || e.target === this.host.querySelector(".grid")
                     || e.target.tagName === "ARTICLE"
                     || e.target.className === "file-link"
                     || e.target.tagName === "INPUT"
@@ -3141,7 +3270,16 @@ div
                     this.observer.unobserve(entries[0].target);
 
                     if (!this.managedToHideEditButton) {// try now that it has been loaded in the DOM
-                        this.#hideEditButtonLogic(this.rootNode.parentNode?.nextSibling)
+                        this.#hideEditButtonLogic(this.host.parentNode?.nextSibling)
+                    }
+
+                    if (this.clearExisting) {
+                        const existingViews = this.container.querySelectorAll(`.custom-view.${this.name}`)
+                        existingViews.forEach((child) => {
+                            if (child.id !== this.#computeId()) {
+                                child.remove()
+                            }
+                        })
                     }
 
                     this.container.dispatchEvent(new CustomEvent('dvjs-ready'))

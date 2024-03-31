@@ -48,6 +48,34 @@ class Utils {
         }
 
         /**
+         * Implementation given as is by ChatGPT
+         * It doesn't handle functions, circular reference or non enumerable properties
+         */
+        deepClone(obj) {
+            if (obj === null || typeof obj !== 'object') {
+                return obj; // Return primitives and null as is
+            }
+
+            if (Array.isArray(obj)) {
+                const newArray = [];
+                for (let i = 0; i < obj.length; i++) {
+                    newArray[i] = this.deepClone(obj[i]);
+                }
+                return newArray; // Clone arrays
+            }
+
+            if (typeof obj === 'object') {
+                const newObj = {};
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        newObj[key] = this.deepClone(obj[key]);
+                    }
+                }
+                return newObj; // Clone objects
+            }
+        }
+
+        /**
          * from https://stackoverflow.com/a/6274381
          * It alters the array
          * @param {Array} a.
@@ -135,7 +163,7 @@ class Utils {
             if (!field) return []
 
             // Single object in yaml frontmatter
-            if (this.isObject(field)) return [field]
+            if (this.isObject(field)) return [this.deepClone(field)]
 
             try {
                 // Single string as inline field
@@ -146,7 +174,7 @@ class Utils {
                         return [...a, ...this.normalizeArrayOfObjectField(c)]
                     }
 
-                    if (this.isObject(c)) return [...a, c]
+                    if (this.isObject(c)) return [...a, this.deepClone(c)]
 
                     return [...a, JSON.parse(c)]
                 }, [])
@@ -189,6 +217,15 @@ class Utils {
                 return dv.luxon.DateTime.fromObject({ year: value })
             }
             return dv.date(value)
+        }
+
+        /* from: https://stackoverflow.com/a/75988895 */
+        debounce(callback, wait = 300) {
+            let timeoutId = null;
+            return (...args) => {
+                window.clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => { callback(...args); }, wait);
+            };
         }
 
         //#endregion

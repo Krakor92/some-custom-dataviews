@@ -35,8 +35,8 @@ const vm = new customJS[DEFAULT_CUSTOMJS_CLASS].ViewManager({
 })
 
 const onReady = async () => {
-    await renderView()
     vm.container.removeEventListener("dvjs-ready", onReady)
+    await renderView()
 }
 vm.container.addEventListener("dvjs-ready", onReady)
 
@@ -199,7 +199,7 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
 gridManager.buildParent()
 await gridManager.insertNewChunk()
 
-vm.rootNode.appendChild(gridManager.parent);
+vm.root.appendChild(gridManager.parent);
 //#endregion
 
 //#region Masonry layout

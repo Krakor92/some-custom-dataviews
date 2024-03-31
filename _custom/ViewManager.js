@@ -12,26 +12,29 @@ class ViewManager {
         /**
          * 
          * @param {object} _ 
+         * @param {HTMLDivElement} _.container - The container to which the view will be appended
          * @param {string} _.name - The name of the view (must match with css class associated with it)
+         * @param {boolean} _.clearExisting - If true, it will remove all existing views inside the `container`
+         * with the same class as the new one
          */
-        constructor({disable = "", app, container, utils, logger, name} = {}) {
+        constructor({disable = "", app, container, utils, logger, name, clearExisting = false} = {}) {
             this.app = app
             this.container = container
             this.utils = utils
             this.logger = logger
             this.disableSet = new Set(disable.split(" ").map((v) => v.toLowerCase()))
             this.name = name
+            this.clearExisting = clearExisting
 
             this.tid = (new Date()).getTime();
             /** @type {HTMLDivElement} */
-            this.rootNode = container.createEl("div", {
+            this.host = container.createEl("div", {
                 cls: this.#computeClassName(),
                 attr: {
-                    id: name + this.tid,
+                    id: this.#computeId(),
                     style: 'position:relative;-webkit-user-select:none!important'
                 }
             })
-            utils.removeTagChildDVSpan(this.rootNode)
             this.managedToHideEditButton = this.#hideEditButton()
 
             this.observer = new IntersectionObserver(this.handleViewIntersection.bind(this))
@@ -46,8 +49,15 @@ class ViewManager {
             }
         }
 
+        /**
+         * Susceptible to be overriden by Shikamaru's ViewKagemaneNoJutsu
+         */
+        get root() {
+            return this.host
+        }
+
         #cleanView() {
-            this.rootNode = null
+            this.host = null
             this.leaf = null
             this.observer = null
             this.container = null
@@ -87,13 +97,13 @@ class ViewManager {
          * Then once I've found the leaf, I can correctly setup a naive garbage collector-like function for this view
          */
         #resolveCurrentLeaf() {
-            let leaf = this.utils.getParentWithClass(this.rootNode.parentNode, "workspace-leaf")
+            let leaf = this.utils.getParentWithClass(this.host.parentNode, "workspace-leaf")
             if (leaf) {
                 this.leaf = leaf
                 return this.logger?.log("We've found a leaf, and it looks like this view is in a classic tab 🗨️")
             }
 
-            leaf = this.utils.getParentWithClass(this.rootNode.parentNode, "popover")
+            leaf = this.utils.getParentWithClass(this.host.parentNode, "popover")
             if (leaf) {
                 this.leaf = leaf
                 return this.logger?.log("We've found a leaf, and it looks like this view is in a popover 🎈")
@@ -105,24 +115,24 @@ class ViewManager {
         /**
          * This function mutates `this.container` if it happens that the view is inside an embed.
          * It does that because for unknown reason, `this.observer.observe(this.container)` doesn't work
-         * if `this.container` is equal to `this.rootNode` or `dv.container` and the view is directly inside an embed...
+         * if `this.container` is equal to `this.host` or `dv.container` and the view is directly inside an embed...
          * So as a workaround, `this.container` is set to an embed div parent.
          * This make the view slightly less optimized when rendered via an embed since the rendering happens as soon as the embed is visible
          * (even if the actual view is not actually visible on the screen) but it's still better than nothing
          */
         #embedObserverWorkaround() {
             if (this.#amiInEmbed() && !this.#amiInPopover()) {
-                this.container = this.rootNode.parentNode
+                this.container = this.host.parentNode
                     ?.parentNode
                     ?.parentNode // No need to go up to the ".markdown-embed-content" one, it start to work with this one
             }
         }
 
         #amiInPopover() {
-            if (!!this.utils.getParentWithClass(this.rootNode.parentNode, "popover")) return true
+            if (!!this.utils.getParentWithClass(this.host.parentNode, "popover")) return true
 
             // Weird case: It happens when the view is burried in the popover file. It is in a strange dual state: Loaded but outside of the main DOM.
-            if (!this.rootNode
+            if (!this.host
                 ?.parentNode // container
                 ?.parentNode // <div>
                 ?.parentNode // undefined
@@ -135,7 +145,7 @@ class ViewManager {
          * Not sure if it really works...
          */
         #amiDirectlyInPopover() {
-            return this.rootNode.parentNode
+            return this.host.parentNode
                 ?.parentNode // <div class="markdown-preview-pusher">
                 ?.parentNode // <div class="markdown-preview-sizer markdown-preview-section">
                 ?.parentNode // <div class="markdown-preview-view markdown-rendered node-insert-event show-indentation-guide allow-fold-headings allow-fold-lists">
@@ -146,25 +156,25 @@ class ViewManager {
         }
 
         #amiInCallout() {
-            return !!this.utils.getParentWithClass(this.rootNode.parentNode, "callout-content")
+            return !!this.utils.getParentWithClass(this.host.parentNode, "callout-content")
         }
 
         /**
          * It will only return true if the container closest parent is a callout
         */
         #amiDirectlyInCallout() {
-           return this.rootNode.parentNode?.parentNode?.classList.contains("callout-content")
+           return this.host.parentNode?.parentNode?.classList.contains("callout-content")
         }
 
         #amiInEmbed() {
-            return !!this.utils.getParentWithClass(this.rootNode.parentNode, "markdown-embed-content")
+            return !!this.utils.getParentWithClass(this.host.parentNode, "markdown-embed-content")
         }
 
         /**
          * It will only return true if the container closest parent is an embed
          */
         #amiDirectlyInEmbed() {
-            const embedContent = this.rootNode.parentNode
+            const embedContent = this.host.parentNode
                 ?.parentNode // <div>
                 ?.parentNode // <div class="markdown-preview-sizer markdown-preview-section">
                 ?.parentNode // <div class="markdown-preview-view markdown-rendered node-insert-event show-indentation-guide allow-fold-headings allow-fold-lists">
@@ -191,9 +201,13 @@ class ViewManager {
             return syncPlugin.instance.getDefaultDeviceName()
         }
 
+        #computeId = () => {
+            return this.name + this.tid
+        }
+
         /** @param {Set<string>} set */
         #computeClassName = () => {
-            let className = this.name
+            let className = "custom-view " + this.name
             if (this.disableSet.has("border")) {
                 className += " no-border"
             }
@@ -234,7 +248,7 @@ class ViewManager {
             The root node is just below the dvjs one
             */
 
-            const container = this.rootNode.parentNode
+            const container = this.host.parentNode
             if (this.#hideEditButtonLogic(container?.nextSibling)) return true
 
             // We haven't been loaded yet in the DOM, are we in a callout?
@@ -250,9 +264,9 @@ class ViewManager {
             calloutNode.onclick = (e) => {
                 if (// we click on something that usually trigger the edit of callout in live preview, do nothing
                     e.target === calloutContentNode
-                    || e.target === this.rootNode
-                    || e.target === this.rootNode.querySelector(".buttons")
-                    || e.target === this.rootNode.querySelector(".grid")
+                    || e.target === this.host
+                    || e.target === this.host.querySelector(".buttons")
+                    || e.target === this.host.querySelector(".grid")
                     || e.target.tagName === "ARTICLE"
                     || e.target.className === "file-link"
                     || e.target.tagName === "INPUT"
@@ -275,7 +289,16 @@ class ViewManager {
                     this.observer.unobserve(entries[0].target);
 
                     if (!this.managedToHideEditButton) {// try now that it has been loaded in the DOM
-                        this.#hideEditButtonLogic(this.rootNode.parentNode?.nextSibling)
+                        this.#hideEditButtonLogic(this.host.parentNode?.nextSibling)
+                    }
+
+                    if (this.clearExisting) {
+                        const existingViews = this.container.querySelectorAll(`.custom-view.${this.name}`)
+                        existingViews.forEach((child) => {
+                            if (child.id !== this.#computeId()) {
+                                child.remove()
+                            }
+                        })
                     }
 
                     this.container.dispatchEvent(new CustomEvent('dvjs-ready'))

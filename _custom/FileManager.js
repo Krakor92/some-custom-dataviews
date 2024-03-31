@@ -1,5 +1,6 @@
 class FileManager {
     /**
+     * TODO: see if I can easily remove dv dependency and use Obsidian internal API instead to access the created file
      * Class used to create files and automatically insert metadata
      * based on the filters present in the view where the file creation is triggered
      */
@@ -9,10 +10,11 @@ class FileManager {
          * @param {string?} _.directoryWhereToAddFile
          * @param {Array<Function>} _.logicOnAddFile
          */
-        constructor({dv, app, utils, properties, userFields, directoryWhereToAddFile, logicOnAddFile = []}) {
+        constructor({ dv, app, utils, currentFilePath, properties, userFields, directoryWhereToAddFile, logicOnAddFile = [] }) {
             this.dv = dv,
             this.app = app
             this.utils = utils
+            this.currentFilePath = currentFilePath
             this.directoryWhereToAddFile = directoryWhereToAddFile
             this.properties = properties
             this.userFields = userFields
@@ -84,7 +86,7 @@ class FileManager {
             const newFilePath = `${computed.directoryWhereToAddFile}/Untitled`
             const newFile = await this.createNewNote(newFilePath)
 
-            const mmenuPlugin = this.dv.app.plugins.plugins["metadata-menu"]?.api
+            const mmenuPlugin = this.app.plugins.plugins["metadata-menu"]?.api
             if (!mmenuPlugin) {
                 return console.warn("You don't have metadata-menu enabled so you can't benefit from the smart tag completion")
             }
@@ -102,7 +104,7 @@ class FileManager {
                 await fn(this, fieldsPayload)
             }
 
-            const current = this.dv.current()
+            const current = this.dv.page(this.currentFilePath)
 
             if (computed.properties?.current) {
                 fieldsPayload.push({

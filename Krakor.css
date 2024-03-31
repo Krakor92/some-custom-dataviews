@@ -1,0 +1,38 @@
+/*
+This snippet is supposed to be used with views from this repository: https://github.com/Krakor92/some-custom-dataviews
+*/
+
+/* Remove the box-shadow around the view in live preview */
+.cm-preview-code-block:has(.custom-view):hover {
+    box-shadow: none !important;
+}
+
+/* Better callouts */
+.callout:has(.custom-view) {
+    mix-blend-mode: normal;
+}
+
+/* #region no box-shadow clipping */
+.markdown-source-view.mod-cm6 .cm-content>[contenteditable=false]:has(.custom-view) {
+    contain: none !important;
+}
+
+.cm-preview-code-block:has(.custom-view),
+.block-language-dataviewjs:has(.custom-view),
+.custom-view {
+    overflow: visible !important;
+}
+
+/* #endregion */
+
+.custom-view {
+    position: relative;
+    cursor: default;
+}
+
+/* JS-engine: remove stats button */
+.js-engine-execution-render-child:hover .js-engine-execution-stats-button,
+.js-engine-execution-stats-button:hover,
+.js-engine-execution-stats-button {
+    display: none;
+}

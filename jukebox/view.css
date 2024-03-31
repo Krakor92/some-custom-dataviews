@@ -29,38 +29,6 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 	}
 }
 
-/* Remove the box-shadow around the view in live preview */
-.cm-preview-code-block:has(.jukebox):hover {
-	box-shadow: none !important;
-}
-
-
-
-/* #region better callouts */
-
-.callout:has(.jukebox) {
-	mix-blend-mode: normal;
-}
-
-/* #endregion */
-
-/* #region no box-shadow clipping */
-
-.markdown-source-view.mod-cm6 .cm-content>[contenteditable=false]:has(.jukebox) {
-	contain: none !important;
-}
-
-.cm-preview-code-block:has(.jukebox),
-.block-language-dataviewjs:has(.jukebox),
-.jukebox,
-.jukebox .grid,
-.jukebox article {
-	overflow: visible !important;
-}
-
-/* #endregion */
-
-
 .jukebox {
 	position: relative;
 	cursor: default;

@@ -26,36 +26,6 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	}
 }
 
-/* Remove the box-shadow around the view in live preview */
-.cm-preview-code-block:has(.gallery):hover {
-	box-shadow: none !important;
-}
-
-/* #region better callouts */
-
-.callout:has(.gallery) {
-	mix-blend-mode: normal;
-}
-
-/* #endregion */
-
-/* #region no box-shadow clipping */
-
-.markdown-source-view.mod-cm6 .cm-content>[contenteditable=false]:has(.gallery) {
-	contain: none !important;
-}
-
-.cm-preview-code-block:has(.gallery),
-.block-language-dataviewjs:has(.gallery),
-.gallery,
-.gallery .grid,
-.gallery article {
-	overflow: visible !important;
-}
-
-/* #endregion */
-
-
 .gallery {
 	position: relative;
 	cursor: default;

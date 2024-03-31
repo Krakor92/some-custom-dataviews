@@ -43,8 +43,8 @@ const vm = new customJS[DEFAULT_CUSTOMJS_CLASS].ViewManager({
 })
 
 const onReady = async () => {
-    await renderView()
     vm.container.removeEventListener("dvjs-ready", onReady)
+    await renderView()
 }
 vm.container.addEventListener("dvjs-ready", onReady)
 
@@ -125,6 +125,7 @@ const MASONRY_LAYOUT = true
 const fileManager = new customJS[DEFAULT_CUSTOMJS_CLASS].FileManager({
     dv, utils,
     app: dv.app,
+    currentFilePath: dv.currentFilePath,
     directoryWhereToAddFile: DEFAULT_SCORE_DIRECTORY,
     properties: filter,
     userFields: USER_FIELDS,
@@ -231,8 +232,10 @@ if (!vm.disableSet.has("buttons")) {
 
     const htmlButtons = buttonBar.buildHTMLButtons()
 
-    vm.rootNode.appendChild(dv.el("div", htmlButtons, { cls: "buttons", attr: {} }))
-    buttonBar.setEvents(vm.rootNode.querySelectorAll('.buttons button'))
+    /** @type {HTMLDivElement} */
+    const buttons = vm.root.createEl("div", { cls: "buttons" })
+    buttons.insertAdjacentHTML('beforeend', htmlButtons)
+    buttonBar.setEvents(vm.root.querySelectorAll('.buttons button'))
 }
 //#endregion
 
@@ -265,6 +268,7 @@ const orphanPages = vm.disableSet.has("orphans") ? [] : orphanage.raise(dv.curre
 
 const pageManager = new customJS[DEFAULT_CUSTOMJS_CLASS].PageManager({
     dv, logger, utils, orphanage,
+    currentFilePath: dv.currentFilePath,
     customFields,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
@@ -470,7 +474,7 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
 gridManager.buildParent()
 await gridManager.insertNewChunk()
 
-vm.rootNode.appendChild(gridManager.parent);
+vm.root.appendChild(gridManager.parent);
 //#endregion
 
 //#region Masonry layout

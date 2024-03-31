@@ -1,17 +1,18 @@
 class PageManager {
     /**
-     * It's build on top of the Query class
+     * It's build on top of the Query class which is itself built on top of DataviewAPI
      * 
-     * What's the difference between both?
+     * *What's the difference between both?*
+     * 
      * The Query class is an agnostic service that enhance the default capability of dataview querying by adding new "primitives" to it.
      * 
-     * This class on the other hand leverage these functions to use them at a higher level of abstraction in the shape of a simple filter/sort object
+     * This class on the other hand leverage the functions provided by the Query class to use them at a higher level of abstraction in the shape of a simple filter/sort object
      * Also it doesn't store the state of the query unlike the Query object
      */
     PageManager = class {
         /**
          * @param {object} _
-         * @param {DataviewInlineAPI} _.dv
+         * @param {DataviewAPI} _.dv
          * @param {Logger} _.logger
          * @param {Utils} _.utils
          * @param {Orphanage} _.orphanage
@@ -20,6 +21,7 @@ class PageManager {
          */
         constructor({
             dv, logger, utils, orphanage,
+            currentFilePath,
             customFields,
             userFields,
             defaultFrom = '-"_templates"',
@@ -41,6 +43,7 @@ class PageManager {
                 )
             }
 
+            this.currentFilePath = currentFilePath
             this.defaultFrom = defaultFrom
 
             this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
@@ -55,8 +58,7 @@ class PageManager {
             // Draft for special sort functions just like filters above
             this.querySortFunctionsMap = new Map()
             this.querySortFunctionsMap.set("manual", async (pages, field) => {
-                // this.logger?.log(dv.current())
-                const rawSortingPages = this.dv.current()[field]
+                const rawSortingPages = this.dv.page(this.currentFilePath)[field]
                 if (!rawSortingPages) {
                     console.warn(
                         `${value} property could not be found in your file`
@@ -104,7 +106,7 @@ class PageManager {
             const queryFilterFunctionsMap = new Map()
 
             queryFilterFunctionsMap.set("manual", async (qs, value) => {
-                const links = this.dv.current()[value]
+                const links = this.dv.page(this.currentFilePath)[value]
                 if (!links) {
                     return console.warn(
                         "You must set an inline field inside your file containing pages links for the manual filter to work"
@@ -114,7 +116,7 @@ class PageManager {
             })
 
             queryFilterFunctionsMap.set("current", (qs, value) => {
-                const currentPath = this.dv.current().file.path
+                const currentPath = this.dv.page(this.currentFilePath).file.path
                 qs.withLinkFieldOfPath({ field: value, path: currentPath })
             })
 
@@ -193,7 +195,7 @@ class PageManager {
         #updateFromStringBasedOnSpecialFilters = (from, filter) => {
             if (filter?.current === "backlinks") {
                 delete filter.current
-                return (from += ` AND [[${this.dv.current().file.path}]]`)
+                return (from += ` AND [[${this.dv.page(this.currentFilePath).file.path}]]`)
             }
 
             return from
@@ -207,7 +209,7 @@ class PageManager {
         #runStringFilterQuery = ({filter, qs}) => {
             switch (filter) {
                 case "backlinks":
-                    qs.from(`${this.defaultFrom} AND [[${this.dv.current().file.path}]]`)
+                    qs.from(`${this.defaultFrom} AND [[${this.dv.page(this.currentFilePath).file.path}]]`)
                     break;
                 default:
                     break;
@@ -337,7 +339,7 @@ class PageManager {
             }
 
             if (sort?.manual) {
-                const rawSortingPages = this.dv.current()[sort.manual]
+                const rawSortingPages = this.dv.page(this.currentFilePath)[sort.manual]
                 if (!rawSortingPages) {
                     console.warn(`${sort.manual} property could not be found in your file`)
                     return pages

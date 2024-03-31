@@ -1,9 +1,25 @@
 class CollectionManager {
+
+    /**
+     * A function that takes an `HTMLElement` as input and do some computation on it
+     * @typedef {Function} HTMLCallback
+     * @property {HTMLElement} element
+     */
+
+    /**
+     * The object that should be returned by the `pageToChild` method of this class
+     * @typedef {object} PageToHTML
+     * @property {string} html
+     * @property {object} extra - A set of selectors to html. Needed for specific HTML tags behavior to happen on tag insertion
+     * @property {HTMLCallback} postInsertionCb - Used to do some computation on the element after it has been inserted in the DOM
+     */
+
     /**
      * @abstract
-     * @warning This class need CustomJS enabled to work since it uses MarkdownRenderer.renderMarkdown which is exposed by the plugin
+     * @warning This class need CustomJS enabled to work since it uses `MarkdownRenderer.renderMarkdown` which is exposed by the plugin.
      * It is also needed because of the way the static generator functions are written
      * 
+     * @description
      * This class is no longer Dataview dependant. This makes it agnostic of the engine its running on
      * It might be Dataview, Datacore or even JS-Engine, this class shouldn't care
      * 
@@ -11,8 +27,30 @@ class CollectionManager {
      * Don't instantiate directly from its constructor. You should use one of the static methods at the bottom instead
      * It handles:
      * - Lazy rendering of a bunch of DOM elements for blazing fast performance
-     * - Custom rendering that bypass MarkdownRenderer.renderMarkdown capacity
+     * - Custom rendering that bypass `MarkdownRenderer.renderMarkdown` capacity
      * - Image fallback
+     * 
+     * @example
+     * // Initializes the collection manager with all its needed dependencies
+     * const gridManager = CollectionManager.makeGridManager({
+     *      container,
+     *      component,
+     *      currentFilePath,
+     *      logger, icons, utils,
+     *      numberOfElementsPerBatch: 20,
+     *  })
+     * 
+     * // Internaly build the HTML representation of every elements thanks to blueprint
+     * await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {...}})
+     * 
+     * // Creates the HTML element that will hold every children and push it in the DOM
+     * gridManager.buildParent()
+     * 
+     * // Appends a chunk of element inside the DOM as children of the parent
+     * await gridManager.insertNewChunk()
+     * 
+     * // Initializes the infinite rendering that happens on scroll
+     * gridManager.initInfiniteLoading()
      */
     CollectionManager = class {
         /**
@@ -70,7 +108,13 @@ class CollectionManager {
             /** @type {Array<function(CollectionManager): Promise<void>>} */
             this.extraLogicOnNewChunk = extraLogicOnNewChunk
 
-            this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this));
+            const intersectionOptions = {
+                root: null, // relative to the viewport
+                rootMargin: '200px', // 200px below the viewport
+                threshold: 0,
+            }
+
+            this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this), intersectionOptions);
         }
 
         everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.children.length)
@@ -91,7 +135,8 @@ class CollectionManager {
         /**
          * Build the complete list of children that will eventually be rendered on the screen
          * (if you scroll all the way down)
-         * This method params can be quite obscure and for a reason: The MarkdownRenderer.renderMarkdown method 
+         * This method params can be quite obscure and for a reason: The `MarkdownRenderer.renderMarkdown` method
+         *
          * @param {object} _
          * @param {*} _.pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
          * @param {Function} _.pageToChild - This function get a page as its parameter and is suppose to return an html string or an array of html strings
@@ -168,7 +213,7 @@ class CollectionManager {
          * @warning CustomJS plugin is needed to run this function
          * 
          * It might be difficult to understand what's going on but it could be reduced to a 20 lines long function max
-         * if MarkdownRenderer.renderMarkdown had a consistent behavior no matter what tags were passed to it
+         * if `MarkdownRenderer.renderMarkdown` had a consistent behavior no matter what tags were passed to it
          */
         async insertNewChunk() {
             const fromSliceIndex = this.batchesFetchedCount * this.numberOfElementsPerBatch
@@ -246,6 +291,7 @@ class CollectionManager {
         handleLastChildIntersection(entries) {
             entries.map(async (entry) => {
                 if (entry.isIntersecting) {
+                    this.logger.log(entry)
                     this.logger.reset()
 
                     this.childObserver.unobserve(entries[0].target);
