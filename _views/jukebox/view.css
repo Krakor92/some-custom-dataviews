@@ -1,0 +1,384 @@
+/*
+The grid layout is copied from there https://github.com/kepano/obsidian-minimal/blob/master/src/scss/features/cards.scss
+And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calendar/blob/main/tasksCalendar/view.css
+*/
+
+:root {
+	--jukebox-cards-min-width: 140px;
+	/* --jukebox-cards-min-width: 160px; */
+	--jukebox-cards-max-width: 1fr;
+	--jukebox-cards-mobile-width: 120px;
+	--jukebox-cards-image-height: 200px;
+	--jukebox-cards-add-file-height: 140px;
+	--jukebox-cards-padding: 1.2em;
+	--jukebox-cards-image-fit: cover;
+	--jukebox-cards-background: transparent;
+	--jukebox-cards-border-width: 1px;
+	--jukebox-cards-border-radius: 6px;
+	/* --cards-aspect-ratio: auto; */
+	--jukebox-cards-columns: repeat(auto-fit, minmax(var(--jukebox-cards-min-width), var(--jukebox-cards-max-width)));
+	--jukebox-background-modifier-border: hsl(0, 0%, 20%);
+	--jukebox-background-modifier-border-hover: hsl(0, 0%, 25%);
+	--jukebox-background-modifier-border-light: hsl(0, 0%, 80%);
+	--jukebox-background-modifier-border-hover-light: hsl(0, 0%, 85%);
+}
+
+@media (max-width:400pt) {
+	:root {
+		--jukebox-cards-min-width: var(--jukebox-cards-mobile-width);
+	}
+}
+
+.jukebox {
+	position: relative;
+	cursor: default;
+}
+
+.jukebox span {
+	display: contents;
+}
+
+/* #region thumbnail */
+.jukebox .thumb-stack {
+	display: grid;
+
+	/* Hide Sanctum's img overflowing */
+	overflow: hidden;
+}
+
+.jukebox .thumb-stack img {
+	object-fit: var(--jukebox-cards-image-fit);
+	width: 100%;
+	max-height: var(--jukebox-cards-image-height);
+	border-radius: var(--jukebox-cards-border-radius);
+	margin: 0;
+	pointer-events: none;
+	z-index: -1;
+	grid-column: 1;
+	grid-row: 1;
+	align-self: center;
+	justify-self: center;
+}
+
+.jukebox img {
+	animation: fadeInAnimation ease 0.4s;
+	animation-iteration-count: 1;
+	animation-fill-mode: forwards;
+}
+
+@keyframes fadeInAnimation {
+	0% {
+		opacity: 0;
+	}
+
+	100% {
+		opacity: 1;
+	}
+}
+
+/* When the thumbnail is wrapped in <a> */
+.jukebox .thumb-stack a {
+	display: flex;
+	grid-column: 1;
+	grid-row: 1;
+	/* transition: transform .5s ease; */
+}
+
+
+
+/* #region .buttons */
+.jukebox .buttons {
+	display: flex;
+	justify-content: flex-end;
+
+	width: 100%;
+	height: 30px;
+	display: flex;
+	flex-wrap: nowrap;
+	flex-direction: row;
+	margin-bottom: 0.75rem;
+	gap: 0.5rem
+}
+
+.jukebox button.active,
+.jukebox.playlist button.playlist,
+.jukebox.no-voice button.no-voice {
+	background: var(--background-modifier-active-hover);
+}
+
+body:not(.is-mobile) .jukebox button:not(.active):hover {
+	background: var(--background-modifier-hover);
+}
+
+.jukebox button.active svg,
+.jukebox.playlist button.playlist svg,
+.jukebox.no-voice button.no-voice svg {
+	stroke: var(--icon-color-active) !important;
+}
+
+.jukebox button {
+	background-color: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	border-radius: 5px;
+	color: var(--icon-color);
+	height: 30px;
+	box-shadow: none;
+	border: 1px solid var(--nav-item-background-active);
+	font-weight: normal;
+	font-size: 14px;
+	background: var(--background-secondary);
+	padding: 4px 6px;
+	outline: none;
+	user-select: none;
+	white-space: nowrap;
+	flex: 0;
+}
+
+.jukebox.no-voice article.voice {
+	display: none;
+}
+
+/* #endregion */
+
+.jukebox .grid {
+	display: grid;
+	grid-template-columns: var(--jukebox-cards-columns);
+	gap: 0.75rem;
+}
+
+/*#region .article*/
+.theme-light .jukebox article {
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-light);
+}
+
+.theme-light .jukebox article:hover {
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover-light);
+}
+
+.jukebox article {
+	z-index: 0;
+	/* needed for mobile ?*/
+	position: relative;
+	background-color: var(--jukebox-cards-background);
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	border-radius: var(--jukebox-cards-border-radius);
+	overflow: hidden;
+	transition: box-shadow 0.15s linear;
+	max-width: var(--jukebox-cards-max-width);
+}
+
+.jukebox article:hover {
+	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover);
+	box-shadow:
+		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
+		/* 0 1px 3px 1px rgba(0, 0, 0, 0.025); */
+		0 4px 6px 0px rgba(0, 0, 0, 0.07),
+		0 1px 3px 1px rgba(0, 0, 0, 0.04);
+	transition: box-shadow 0.15s linear;
+}
+
+.jukebox article.add-file {
+	height: var(--jukebox-cards-add-file-height);
+	cursor: pointer;
+	padding: 0;
+	justify-content: center;
+	align-items: center;
+	color: var(--jukebox-background-modifier-border);
+}
+
+.jukebox article.add-file:hover {
+	color: var(--jukebox-background-modifier-border-hover);
+}
+
+.jukebox.no-border article,
+.jukebox.no-border article:hover {
+	border: 0;
+	box-shadow: none;
+}
+
+/*#endregion*/
+
+/*#region .audio-player*/
+/* build from: https://blog.shahednasser.com/how-to-style-an-audio-element/ */
+.jukebox .audio-player {
+	opacity: 0.8;
+	transition: opacity 0.3s ease;
+
+	z-index: 100;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	pointer-events: none;
+	aspect-ratio: 1/1;
+	height: auto;
+	width: auto;
+
+	grid-column: 1;
+	grid-row: 1;
+	align-self: center;
+	justify-self: center;
+}
+
+@media (hover: hover) {
+	.jukebox .audio-player:hover {
+		opacity: 1;
+	}
+}
+
+.jukebox .audio-player:active svg {
+	color: var(--color-base-10);
+}
+
+.jukebox button.player-button {
+	color: var(--color-accent);
+	background-color: transparent;
+	border: 0;
+	box-shadow: none;
+	cursor: pointer;
+	pointer-events: auto;
+	padding: 0 !important;
+}
+
+/* To get rid of the hideous semi-transparent white rectangle when hovering over it */
+body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
+	background: none;
+}
+
+.jukebox .player-button svg {
+	width: 48px;
+	height: 48px;
+}
+
+/* #endregion */
+
+/* #region .timeline */
+.jukebox .timeline {
+	/* Strange behaviour, all inputs don't respond equally to this ?_? some are smaller than others */
+	z-index: 20;
+	height: 2px;
+	width: auto;
+	border-radius: 5px;
+	background-size: 0% 100%;
+	background-image: linear-gradient(var(--color-accent), var(--color-accent));
+	background-repeat: no-repeat;
+
+	/* Handle conflicting themes */
+	background-color: var(--slider-track-background);
+	margin: 0;
+}
+
+.jukebox .timeline::before,
+.jukebox .timeline::after {
+	display: none
+}
+
+.jukebox .timeline::-webkit-slider-thumb {
+	width: 1em;
+	height: 1em;
+	border-radius: 50%;
+	border-color: transparent;
+	cursor: pointer;
+	opacity: 0;
+	transition: all .1s;
+	background-color: var(--color-accent);
+}
+
+.jukebox .timeline::-webkit-slider-thumb:hover {
+	background-color: var(--color-accent);
+}
+
+.jukebox .timeline:hover::-webkit-slider-thumb {
+	opacity: 1;
+}
+
+.jukebox .timeline::-webkit-slider-runnable-track {
+	box-shadow: none;
+	border: none;
+	background: transparent;
+}
+
+/* #endregion */
+
+.jukebox span.file-link {
+	display: inline-block;
+	padding: calc(var(--jukebox-cards-padding)/2) 0;
+	border-bottom: none;
+	font-size: var(--table-text-size);
+	font-weight: 600;
+	line-height: normal;
+	width: calc(100% - var(--jukebox-cards-padding));
+	margin: auto;
+	overflow-wrap: anywhere;
+	max-width: 100%;
+	display: flex;
+	justify-content: space-between;
+}
+
+/* For better integration of the Metadata Menu icons */
+.jukebox .fileclass-icon {
+	align-self: center;
+}
+
+.jukebox span.url-link a {
+	position: absolute;
+	top: 4px;
+	right: 6px;
+
+	/* To remove the [object HTMLImageElement] text */
+	font-size: 0;
+}
+
+.jukebox a {
+	/* To remove the icon added by default next to external-link */
+	background-image: none;
+	padding: 0;
+
+}
+
+/* ONLY for ITS - External Link Icons users */
+.jukebox a::before,
+.jukebox a::after {
+	display: none
+}
+
+/* ONLY for Link Favicons users */
+.jukebox img.link-favicon {
+	display: none !important;
+}
+
+/*#region .timecode*/
+.jukebox .timecode {
+	background-color: rgba(0, 0, 0, .8);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	z-index: 10;
+	grid-column: 1;
+	grid-row: 1;
+	align-self: flex-end;
+	justify-self: end;
+
+	border-radius: 5px;
+	padding: 0 4px;
+	margin: 2px;
+
+	/* To add a little space when the thumbnail image is disabled */
+	margin-top: 28px;
+}
+
+.jukebox .timecode span {
+	color: #eff1f5;
+	display: inline-block;
+	font-size: 0.8em;
+	font-weight: 600;
+}
+
+/* #endregion */
