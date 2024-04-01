@@ -1,7 +1,7 @@
 
 # Some custom dataviews
 
-Here you'll find js views I've written to leverage Dataview's power (its `API`) to suit some of my specific needs.
+Here you'll find js views I've written to leverage Dataview's power to suit some of my specific needs.
 
 Originally, they were used inside `dataviewjs` codeblocks but with the arrival of JS Engine and its reactive component system, I've modified them to use `js-engine` codeblocks instead
 

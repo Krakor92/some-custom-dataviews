@@ -127,7 +127,7 @@ class Krakor {
         * I'm using on... properties here because I only need one handler per audio at all time
         * and I don't want to handle the adding and removing of eventListener manually
         * 
-        * @param {import('./view').CollectionManager} collectionManager - An object responsible of a collection of DomElement
+        * @param {import('./_views').CollectionManager} collectionManager - An object responsible of a collection of DomElement
         * It must implement a function getParent() that returns the parent DomElement of the collection
         */
         manageMp3Scores(collectionManager) {
@@ -245,7 +245,7 @@ class Krakor {
             /** @type{string[]} */
             this.buttonsOrder = buttonsOrder
 
-            /** @type {Map<string, import('./view').ViewButton>} */
+            /** @type {Map<string, import('./_views').ViewButton>} */
             this.buttonsMap = buttonsMap
         }
 
@@ -1168,7 +1168,7 @@ class Krakor {
         }
         /**
          * @param {string[]} orphansData
-         * @returns {import('./view').ScoreFile[]}
+         * @returns {import('./_views').ScoreFile[]}
          */
         raise(orphansData) {
             const orphans = this.utils.normalizeArrayOfObjectField(orphansData)
@@ -1211,6 +1211,7 @@ class Krakor {
          * @param {Orphanage} _.orphanage
          * @param {Map<string, Function>} _.customFields - Example: <"mp3", (qs) => ...>
          * @param {Map<string, string>} _.userFields - Example: '<"artist", "link">'
+         * @param {number?} _.seed - Used for the shuffle when sorting
          */
         constructor({
             dv, logger, utils, orphanage,
@@ -1218,6 +1219,7 @@ class Krakor {
             customFields,
             userFields,
             defaultFrom = '-"_templates"',
+            seed = null,
         }) {
             this.dv = dv
             this.logger = logger
@@ -1238,6 +1240,7 @@ class Krakor {
 
             this.currentFilePath = currentFilePath
             this.defaultFrom = defaultFrom
+            this.seed = seed
 
             this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
             this.customFields = customFields ?? new Map()
@@ -1482,7 +1485,7 @@ class Krakor {
          * @param {object} _
          * @param {*} [_.filter]
          * @param {Query} _.qs
-         * @returns {import('./view').UserFile[]}
+         * @returns {import('./_views').UserFile[]}
          */
         buildAndRunFileQuery = async ({ filter, qs }) => {
             if (typeof filter === "function") {
@@ -1520,7 +1523,7 @@ class Krakor {
         /**
          * @param {object} _
          * @param {object} _.sort
-         * @param {import('./view').ScoreFile[]} _.pages
+         * @param {import('./_views').ScoreFile[]} _.pages
          */
         #sortPages = async ({ sort, pages }) => {
             if (typeof sort === "function") {
@@ -1587,7 +1590,11 @@ class Krakor {
             }
 
             if (sort?.shuffle) {
-                return this.utils.shuffleArray(pages)
+                if (typeof sort.shuffle === "boolean") {
+                    return this.utils.shuffleArray(pages, this.seed);
+                } else if (typeof sort.shuffle === "number") {
+                    return this.utils.shuffleArray(pages, sort.shuffle);
+                }
             }
 
             // - Alphabetical order by default
@@ -2459,7 +2466,7 @@ class Krakor {
         }
 
         /**
-         * @param {import('./view').Link} thumb
+         * @param {import('./_views').Link} thumb
          */
         renderThumbnailFromVault(thumb) {
             if (!thumb) return ""
@@ -2474,7 +2481,7 @@ class Krakor {
         /**
          * Get the HTML representation of an image
          * It accepts either internal link or url
-         * @param {import('./view').Link | string} img 
+         * @param {import('./_views').Link | string} img 
          */
         renderImage(img) {
             if (typeof img === "string") {
@@ -2538,7 +2545,7 @@ class Krakor {
         /**
          * 
          * @param {object} _
-         * @param {import('./view').Link} _.audioFile
+         * @param {import('./_views').Link} _.audioFile
          * @param {number?} _.volumeOffset
          * @param {'auto' | 'metadata' | 'none'} _.preload
          */
@@ -2579,7 +2586,7 @@ class Krakor {
         /**
          * Aim to replicate the way it is done by vanilla Obsidian
          * @param {object} _
-         * @param {import('./view').Link} _.audioFile
+         * @param {import('./_views').Link} _.audioFile
          * @param {number?} _.volumeOffset
          * @param {'auto' | 'metadata' | 'none'} _.preload
          */
@@ -2602,7 +2609,7 @@ class Krakor {
 
         /**
          * 
-         * @param {import('./view').Link} _.filelink
+         * @param {import('./_views').Link} _.filelink
          */
         renderVideo = async ({ filelink, preload = "metadata" }) => {
             if (!filelink) return ""
@@ -2825,19 +2832,31 @@ div
         }
 
         /**
-         * from https://stackoverflow.com/a/6274381
-         * It alters the array
-         * @param {Array} a.
+         * Seeded RNG using Linear Congruential Generator
+         * @param {number} seed
          */
-        shuffleArray(a) {
-            let j, x, i
+        seededRNG(seed) {
+            return () => {
+                seed = (seed * 1664525 + 1013904223) % 4294967296;
+                return seed / 4294967296;
+            };
+        }
+
+        /**
+         * It alters the array
+         * @from https://stackoverflow.com/a/6274381
+         * @param {Array} a
+         * @param {number} seed
+         */
+        shuffleArray(a, seed) {
+            const rng = (typeof seed === 'number') ? this.seededRNG(seed) : Math.random;
+            let j, x, i;
             for (i = a.length - 1; i > 0; i--) {
-                j = Math.floor(Math.random() * (i + 1))
-                x = a[i]
-                a[i] = a[j]
-                a[j] = x
+                j = Math.floor(rng() * (i + 1));
+                x = a[i];
+                a[i] = a[j];
+                a[j] = x;
             }
-            return a
         }
 
         /**
@@ -2935,7 +2954,7 @@ div
 
         /**
          * Prepend the path of orphans (uncreated) files with a base directory
-         * @param {Array<import('./view').Link|string>} links
+         * @param {Array<import('./_views').Link|string>} links
          * @param {string} baseDir
          */
         normalizeLinksPath = async (links, baseDir) => {

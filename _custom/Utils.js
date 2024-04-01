@@ -76,19 +76,31 @@ class Utils {
         }
 
         /**
-         * from https://stackoverflow.com/a/6274381
-         * It alters the array
-         * @param {Array} a.
+         * Seeded RNG using Linear Congruential Generator
+         * @param {number} seed
          */
-        shuffleArray(a) {
-            let j, x, i
+        seededRNG(seed) {
+            return () => {
+                seed = (seed * 1664525 + 1013904223) % 4294967296;
+                return seed / 4294967296;
+            };
+        }
+
+        /**
+         * It alters the array
+         * @from https://stackoverflow.com/a/6274381
+         * @param {Array} a
+         * @param {number} seed
+         */
+        shuffleArray(a, seed) {
+            const rng = (typeof seed === 'number') ? this.seededRNG(seed) : Math.random;
+            let j, x, i;
             for (i = a.length - 1; i > 0; i--) {
-                j = Math.floor(Math.random() * (i + 1))
-                x = a[i]
-                a[i] = a[j]
-                a[j] = x
+                j = Math.floor(rng() * (i + 1));
+                x = a[i];
+                a[i] = a[j];
+                a[j] = x;
             }
-            return a
         }
 
         /**
@@ -186,7 +198,7 @@ class Utils {
 
         /**
          * Prepend the path of orphans (uncreated) files with a base directory
-         * @param {Array<import('../view').Link|string>} links
+         * @param {Array<import('../_views').Link|string>} links
          * @param {string} baseDir
          */
         normalizeLinksPath = async (links, baseDir) => {

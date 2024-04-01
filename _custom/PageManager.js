@@ -18,6 +18,7 @@ class PageManager {
          * @param {Orphanage} _.orphanage
          * @param {Map<string, Function>} _.customFields - Example: <"mp3", (qs) => ...>
          * @param {Map<string, string>} _.userFields - Example: '<"artist", "link">'
+         * @param {number?} _.seed - Used for the shuffle when sorting
          */
         constructor({
             dv, logger, utils, orphanage,
@@ -25,6 +26,7 @@ class PageManager {
             customFields,
             userFields,
             defaultFrom = '-"_templates"',
+            seed = null,
         }) {
             this.dv = dv
             this.logger = logger
@@ -45,6 +47,7 @@ class PageManager {
 
             this.currentFilePath = currentFilePath
             this.defaultFrom = defaultFrom
+            this.seed = seed
 
             this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
             this.customFields = customFields ?? new Map()
@@ -289,7 +292,7 @@ class PageManager {
          * @param {object} _
          * @param {*} [_.filter]
          * @param {Query} _.qs
-         * @returns {import('../view').UserFile[]}
+         * @returns {import('../_views').UserFile[]}
          */
         buildAndRunFileQuery = async ({ filter, qs }) => {
             if (typeof filter === "function") {
@@ -327,7 +330,7 @@ class PageManager {
         /**
          * @param {object} _
          * @param {object} _.sort
-         * @param {import('../view').ScoreFile[]} _.pages
+         * @param {import('../_views').ScoreFile[]} _.pages
          */
         #sortPages = async ({ sort, pages }) => {
             if (typeof sort === "function") {
@@ -394,7 +397,11 @@ class PageManager {
             }
 
             if (sort?.shuffle) {
-                return this.utils.shuffleArray(pages)
+                if (typeof sort.shuffle === "boolean") {
+                    return this.utils.shuffleArray(pages, this.seed);
+                } else if (typeof sort.shuffle === "number") {
+                    return this.utils.shuffleArray(pages, sort.shuffle);
+                }
             }
 
             // - Alphabetical order by default

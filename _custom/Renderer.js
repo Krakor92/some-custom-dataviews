@@ -104,7 +104,7 @@ class Renderer {
         }
 
         /**
-         * @param {import('../view').Link} thumb
+         * @param {import('../_views').Link} thumb
          */
         renderThumbnailFromVault(thumb) {
             if (!thumb) return ""
@@ -119,7 +119,7 @@ class Renderer {
         /**
          * Get the HTML representation of an image
          * It accepts either internal link or url
-         * @param {import('../view').Link | string} img 
+         * @param {import('../_views').Link | string} img 
          */
         renderImage(img) {
             if (typeof img === "string") {
@@ -183,7 +183,7 @@ class Renderer {
         /**
          * 
          * @param {object} _
-         * @param {import('../view').Link} _.audioFile
+         * @param {import('../_views').Link} _.audioFile
          * @param {number?} _.volumeOffset
          * @param {'auto' | 'metadata' | 'none'} _.preload
          */
@@ -224,7 +224,7 @@ class Renderer {
         /**
          * Aim to replicate the way it is done by vanilla Obsidian
          * @param {object} _
-         * @param {import('../view').Link} _.audioFile
+         * @param {import('../_views').Link} _.audioFile
          * @param {number?} _.volumeOffset
          * @param {'auto' | 'metadata' | 'none'} _.preload
          */
@@ -247,7 +247,7 @@ class Renderer {
 
         /**
          * 
-         * @param {import('../view').Link} _.filelink
+         * @param {import('../_views').Link} _.filelink
          */
         renderVideo = async ({ filelink, preload = "metadata" }) => {
             if (!filelink) return ""

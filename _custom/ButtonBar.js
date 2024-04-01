@@ -10,7 +10,7 @@ class ButtonBar {
             /** @type{string[]} */
             this.buttonsOrder = buttonsOrder
 
-            /** @type {Map<string, import('../view').ViewButton>} */
+            /** @type {Map<string, import('../_views').ViewButton>} */
             this.buttonsMap = buttonsMap
         }
 

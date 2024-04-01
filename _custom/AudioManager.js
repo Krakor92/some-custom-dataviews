@@ -127,7 +127,7 @@ class AudioManager {
         * I'm using on... properties here because I only need one handler per audio at all time
         * and I don't want to handle the adding and removing of eventListener manually
         * 
-        * @param {import('../view').CollectionManager} collectionManager - An object responsible of a collection of DomElement
+        * @param {import('../_views').CollectionManager} collectionManager - An object responsible of a collection of DomElement
         * It must implement a function getParent() that returns the parent DomElement of the collection
         */
         manageMp3Scores(collectionManager) {

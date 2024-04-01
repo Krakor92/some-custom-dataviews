@@ -221,7 +221,7 @@ manual:: [[Falling Apart]]
 
 ## Sort
 
-- [>] A améliorer avec ce que GoldenSeal m'a proposé
+- [x] 
 > [!NOTE]- Sort - 🎲 Random/Shuffle
 > ```js-engine
 > const path = '_js/_views/jukebox/view.js'
@@ -232,7 +232,18 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [>] Hmm, le comportement est bizarre
+- [x] Thank you GoldenSeal 😊
+> [!NOTE]- Sort - 🎲 Seeded Shuffle
+> ```js-engine
+> const path = '_js/_views/jukebox/view.js'
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	sort: {shuffle: 123456789}
+> })
+> ```
+
+- [!] Don't work as expected
 > [!NOTE]- Sort - 📬 Recently added
 > ```js-engine
 > const path = '_js/_views/jukebox/view.js'
@@ -243,7 +254,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [ ] 
+- [-] 
 > [!NOTE]- Sort - 🫳 Manual
 > ```js-engine
 > const path = '_js/_views/jukebox/view.js'
@@ -253,10 +264,10 @@ manual:: [[Falling Apart]]
 > 	sort: {manual: "scores"}
 > })
 > ```
-> 
-> scores:: [[Mangrove Cove (Underwater)]]
 
-- [ ] 
+scores:: [[Mangrove Cove (Underwater)]]
+
+- [?] Does it work though?
 > [!NOTE]- Sort - 🌬️ None/Filter
 > ```js-engine
 > const path = '_js/_views/jukebox/view.js'
@@ -266,8 +277,6 @@ manual:: [[Falling Apart]]
 > 	sort: "none"
 > })
 > ```
-> 
-> scores:: [[Mangrove Cove (Underwater)]]
 
 
 ## Disable

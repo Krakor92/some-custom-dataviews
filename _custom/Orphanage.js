@@ -16,7 +16,7 @@ class Orphanage {
         }
         /**
          * @param {string[]} orphansData
-         * @returns {import('../view').ScoreFile[]}
+         * @returns {import('../_views').ScoreFile[]}
          */
         raise(orphansData) {
             const orphans = this.utils.normalizeArrayOfObjectField(orphansData)

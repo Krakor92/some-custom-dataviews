@@ -111,6 +111,9 @@ const AUDIO_DEFAULT_PRELOAD = 'metadata'
 // Between 0 (silent) and 1 (loudest)
 const DEFAULT_VOLUME = 0.4
 
+// Replace it with a number if you desire your mix to be predictable with a given set of tracks
+const RANDOM_SEED = null
+
 // Until how many seconds in youtube url (?t=) should we consider the music to not be elegible to playlist
 const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
 
@@ -304,6 +307,7 @@ const pageManager = new customJS[DEFAULT_CUSTOMJS_CLASS].PageManager({
     customFields,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
+    seed: RANDOM_SEED,
 })
 
 let queriedPages = []
