@@ -364,7 +364,7 @@ class PageManager {
                 return pages.sort((a, b) => a.file.ctime - b.file.ctime)
             }
 
-            if (sort?.recentlyReleased === true) {
+            if (sort?.hasOwnProperty("recentlyReleased")) {
                 return pages.sort((a, b) => {
                     const aReleased = this.utils.valueToDateTime({
                         value: a.release,
@@ -375,24 +375,10 @@ class PageManager {
                         dv: this.dv,
                     })
                     if (!aReleased || !bReleased) return 0
-                    return bReleased - aReleased
-                })
-            }
-            if (sort?.recentlyReleased === false) {
-                return pages.sort((a, b) => {
-                    const aReleased = this.utils.valueToDateTime({
-                        value: a.release,
-                        dv: this.dv,
 
-                    })
-                    const bReleased = this.utils.valueToDateTime({
-                        value: b.release,
-                        dv: this.dv,
-
-                    })
-                    if (!aReleased || !bReleased) return 0
-
-                    return aReleased - bReleased
+                    return sort.recentlyReleased
+                        ? bReleased - aReleased
+                        : aReleased - bReleased
                 })
             }
 

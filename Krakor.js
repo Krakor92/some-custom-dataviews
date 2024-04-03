@@ -1557,7 +1557,7 @@ class Krakor {
                 return pages.sort((a, b) => a.file.ctime - b.file.ctime)
             }
 
-            if (sort?.recentlyReleased === true) {
+            if (sort?.hasOwnProperty("recentlyReleased")) {
                 return pages.sort((a, b) => {
                     const aReleased = this.utils.valueToDateTime({
                         value: a.release,
@@ -1568,24 +1568,10 @@ class Krakor {
                         dv: this.dv,
                     })
                     if (!aReleased || !bReleased) return 0
-                    return bReleased - aReleased
-                })
-            }
-            if (sort?.recentlyReleased === false) {
-                return pages.sort((a, b) => {
-                    const aReleased = this.utils.valueToDateTime({
-                        value: a.release,
-                        dv: this.dv,
 
-                    })
-                    const bReleased = this.utils.valueToDateTime({
-                        value: b.release,
-                        dv: this.dv,
-
-                    })
-                    if (!aReleased || !bReleased) return 0
-
-                    return aReleased - bReleased
+                    return sort.recentlyReleased
+                        ? bReleased - aReleased
+                        : aReleased - bReleased
                 })
             }
 
@@ -2123,7 +2109,7 @@ class Krakor {
                             return acceptStringField ? l === path : false
                         }
 
-                        return l.path === path
+                        return l?.path === path
                     })
                 }
 
@@ -2885,6 +2871,22 @@ div
             if (isNaN(seconds)) return NaN
 
             return total + seconds
+        }
+
+        /**
+         * @param {number} duration 
+         * @returns {number} The duration converted to a timecode of the format `00:00:00` or `00:00`
+        */
+        convertDurationToTimecode = (duration) => {
+            const hours = Math.floor(duration / 3600);
+            const minutes = Math.floor((duration % 3600) / 60);
+            const seconds = Math.floor(duration % 60);
+
+            const hoursString = hours.toString().padStart(2, '0');
+            const minutesString = minutes.toString().padStart(2, '0');
+            const secondsString = seconds.toString().padStart(2, '0');
+            
+            return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
         }
         //	#endregion
 

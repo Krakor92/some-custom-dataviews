@@ -332,8 +332,16 @@ const renderTimelineTrack = () => {
     return `<input type="range" class="timeline" max="100" value="0">`
 }
 
-const renderTimecode = (length) => {
-    return `<div class="timecode"><span>${length}</span></div>`
+/**
+ * 
+ * @param {string|number} length - if it is a number, it will be converted to timecode
+ * @param {boolean} trim
+ */
+const renderTimecode = (length, trim = true) => {
+    if (typeof length === "number") {
+        length = utils.convertDurationToTimecode(length)
+    }
+    return `<div class="timecode"><span>${trim ? length.replace(/^[0:]+/, '') : length}</span></div>`
 }
 
 /**

@@ -254,6 +254,17 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
+- [!] Don't work as expected
+> [!NOTE]- Sort - ⌛ Recently released
+> ```js-engine
+> const path = '_js/_views/jukebox/view.js'
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 		sort: {recentlyReleased: false}
+> })
+> ```
+
 - [-] 
 > [!NOTE]- Sort - 🫳 Manual
 > ```js-engine

@@ -514,7 +514,7 @@ class Query {
                             return acceptStringField ? l === path : false
                         }
 
-                        return l.path === path
+                        return l?.path === path
                     })
                 }
 

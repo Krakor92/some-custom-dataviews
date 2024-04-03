@@ -130,6 +130,22 @@ class Utils {
 
             return total + seconds
         }
+
+        /**
+         * @param {number} duration 
+         * @returns {number} The duration converted to a timecode of the format `00:00:00` or `00:00`
+        */
+        convertDurationToTimecode = (duration) => {
+            const hours = Math.floor(duration / 3600);
+            const minutes = Math.floor((duration % 3600) / 60);
+            const seconds = Math.floor(duration % 60);
+
+            const hoursString = hours.toString().padStart(2, '0');
+            const minutesString = minutes.toString().padStart(2, '0');
+            const secondsString = seconds.toString().padStart(2, '0');
+            
+            return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
+        }
         //	#endregion
 
         //#region Obsidian
