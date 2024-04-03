@@ -46,6 +46,15 @@ Here are the overarching principles of how this view works:
 	- If you set a video as the source of the audio, besides sharing the same problem as above, you also can't lock your phone / switch app or the music will pause
 	- Audios aren't recognized by the phone's system (you can't pause them with your headset for example)
 
+- On *desktop*, audio **pauses** when a new page is opened. I'm not sure what causes that but I guess it has to do with some kind of memory management on Obsidian side
+
+> [!TIP]
+> [Opening in a new window](https://help.obsidian.md/User+interface/Pop-out+windows) the page where this view runs can help.
+> As it stands in a completely different window, I imagine it forces Obsidian to ignore it when optimizing ressources for the main workspace
+> 
+> Note that pop-out windows tend to disrupt the masonry implementation of this view.
+
+
 - The url links support has been built with **YouTube links** in mind:
 	- You can still add any other web links to your markdown music file (soundcloud, dailymotion, ...) but you will not benefit from the YouTube auto playlist feature while doing so
 
@@ -675,7 +684,21 @@ orphans:
 > [!WARNING]
 > The indentation on the left must be made of spaces (your yaml won't be recognized if you use tabs there)
 
+## Q & A
 
+*Why didn't you build a plugin instead?*
+
+Great question!
+
+As I said, it all started when I discovered the Obsidian-task-calendar view and was amazed. Although I didn't think I could create a plugin at the time, I knew it was possible to use it as inspiration to create my own view.
+
+However, I think that at some point it would probably have been better for me to go down the plugin route.
+
+At the moment, I'm a bit torn about doing this.
+On the one hand, I know it would allow the BRAT plugin to work transparently with this view and increase the likelihood of someone using it, but it would mean rewriting most of it...
+On the other hand, it would add yet another plugin to the vault and I personally prefer to have as few plugins as possible because the more you have, the more it tends to slow down the opening of your vault. Also we're talking about a simple view that displays a grid in your vault, I find it overkill to build a plugin for that
+
+Inside me, I'm hoping that someone build a kind of store / BRAT-like but for js views
 
 ## 🔮 Future
 

@@ -20,9 +20,6 @@ const { engine, component, container, context, obsidian } = env.globals
 
 const mb = engine.getPlugin('obsidian-meta-bind-plugin').api;
 
-// a component for lifecycle management of the fields created in our render function
-const comp = new obsidian.Component(component);
-
 const bindTargets = propertiesToWatch.map(property => mb.parseBindTarget(property, context.file.path));
 
 let previousFrontmatter = context.metadata.frontmatter
@@ -33,23 +30,11 @@ const { main } = await engine.importJs(path)
 await forceLoadCustomJS()
 const utils = new customJS["Krakor"].Utils({ app })
 
-
 function render(props) {
-    console.log({props})
-    // first we unload the component to unload the content from the previous rerender
-    comp.unload();
-    // then we load the component again for this rerender.
-    comp.load();
-    // then we empty the element we render to remove content created in the previous rerender
-    container.empty();
+    // we force the unload of the view to remove the content created in the previous render
+    container.dispatchEvent(new CustomEvent('view-unload'))
 
     main({ ...env, path }, buildViewParams(props))
-
-    // // next we create the empty mountable
-    // const mountable = mb.createViewFieldMountable(context.file.path)
-
-    // // and finally we render it via a MarkdownRenderChild
-    // mb.wrapInMDRC(mountable, container, comp);
 }
 
 // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with

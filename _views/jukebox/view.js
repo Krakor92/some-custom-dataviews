@@ -30,7 +30,8 @@ const DEBUG_LOG_FILE = "🙈/Log.md"
 // You can add any disable values here to globally disable them in every view
 const GLOBAL_DISABLE = ""
 
-await forceLoadCustomJS()
+await window.forceLoadCustomJS()
+
 const utils = new customJS[DEFAULT_CUSTOMJS_CLASS].Utils({app})
 const logger = new customJS[DEFAULT_CUSTOMJS_CLASS].Logger({
     app,
@@ -42,14 +43,14 @@ const logger = new customJS[DEFAULT_CUSTOMJS_CLASS].Logger({
 const VIEW_NAME = 'jukebox'
 
 const vm = new customJS[DEFAULT_CUSTOMJS_CLASS].ViewManager({
-    app, container, logger, utils,
+    app, component, container, logger, utils,
     name: VIEW_NAME,
     disable: GLOBAL_DISABLE + " " + disable,
     clearExisting: clear,
 })
 
 const onReady = async () => {
-    vm.container.removeEventListener("dvjs-ready", onReady)
+    vm.container.removeEventListener("view-ready", onReady)
 
     debug && performance.mark('jukebox-start');
     await renderView()
@@ -59,7 +60,7 @@ const onReady = async () => {
         console.info(`View took ${code_perf.duration}ms to run (performance.measure)`)
     }
 }
-vm.container.addEventListener("dvjs-ready", onReady)
+vm.container.addEventListener("view-ready", onReady)
 
 vm.init()
 

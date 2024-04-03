@@ -3016,17 +3016,15 @@ div
          * @param {object} _ 
          * @param {HTMLDivElement} _.container - The container to which the view will be appended
          * @param {string} _.name - The name of the view (must match with css class associated with it)
-         * @param {boolean} _.clearExisting - If true, it will remove all existing views inside the `container`
-         * with the same class as the new one
          */
-        constructor({disable = "", app, container, utils, logger, name, clearExisting = false} = {}) {
+        constructor({ disable = "", app, component, container, utils, logger, name } = {}) {
             this.app = app
+            this.component = component
             this.container = container
             this.utils = utils
             this.logger = logger
             this.disableSet = new Set(disable.split(" ").map((v) => v.toLowerCase()))
             this.name = name
-            this.clearExisting = clearExisting
 
             this.tid = (new Date()).getTime();
             /** @type {HTMLDivElement} */
@@ -3046,6 +3044,23 @@ div
             this.#embedObserverWorkaround()
             this.#resolveCurrentLeaf()
 
+            /**
+             * Here are the three ways this view can be unloaded
+             */
+
+            // 1. When the component containing this view is unloaded
+            this.component?.register(() => {
+                this.#cleanView()
+            })
+
+            // 2. When another script explictly send this `view-unload` event to the container tag
+            const onUnload = () => {
+                this.container.removeEventListener("view-unload", onUnload)
+                this.#cleanView()
+            }
+            this.container.addEventListener("view-unload", onUnload)
+
+            // 3. When the leaf which contains this view is removed from the DOM
             if (this.leaf) {
                 this.#monitorHealthCheck()
             }
@@ -3059,13 +3074,21 @@ div
         }
 
         #cleanView() {
+            if (!this.leaf) return
             this.host = null
             this.leaf = null
+            this.observer?.disconnect()
             this.observer = null
+            this.container?.empty()
             this.container = null
             this.logger?.log(this.tid, "🪦")
         }
 
+        /**
+         * Even though the component unload registering should suffice most of the time,
+         * It happens (in Canvas for example) that some codeblock are never considered unloaded.
+         * This mechanism is the last resort to free these kind of stuborn views.
+         */
         #monitorHealthCheck(timeBetweenEachHealthcheck = 2000) {
             this.healthcheckInterval = setInterval(() => {
                 if (this.healthcheck()) {
@@ -3294,16 +3317,7 @@ div
                         this.#hideEditButtonLogic(this.host.parentNode?.nextSibling)
                     }
 
-                    if (this.clearExisting) {
-                        const existingViews = this.container.querySelectorAll(`.custom-view.${this.name}`)
-                        existingViews.forEach((child) => {
-                            if (child.id !== this.#computeId()) {
-                                child.remove()
-                            }
-                        })
-                    }
-
-                    this.container.dispatchEvent(new CustomEvent('dvjs-ready'))
+                    this.container.dispatchEvent(new CustomEvent('view-ready'))
                 }
             });
         }
