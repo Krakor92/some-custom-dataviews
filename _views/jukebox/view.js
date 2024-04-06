@@ -1,8 +1,8 @@
 /**
  * @file Render a grid of music from your vault. Files can have an audio embedded, an url or both
- * @depends on JS-Engine, DataviewJS and CustomJS
+ * @depends on JS-Engine and DataviewJS
  * @author Krakor <krakor.faivre@gmail.com>
- * @link https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox
+ * @link https://github.com/Krakor92/some-custom-dataviews/tree/master/_views/jukebox
  * 
  * To mimic the behavior of dvjs automatic css insertion, you MUST pass a `path` property inside the `env` object equal to this current file path.
  * It is then interpreted by this view to find the css file in the same folder
@@ -13,61 +13,33 @@ export async function main(env, {
     sort,
     disable = "",
     debug = false,
-    clear = false,
 } = {}) {
 
-// JS-Engine specific setup
-const { app, engine, component, container, context } = env.globals
+// #region JS Engine setup
+const { app, engine, component, container, context, obsidian } = env.globals
 // We retrieve the dv api object
 const dv = engine.getPlugin('dataview')?.api
-
-// CustomJS related - look at the readme for more info
-const DEFAULT_CUSTOMJS_CLASS = "Krakor"
-
-const LOGGER_TYPE = "console"
-const DEBUG_LOG_FILE = "🙈/Log.md"
 
 // You can add any disable values here to globally disable them in every view
 const GLOBAL_DISABLE = ""
 
-await window.forceLoadCustomJS()
+disable = GLOBAL_DISABLE + ' ' + disable
 
-const utils = new customJS[DEFAULT_CUSTOMJS_CLASS].Utils({app})
-const logger = new customJS[DEFAULT_CUSTOMJS_CLASS].Logger({
-    app,
-    dry: !debug,
-    output: LOGGER_TYPE,
-    filepath: DEBUG_LOG_FILE,
-})
+// The path where the main module is
+const MODULE_PATH = "_js/Krakor.mjs"
 
-const VIEW_NAME = 'jukebox'
+const module = await engine.importJs(MODULE_PATH)
 
-const vm = new customJS[DEFAULT_CUSTOMJS_CLASS].ViewManager({
-    app, component, container, logger, utils,
-    name: VIEW_NAME,
-    disable: GLOBAL_DISABLE + " " + disable,
-    clearExisting: clear,
-})
+await module.setupView({
+    app, component, container, module,
+    viewName: 'jukebox',
+    render: renderView,
+    disable,
+    debug,
+ })
+// #endregion
 
-const onReady = async () => {
-    vm.container.removeEventListener("view-ready", onReady)
-
-    debug && performance.mark('jukebox-start');
-    await renderView()
-    if (debug){
-        performance.mark('jukebox-end');
-        const code_perf = performance.measure('jukebox', 'jukebox-start', 'jukebox-end');
-        console.info(`View took ${code_perf.duration}ms to run (performance.measure)`)
-    }
-}
-vm.container.addEventListener("view-ready", onReady)
-
-vm.init()
-
-logger?.log(`View: ${VIEW_NAME}`)
-logger?.log({ filter, sort, disable, debug, clear })
-
-async function renderView() {
+async function renderView({ vm, logger, utils }) {
 
 //#region Settings
 
@@ -86,6 +58,7 @@ const AUDIO_FILE_FIELD = "audio"
 const URL_FIELD = "url"
 const LENGTH_FIELD = "length"
 const VOLUME_FIELD = "volume"
+const ORPHANS_FIELD = "orphans"
 
 // The 'from' dataview query used to query the music markdown files
 const DEFAULT_FROM = '#🎼 AND -"_templates"'
@@ -149,14 +122,14 @@ const scriptPathNoExt = scriptPath.replace(/(?:\.[\w-]+)$/, "");
 
 // If it didn't find scriptPath, we assume, this view doesn't need have any css
 if (scriptPathNoExt) {
-    const Stylist = new customJS["Stylist"].Stylist({ app, container: vm.root })
+    const Stylist = new module.Stylist({ app, container: vm.root })
     await Stylist.setStyleContentFromFile(`${scriptPathNoExt}.css`, context.file.path)
 }
 
 //#endregion
 
 
-const fileManager = new customJS[DEFAULT_CUSTOMJS_CLASS].FileManager({
+const fileManager = new module.FileManager({
     dv, utils, app,
     currentFilePath: context.file.path,
     directoryWhereToAddFile: DEFAULT_SCORE_DIRECTORY,
@@ -178,9 +151,9 @@ const fileManager = new customJS[DEFAULT_CUSTOMJS_CLASS].FileManager({
 })
 
 
-const icons = new customJS[DEFAULT_CUSTOMJS_CLASS].IconManager()
+const icons = new module.IconManager()
 
-const audioManager = new customJS[DEFAULT_CUSTOMJS_CLASS].AudioManager({
+const audioManager = new module.AudioManager({
     enableSimultaneousPlaying: ENABLE_SIMULTANEOUS_AUDIO_PLAYING,
     autoplay: !vm.disableSet.has("autoplay"),
     stopAutoplayWhenReachingLastMusic: STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC,
@@ -190,7 +163,7 @@ const audioManager = new customJS[DEFAULT_CUSTOMJS_CLASS].AudioManager({
 
 //#region Buttons handling
 if (!vm.disableSet.has("buttons")) {
-    const buttonBar = new customJS[DEFAULT_CUSTOMJS_CLASS].ButtonBar()
+    const buttonBar = new module.ButtonBar()
 
     if (debug) {
         buttonBar.addButton({
@@ -290,9 +263,9 @@ customFields.set('audioOnly', async (qs) => {
     })
 })
 
-const qs = new customJS[DEFAULT_CUSTOMJS_CLASS].Query({ dv })
+const qs = new module.Query({ dv })
 
-const orphanage = new customJS[DEFAULT_CUSTOMJS_CLASS].Orphanage({
+const orphanage = new module.Orphanage({
     utils,
     directory: DEFAULT_SCORE_DIRECTORY,
     thumbnailDirectory: DEFAULT_THUMBNAIL_DIRECTORY,
@@ -300,9 +273,9 @@ const orphanage = new customJS[DEFAULT_CUSTOMJS_CLASS].Orphanage({
 
 const orphanPages = vm.disableSet.has("orphans")
     ? []
-    : orphanage.raise(dv.page(context.file.path).orphans)
+    : orphanage.raise(dv.page(context.file.path)[ORPHANS_FIELD])
 
-const pageManager = new customJS[DEFAULT_CUSTOMJS_CLASS].PageManager({
+const pageManager = new module.PageManager({
     dv, logger, utils, orphanage,
     currentFilePath: context.file.path,
     customFields,
@@ -374,7 +347,7 @@ const renderExternalUrlAnchor = ({ url, children = "", noIcon = false }) => {
         `${base}${_resolveAnchorServicePartFromUrl(url)}${children}</a>`;
 }
 
-const Renderer = new customJS[DEFAULT_CUSTOMJS_CLASS].Renderer({utils, icons})
+const Renderer = new module.Renderer({utils, icons})
 
 /**
  * @param {object} _
@@ -391,7 +364,8 @@ function resolveArticleStyle({ options }) {
     return style !== "" ? `style="${style}"` : ""
 }
 
-const gridManager = customJS[DEFAULT_CUSTOMJS_CLASS].CollectionManager.makeGridManager({
+const gridManager = module.CollectionManager.makeGridManager({
+    obsidian,
     container,
     component,
     currentFilePath: context.file.path,
@@ -525,7 +499,7 @@ vm.root.appendChild(gridManager.parent);
 //#region Masonry layout
 if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 
-    const masonryManager = new customJS[DEFAULT_CUSTOMJS_CLASS].Masonry(gridManager.parent)
+    const masonryManager = new module.Masonry(gridManager.parent)
 
     const resizeObserver = new ResizeObserver(() => {
         masonryManager.resizeAllGridItems()

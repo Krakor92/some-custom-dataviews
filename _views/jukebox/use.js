@@ -12,7 +12,7 @@
  */
 
 export async function main(env, {
-    viewPath,
+    viewPath: path,
     propertiesToWatch = ['artist', 'sort', 'media'],
 }) {
 // JS-Engine specific setup
@@ -24,17 +24,18 @@ const bindTargets = propertiesToWatch.map(property => mb.parseBindTarget(propert
 
 let previousFrontmatter = context.metadata.frontmatter
 
-const path = viewPath
-const { main } = await engine.importJs(path)
+const [ module, view ] = await Promise.all([
+    engine.importJs('_js/Krakor.mjs'),
+    engine.importJs(path),
+])
 
-await forceLoadCustomJS()
-const utils = new customJS["Krakor"].Utils({ app })
+const utils = new module.Utils({ app })
 
 function render(props) {
     // we force the unload of the view to remove the content created in the previous render
     container.dispatchEvent(new CustomEvent('view-unload'))
 
-    main({ ...env, path }, buildViewParams(props))
+    view.main({ ...env, path }, buildViewParams(props))
 }
 
 // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
