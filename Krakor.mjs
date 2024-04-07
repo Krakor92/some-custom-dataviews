@@ -1304,6 +1304,9 @@ export class PageManager {
         })
     }
 
+    /**
+     * @returns {Map<string, Function>}
+     */
     #buildQueryFilterFunctionMap = () => {
         const queryFilterFunctionsMap = new Map()
 
@@ -1333,6 +1336,9 @@ export class PageManager {
         return queryFilterFunctionsMap
     }
 
+    /**
+     * @returns {Map<string, Function>}
+     */
     #buildDefaultQueryFilterFunctionMap = () => {
         const queryDefaultFilterFunctionsMap = new Map()
 
@@ -1357,7 +1363,11 @@ export class PageManager {
                 })
         })
 
-        queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
+        /**
+         * @param {string} field 
+         * @param {string} value 
+         */
+        const linkFilterFunction = (qs, field, value) => {
             const inLink = this.dv.parse(value) // transform [[value]] into a link
             this.logger?.log({ inLink })
 
@@ -1382,6 +1392,23 @@ export class PageManager {
                     path: value,
                     acceptStringField: true,
                 })
+            }
+        }
+
+        queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
+            if (Array.isArray(value)) {
+                const temporaryQueryService = new qs.constructor({ dv: this.dv, logger: this.logger })
+
+                const results = value.map((v) => {
+                    temporaryQueryService.from(qs._source)
+                    linkFilterFunction(temporaryQueryService, field, v)
+                    return [...temporaryQueryService._pages]
+                })
+
+                const resolvedPages = qs.constructor.innerJoinPages(qs._pages, qs.constructor.joinPages(...results))
+                qs.setPages(resolvedPages)
+            } else {
+                linkFilterFunction(qs, field, value)
             }
         })
 
@@ -1457,7 +1484,7 @@ export class PageManager {
 
             // The property is in the userFields so it has a special meaning (example: link, date, ...)
             propFilterFunc = this.queryDefaultFilterFunctionsMap.get(this.userFields.get(prop))
-            this.logger?.log({ propFilterFunc })
+            this.logger?.log({ propType: this.userFields.get(prop), prop, value: filter[prop], propFilterFunc })
             if (propFilterFunc) {
                 // The queryService, the field name and the value
                 await propFilterFunc(qs, prop, filter[prop])
@@ -1614,6 +1641,7 @@ export class Query {
         this.dv = dv
         this.logger = logger
         this._pages = null
+        this._source = ''
     }
 
     _warningMsg = "You forgot to call from or pages before calling this"
@@ -1626,7 +1654,7 @@ export class Query {
      * There is probably a better way (less space/time complexity) to do it but using a map was the easiest solution for me
      * @param  {...any} vargs 
      */
-    innerJoinPages = (...vargs) => {
+    static innerJoinPages = (...vargs) => {
         const pagesEncounteredMap = new Map()
 
         for (const pages of vargs) {
@@ -1666,7 +1694,7 @@ export class Query {
     }
 
     //distinct outer join
-    joinPages = (...vargs) => {
+    static joinPages = (...vargs) => {
         let joinedArray = []
 
         for (const pages of vargs) {
@@ -1698,6 +1726,7 @@ export class Query {
 
     from(source) {
         this._pages = this.dv.pages(source)
+        this._source = source
         return this
     }
 
@@ -3334,6 +3363,72 @@ export class ViewManager {
         });
     }
 }
+
+/**
+ * Binds a view to properties in the frontmatter. Thanks to Meta Bind's magic, the view will rerender if the watched properties change
+ * 
+ * @author Krakor <krakor.faivre@gmail.com>
+ * @depends on Meta Bind and JS-Engine
+ * @warning The code is a mess, but it works for now. I did it in only by looking at the repo examples,
+ * so I probably missed some obvious solutions that would make the code less verbose, idk
+ * @param {*} env 
+ * @param {object} _
+ * @param {string} _.path
+ * @param {string[]} _.propertiesToWatch
+ * 
+ * @todo Watch every properties if `propertiesToWatch` is empty
+ */
+export async function bindViewToProperties(env, {
+    main,
+    buildViewParams,
+    propertiesToWatch,
+}) {
+    // JS-Engine specific setup
+    const { app, engine, component, container, context, obsidian } = env.globals
+
+    const mb = engine.getPlugin('obsidian-meta-bind-plugin').api;
+
+    const bindTargets = propertiesToWatch.map(property => mb.parseBindTarget(property, context.file.path));
+
+    const module = await engine.importJs('_js/Krakor.mjs')
+
+    const utils = new module.Utils({ app })
+
+    function render(props) {
+        // we force the unload of the view to remove the content created in the previous render
+        container.dispatchEvent(new CustomEvent('view-unload'))
+
+        main(env, buildViewParams(props))
+    }
+
+    let initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
+    let previousFrontmatterStringified = JSON.stringify(initialTargettedFrontmatter)
+
+    // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
+    const reactive = engine.reactive(render, initialTargettedFrontmatter);
+
+    const debouncedRefresh = utils.debounce((data) => {
+        const targetedFrontmatter = propertiesToWatch.reduce((acc, property, i) => {
+            acc[property] = data[i]
+            return acc
+        }, {})
+
+        const currentTargettedFrontmatterStringified = JSON.stringify(targetedFrontmatter)
+        if (previousFrontmatterStringified === currentTargettedFrontmatterStringified) return; //no-op
+
+        previousFrontmatterStringified = currentTargettedFrontmatterStringified
+
+        // it has been confirmed that the new frontmatter should be used for the next render
+        reactive.refresh(targetedFrontmatter)
+    }, 100)
+
+    mb.reactiveMetadata(bindTargets, component, async (...targets) => {
+        debouncedRefresh(targets)
+    })
+
+    return reactive;
+}
+
 
 /**
  * The boilerplate needed at the beginning of a view

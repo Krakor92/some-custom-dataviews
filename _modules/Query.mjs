@@ -12,6 +12,7 @@ export class Query {
         this.dv = dv
         this.logger = logger
         this._pages = null
+        this._source = ''
     }
 
     _warningMsg = "You forgot to call from or pages before calling this"
@@ -24,7 +25,7 @@ export class Query {
      * There is probably a better way (less space/time complexity) to do it but using a map was the easiest solution for me
      * @param  {...any} vargs 
      */
-    innerJoinPages = (...vargs) => {
+    static innerJoinPages = (...vargs) => {
         const pagesEncounteredMap = new Map()
 
         for (const pages of vargs) {
@@ -64,7 +65,7 @@ export class Query {
     }
 
     //distinct outer join
-    joinPages = (...vargs) => {
+    static joinPages = (...vargs) => {
         let joinedArray = []
 
         for (const pages of vargs) {
@@ -96,6 +97,7 @@ export class Query {
 
     from(source) {
         this._pages = this.dv.pages(source)
+        this._source = source
         return this
     }
 

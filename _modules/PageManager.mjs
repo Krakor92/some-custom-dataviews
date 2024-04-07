@@ -106,6 +106,9 @@ export class PageManager {
         })
     }
 
+    /**
+     * @returns {Map<string, Function>}
+     */
     #buildQueryFilterFunctionMap = () => {
         const queryFilterFunctionsMap = new Map()
 
@@ -135,6 +138,9 @@ export class PageManager {
         return queryFilterFunctionsMap
     }
 
+    /**
+     * @returns {Map<string, Function>}
+     */
     #buildDefaultQueryFilterFunctionMap = () => {
         const queryDefaultFilterFunctionsMap = new Map()
 
@@ -159,7 +165,11 @@ export class PageManager {
                 })
         })
 
-        queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
+        /**
+         * @param {string} field 
+         * @param {string} value 
+         */
+        const linkFilterFunction = (qs, field, value) => {
             const inLink = this.dv.parse(value) // transform [[value]] into a link
             this.logger?.log({ inLink })
 
@@ -184,6 +194,23 @@ export class PageManager {
                     path: value,
                     acceptStringField: true,
                 })
+            }
+        }
+
+        queryDefaultFilterFunctionsMap.set("link", (qs, field, value) => {
+            if (Array.isArray(value)) {
+                const temporaryQueryService = new qs.constructor({ dv: this.dv, logger: this.logger })
+
+                const results = value.map((v) => {
+                    temporaryQueryService.from(qs._source)
+                    linkFilterFunction(temporaryQueryService, field, v)
+                    return [...temporaryQueryService._pages]
+                })
+
+                const resolvedPages = qs.constructor.innerJoinPages(qs._pages, qs.constructor.joinPages(...results))
+                qs.setPages(resolvedPages)
+            } else {
+                linkFilterFunction(qs, field, value)
             }
         })
 
@@ -259,7 +286,7 @@ export class PageManager {
 
             // The property is in the userFields so it has a special meaning (example: link, date, ...)
             propFilterFunc = this.queryDefaultFilterFunctionsMap.get(this.userFields.get(prop))
-            this.logger?.log({ propFilterFunc })
+            this.logger?.log({ propType: this.userFields.get(prop), prop, value: filter[prop], propFilterFunc })
             if (propFilterFunc) {
                 // The queryService, the field name and the value
                 await propFilterFunc(qs, prop, filter[prop])

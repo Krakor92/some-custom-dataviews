@@ -555,7 +555,7 @@ main({...this, path}, {
 		  })
 		  ._pages
 
-		qs.setPages(qs.innerJoinPages(nothingButTheBest, noVoiceOnly))
+		qs.setPages(qs.constructor.innerJoinPages(nothingButTheBest, noVoiceOnly))
 	},
 })
 ```

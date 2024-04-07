@@ -8,39 +8,6 @@
  * It is then interpreted by this view to find the css file in the same folder
  */
 
-export async function main(env, {
-    filter,
-    sort,
-    disable = "",
-    debug = false,
-} = {}) {
-
-// #region JS Engine setup
-const { app, engine, component, container, context, obsidian } = env.globals
-// We retrieve the dv api object
-const dv = engine.getPlugin('dataview')?.api
-
-// You can add any disable values here to globally disable them in every view
-const GLOBAL_DISABLE = ""
-
-disable = GLOBAL_DISABLE + ' ' + disable
-
-// The path where the main module is
-const MODULE_PATH = "_js/Krakor.mjs"
-
-const module = await engine.importJs(MODULE_PATH)
-
-await module.setupView({
-    app, component, container, module,
-    viewName: 'jukebox',
-    render: renderView,
-    disable,
-    debug,
- })
-// #endregion
-
-async function renderView({ vm, logger, utils }) {
-
 //#region Settings
 
 // The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
@@ -111,6 +78,39 @@ const ARTICLE_ALIGN = 'center'
 const MASONRY_LAYOUT = true
 
 //#endregion
+
+export async function main(env, {
+    filter,
+    sort,
+    disable = "",
+    debug = false,
+} = {}) {
+
+// #region JS Engine setup
+const { app, engine, component, container, context, obsidian } = env.globals
+// We retrieve the dv api object
+const dv = engine.getPlugin('dataview')?.api
+
+// You can add any disable values here to globally disable them in every view
+const GLOBAL_DISABLE = ""
+
+disable = GLOBAL_DISABLE + ' ' + disable
+
+// The path where the main module is
+const MODULE_PATH = "_js/Krakor.mjs"
+
+const module = await engine.importJs(MODULE_PATH)
+
+await module.setupView({
+    app, component, container, module,
+    viewName: 'jukebox',
+    render: renderView,
+    disable,
+    debug,
+ })
+// #endregion
+
+async function renderView({ vm, logger, utils }) {
 
 //#region Css insertion
 
@@ -519,3 +519,108 @@ gridManager.initInfiniteLoading()
 
 logger.viewPerf()
 }}
+
+/**
+ * Check if a given value is a valid property value.
+ * The function accept everything except:
+ * - Empty object
+ * - Empty array
+ * - Array with only empty strings
+ * - Empty string
+ * - Null
+ * - Undefined
+ * 
+ * @param {any} value - The value to check
+ * @returns {boolean} - True if the value is valid, false otherwise
+ */
+const isValidPropertyValue = (value) => {
+    if (
+        value === undefined
+        || value === null
+        || (typeof value === "object" && Object.entries(value).length === 0)
+        || (Array.isArray(value) && value.every(cell => typeof cell === "string" && cell.trim() === ""))
+        || (typeof value === "string" && value.trim() === "")
+    ) {
+        return false
+    }
+
+    return true
+}
+
+const IGNORED_PROPS = [
+    'alias',
+    'aliases',
+    "cssclass",
+    "cssclasses",
+]
+
+/**
+ * @draft
+ * Takes an object containing flattened parameters and returns them into an object passed to this view
+ * 
+ * @returns {object}
+ */
+export const buildViewParams = (params = {}) => {
+    const filter = {}
+
+    for (const prop in params) {
+        if (IGNORED_PROPS.some(p => p === prop)) continue
+
+        // const propType = USER_FIELDS.get(prop)
+
+        console.log({
+            prop,
+            value: params[prop],
+            // type: propType
+        })
+
+        if (!prop || !isValidPropertyValue(params[prop])) {
+            continue
+        }
+
+        filter[prop] = params[prop]
+    }
+
+    console.log({filter})
+
+    return {
+        filter,
+        // sort: sort ?? "random",
+        // debug: true,
+    }
+}
+
+/**
+ * @draft
+ * @todo make it dynamic, both regarding the rendering and the setup phase
+ */
+export const buildSettingsCallout = (engine) => {
+    const markdownBuilder = engine.markdown.createBuilder();
+
+    const callout = markdownBuilder.createCallout(
+        "**Settings**",
+        "NONE",
+        "")
+
+    callout.addText('🎙 Artist `INPUT[text(placeholder(Artist Name)):artist]` `INPUT[suggester(optionQuery(#🎙), useLinks(partial)):artist]`');
+    callout.addText('`INPUT[inlineListSuggester(optionQuery(#🎙), useLinks(partial)):artist]`');
+
+    callout.addText('***');
+
+    callout.addText('🎭 In `INPUT[text(placeholder(Media Name)):in]` `INPUT[suggester(optionQuery("DB/📺"), useLinks(partial)):in]`');
+    callout.addText('`INPUT[inlineListSuggester(optionQuery("DB/📺"), useLinks(partial)):in]`');
+
+    callout.addText('***');
+
+    callout.addText('🌀 Sort `INPUT[inlineSelect(defaultValue(""), option(random, 🎲 Random), option(recent, 📬 Recently added), option("", 🔤 Alphabetically)):sort]`');
+
+    callout.addText('***');
+
+    callout.addText('🏷 Tags `INPUT[inlineSelect(defaultValue(""), option(apaisante, 💆 Soothing), option(banger, 💃 Banger), option(calme, 🔉 Calm), option(douce, 🍯 Douce), option("", All)):tags_]`');
+
+    callout.addText('***');
+
+    callout.addText('🙊 No voice `INPUT[toggle:no-voice]`');
+
+    return markdownBuilder;
+}

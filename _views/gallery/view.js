@@ -8,6 +8,45 @@
  * It is then interpreted by this view to find the css file in the same folder
 */
 
+//#region Settings
+
+// The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
+const USER_FIELDS = new Map()
+USER_FIELDS.set('added', 'date')
+USER_FIELDS.set('release', 'date')
+USER_FIELDS.set('from', 'link')
+USER_FIELDS.set('in', 'link')
+USER_FIELDS.set('artist', 'link')
+USER_FIELDS.set('is', 'link')
+USER_FIELDS.set('links', 'link')
+
+// These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
+const TITLE_FIELD = "title"
+const THUMBNAIL_FIELD = "thumbnail"
+const ORPHANS_FIELD = "orphans"
+
+// The 'from' dataview query used to query the music markdown files
+const DEFAULT_FROM = '-"_templates"'
+
+const DEFAULT_FILE_DIRECTORY = 'DB'
+const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
+
+// How many pages do you want to render at first and each time you reach the end of the grid
+const NB_FILE_BATCH_PER_PAGE = 20
+
+/** @type {'auto' | 'top' | 'center' | 'bottom'} */
+const ARTICLE_ALIGN = 'center'
+
+/**
+ * Note the following:
+ * - This layout require the article align variable specified above to be equal to 'center'
+ * - The computing involved in order to make the Masonry layout work add some lag to the rendering phase
+ * - It messes with the card order. It's perfect if you have a random sort order but otherwise, you might want to disable masonry for your view
+ */
+const MASONRY_LAYOUT = true
+
+//#endregion
+
 export async function main(env, {
     filter,
     sort,
@@ -42,42 +81,6 @@ await module.setupView({
 
 async function renderView({ vm, logger, utils }) {
 
-//#region Settings
-
-// The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
-const USER_FIELDS = new Map()
-USER_FIELDS.set('added', 'date')
-USER_FIELDS.set('release', 'date')
-USER_FIELDS.set('from', 'link')
-USER_FIELDS.set('in', 'link')
-USER_FIELDS.set('artist', 'link')
-
-// These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
-const TITLE_FIELD = "title"
-const THUMBNAIL_FIELD = "thumbnail"
-const ORPHANS_FIELD = "orphans"
-
-// The 'from' dataview query used to query the music markdown files
-const DEFAULT_FROM = '-"_templates"'
-
-const DEFAULT_FILE_DIRECTORY = 'DB'
-const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
-
-// How many pages do you want to render at first and each time you reach the end of the grid
-const NB_FILE_BATCH_PER_PAGE = 20
-
-/** @type {'auto' | 'top' | 'center' | 'bottom'} */
-const ARTICLE_ALIGN = 'center'
-
-/**
- * Note the following:
- * - This layout require the article align variable specified above to be equal to 'center'
- * - The computing involved in order to make the Masonry layout work add some lag to the rendering phase
- * - It messes with the card order. It's perfect if you have a random sort order but otherwise, you might want to disable masonry for your view
- */
-const MASONRY_LAYOUT = true
-
-//#endregion
 
 //#region Css insertion
 
