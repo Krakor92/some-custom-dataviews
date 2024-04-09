@@ -1,15 +1,16 @@
 /**
  * Binds a view to properties in the frontmatter. Thanks to Meta Bind's magic, the view will rerender if the watched properties change
- * 
+ *
  * @author Krakor <krakor.faivre@gmail.com>
  * @depends on Meta Bind and JS-Engine
  * @warning The code is a mess, but it works for now. I did it in only by looking at the repo examples,
  * so I probably missed some obvious solutions that would make the code less verbose, idk
- * @param {*} env 
+ * @param {*} env
  * @param {object} _
- * @param {string} _.path
+ * @param {Function} _.main
+ * @param {Function} _.buildViewParams
  * @param {string[]} _.propertiesToWatch
- * 
+ *
  * @todo Watch every properties if `propertiesToWatch` is empty
  */
 export async function bindViewToProperties(env, {
@@ -32,7 +33,7 @@ export async function bindViewToProperties(env, {
         // we force the unload of the view to remove the content created in the previous render
         container.dispatchEvent(new CustomEvent('view-unload'))
 
-        main(env, buildViewParams(props))
+        main(env, buildViewParams(module, props))
     }
 
     let initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))

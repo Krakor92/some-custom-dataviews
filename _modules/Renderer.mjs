@@ -8,11 +8,17 @@ export class Renderer {
         this.icons = icons
     }
 
+    renderLink(link) {
+
+    }
+
+    //#region Image
+
     imgBaseAttributes = `referrerpolicy="no-referrer"`
 
     /**
      * @param {string} display
-     * @returns The style used by some gallery thumbnail
+     * @returns The style attribute used by some gallery thumbnail
      */
     #resolveThumbnailStyle(display) {
         const thumbnailY = parseFloat(display)
@@ -44,7 +50,7 @@ export class Renderer {
         return this.#resolveThumbnailStyle(display)
     }
 
-    #resolveVaultThumbnailStyle(thumb) {
+    #resolveVaultImageStyle(thumb) {
         let display = thumb.display
 
         if (display === undefined) return null
@@ -58,7 +64,11 @@ export class Renderer {
         return this.#resolveThumbnailStyle(display)
     }
 
-    #resolveThumbnailUrlFrom3rdParty(url) {
+    /**
+     * @param {*} url
+     * @returns
+     */
+    #computeImageTagFrom3rdPartyUrl(url) {
         if (url.includes("youtu.be")) {
             const startOfId = url.indexOf("youtu.be/") + 9
             const id = url.substring(startOfId, startOfId + 11)
@@ -81,13 +91,28 @@ export class Renderer {
     }
 
     /**
-     * 
-     * @param {string} url 
+     * Compute the HTML tag representation of an image
+     * It accepts either internal link, absolute path or an url
+     * @param {import('../_views').Link | string | Array} img - In case of an array, only the first element will be rendered
      */
-    renderThumbnailFromUrl = (url) => {
+    renderImage(img) {
+        if (Array.isArray(img)) return this.renderImage(img[0])
+
+        if (typeof img === "string" && this.utils.uriRegex.test(img)) {
+            return this.renderImageFromUrl(img)
+        }
+
+        return this.renderImageFromVault(img)
+    }
+
+    /**
+     *
+     * @param {string} url
+     */
+    renderImageFromUrl = (url) => {
         if (!url) return ""
 
-        const resolvedUrl = this.#resolveThumbnailUrlFrom3rdParty(url)
+        const resolvedUrl = this.#computeImageTagFrom3rdPartyUrl(url)
         if (resolvedUrl) return resolvedUrl
 
         let style = null;
@@ -102,47 +127,78 @@ export class Renderer {
     }
 
     /**
-     * @param {import('../_views').Link} thumb
+     *
+     * @param {import('../_views').Link | string | Array} img - In case of an array, only the first element will be rendered
      */
-    renderThumbnailFromVault(thumb) {
+    renderImageFromVault(thumb) {
         if (!thumb) return ""
 
-        const style = this.#resolveVaultThumbnailStyle(thumb)
+        if (Array.isArray(thumb)) {
+            return this.renderImageFromVault(thumb[0])
+        }
+
+        if (typeof thumb === "string") {
+            return this.#renderImageFromVaultPath(thumb)
+        } else {
+            return this.#renderImageFromVaultLink(thumb)
+        }
+    }
+
+    /**
+     * @param {import('../_views').Link} link
+     */
+    #renderImageFromVaultLink(link) {
+        if (!link) return ""
+
+        const style = this.#resolveVaultImageStyle(link)
 
         return `<img src="${window.app.vault.adapter.getResourcePath(
-            thumb.path
+            link.path
         )}" ${this.imgBaseAttributes} ${style ?? ""}>`
     }
 
+    #renderImageFromVaultPath(path) {
+        if (!path) return ""
+
+        return `<img src="${window.app.vault.adapter.getResourcePath(
+            path
+        )}" ${this.imgBaseAttributes}>`
+    }
+
+    //#endregion
+
+    //#region Links
+
+
     /**
-     * Get the HTML representation of an image
-     * It accepts either internal link or url
-     * @param {import('../_views').Link | string} img 
+     * Returns a string of the form: `data-service="${service}"`
+     * @param {string} url
      */
-    renderImage(img) {
-        if (typeof img === "string") {
-            return this.renderThumbnailFromUrl(img)
-        }
-        return this.renderThumbnailFromVault(img)
+    #computeAnchorServicePartFromUrl = (url) => {
+        if (url.includes("youtu")) return `data-service="youtube"`
+        if (url.includes("soundcloud")) return `data-service="soundcloud"`
+        if (url.includes("dailymotion")) return `data-service="dailymotion"`
+        if (url.includes("dropbox")) return `data-service="dropbox"`
+        if (url.includes("spotify")) return `data-service="spotify"`
+        if (url.includes("deezer")) return `data-service="deezer"`
+
+        return ""
     }
 
     /**
-     * 
-     * @param {object} _ 
-     * @param {string} _.url 
+     *
+     * @param {object} _
+     * @param {string} _.url
      */
-    renderExternalUrlAnchor = (url) => {
-        const base = `<a href="${url}" class="external-link" rel="noopener target="_blank"`
-        return `${base}>${url}</a>`
-    }
-
-    /** Taken from Dataview */
-    renderMinimalDate(time, defaultDateTimeFormat = "HH:mm - dd MMMM yyyy") {
-        if (!this.utils.isObject(time)) return time
-
-        const locale = window.navigator?.language ?? "en-US"
-
-        return time.toLocal().toFormat(defaultDateTimeFormat, { locale });
+    renderExternalUrlAnchor = ({ url, children = "" }) => {
+        const attributes = `\
+href="${url}" \
+draggable="false" \
+class="external-link" \
+rel="noopener" \
+target="_blank" \
+${this.#computeAnchorServicePartFromUrl(url)}`
+        return `<a ${attributes}>${children}</a>`;
     }
 
     /**
@@ -167,6 +223,19 @@ export class Renderer {
         </a>`
     }
 
+    //#endregion
+
+    /** Taken from Dataview */
+    renderMinimalDate(time, defaultDateTimeFormat = "HH:mm - dd MMMM yyyy") {
+        if (!this.utils.isObject(time)) return time
+
+        const locale = window.navigator?.language ?? "en-US"
+
+        return time.toLocal().toFormat(defaultDateTimeFormat, { locale });
+    }
+
+    //#region Audio
+
     #renderMP3Audio = ({src, preload, dataVolume = ""}) => (`
         <div class="audio-player">
             <button class="player-button">
@@ -179,7 +248,7 @@ export class Renderer {
     `)
 
     /**
-     * 
+     *
      * @param {object} _
      * @param {import('../_views').Link} _.audioFile
      * @param {number?} _.volumeOffset
@@ -243,8 +312,10 @@ export class Renderer {
         })
     }
 
+    //#endregion
+
     /**
-     * 
+     *
      * @param {import('../_views').Link} _.filelink
      */
     renderVideo = async ({ filelink, preload = "metadata" }) => {

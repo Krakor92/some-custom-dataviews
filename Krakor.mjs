@@ -1368,6 +1368,14 @@ export class PageManager {
          * @param {string} value 
          */
         const linkFilterFunction = (qs, field, value) => {
+            if (value instanceof RegExp) {
+                return qs.withLinkFieldOfPathRegex({
+                    field,
+                    path: value,
+                    // acceptStringField: true,
+                })
+            }
+
             const inLink = this.dv.parse(value) // transform [[value]] into a link
             this.logger?.log({ inLink })
 
@@ -2159,7 +2167,7 @@ export class Query {
      *
      * @param {object} _
      * @param {string} _.field - Name of the field to query on
-     * @param {string} _.path - A regex
+     * @param {RegExp | string} _.path - A regex / representation of a regex
      * @param {string} _.acceptStringField - If true, it fallbacks to comparing p[field] and path if p[field] isn't a link
      */
     withLinkFieldOfPathRegex({ field, path, acceptStringField = false }) {
@@ -2185,10 +2193,10 @@ export class Query {
             if (Array.isArray(p[field])) {
                 return p[field].some((l) => {
                     if (typeof l !== "object") {
-                        return acceptStringField ? !!l.match(regex) : false
+                        return acceptStringField ? !!l?.match(regex) : false
                     }
 
-                    return !!l.path.match(regex)
+                    return !!l?.path?.match(regex)
                 })
             }
 
@@ -2390,11 +2398,17 @@ export class Renderer {
         this.icons = icons
     }
 
+    renderLink(link) {
+
+    }
+
+    //#region Image
+
     imgBaseAttributes = `referrerpolicy="no-referrer"`
 
     /**
      * @param {string} display
-     * @returns The style used by some gallery thumbnail
+     * @returns The style attribute used by some gallery thumbnail
      */
     #resolveThumbnailStyle(display) {
         const thumbnailY = parseFloat(display)
@@ -2426,7 +2440,7 @@ export class Renderer {
         return this.#resolveThumbnailStyle(display)
     }
 
-    #resolveVaultThumbnailStyle(thumb) {
+    #resolveVaultImageStyle(thumb) {
         let display = thumb.display
 
         if (display === undefined) return null
@@ -2440,7 +2454,11 @@ export class Renderer {
         return this.#resolveThumbnailStyle(display)
     }
 
-    #resolveThumbnailUrlFrom3rdParty(url) {
+    /**
+     * @param {*} url
+     * @returns
+     */
+    #computeImageTagFrom3rdPartyUrl(url) {
         if (url.includes("youtu.be")) {
             const startOfId = url.indexOf("youtu.be/") + 9
             const id = url.substring(startOfId, startOfId + 11)
@@ -2463,13 +2481,28 @@ export class Renderer {
     }
 
     /**
-     * 
-     * @param {string} url 
+     * Compute the HTML tag representation of an image
+     * It accepts either internal link, absolute path or an url
+     * @param {import('./_views').Link | string | Array} img - In case of an array, only the first element will be rendered
      */
-    renderThumbnailFromUrl = (url) => {
+    renderImage(img) {
+        if (Array.isArray(img)) return this.renderImage(img[0])
+
+        if (typeof img === "string" && this.utils.uriRegex.test(img)) {
+            return this.renderImageFromUrl(img)
+        }
+
+        return this.renderImageFromVault(img)
+    }
+
+    /**
+     *
+     * @param {string} url
+     */
+    renderImageFromUrl = (url) => {
         if (!url) return ""
 
-        const resolvedUrl = this.#resolveThumbnailUrlFrom3rdParty(url)
+        const resolvedUrl = this.#computeImageTagFrom3rdPartyUrl(url)
         if (resolvedUrl) return resolvedUrl
 
         let style = null;
@@ -2484,47 +2517,78 @@ export class Renderer {
     }
 
     /**
-     * @param {import('./_views').Link} thumb
+     *
+     * @param {import('./_views').Link | string | Array} img - In case of an array, only the first element will be rendered
      */
-    renderThumbnailFromVault(thumb) {
+    renderImageFromVault(thumb) {
         if (!thumb) return ""
 
-        const style = this.#resolveVaultThumbnailStyle(thumb)
+        if (Array.isArray(thumb)) {
+            return this.renderImageFromVault(thumb[0])
+        }
+
+        if (typeof thumb === "string") {
+            return this.#renderImageFromVaultPath(thumb)
+        } else {
+            return this.#renderImageFromVaultLink(thumb)
+        }
+    }
+
+    /**
+     * @param {import('./_views').Link} link
+     */
+    #renderImageFromVaultLink(link) {
+        if (!link) return ""
+
+        const style = this.#resolveVaultImageStyle(link)
 
         return `<img src="${window.app.vault.adapter.getResourcePath(
-            thumb.path
+            link.path
         )}" ${this.imgBaseAttributes} ${style ?? ""}>`
     }
 
+    #renderImageFromVaultPath(path) {
+        if (!path) return ""
+
+        return `<img src="${window.app.vault.adapter.getResourcePath(
+            path
+        )}" ${this.imgBaseAttributes}>`
+    }
+
+    //#endregion
+
+    //#region Links
+
+
     /**
-     * Get the HTML representation of an image
-     * It accepts either internal link or url
-     * @param {import('./_views').Link | string} img 
+     * Returns a string of the form: `data-service="${service}"`
+     * @param {string} url
      */
-    renderImage(img) {
-        if (typeof img === "string") {
-            return this.renderThumbnailFromUrl(img)
-        }
-        return this.renderThumbnailFromVault(img)
+    #computeAnchorServicePartFromUrl = (url) => {
+        if (url.includes("youtu")) return `data-service="youtube"`
+        if (url.includes("soundcloud")) return `data-service="soundcloud"`
+        if (url.includes("dailymotion")) return `data-service="dailymotion"`
+        if (url.includes("dropbox")) return `data-service="dropbox"`
+        if (url.includes("spotify")) return `data-service="spotify"`
+        if (url.includes("deezer")) return `data-service="deezer"`
+
+        return ""
     }
 
     /**
-     * 
-     * @param {object} _ 
-     * @param {string} _.url 
+     *
+     * @param {object} _
+     * @param {string} _.url
      */
-    renderExternalUrlAnchor = (url) => {
-        const base = `<a href="${url}" class="external-link" rel="noopener target="_blank"`
-        return `${base}>${url}</a>`
-    }
-
-    /** Taken from Dataview */
-    renderMinimalDate(time, defaultDateTimeFormat = "HH:mm - dd MMMM yyyy") {
-        if (!this.utils.isObject(time)) return time
-
-        const locale = window.navigator?.language ?? "en-US"
-
-        return time.toLocal().toFormat(defaultDateTimeFormat, { locale });
+    renderExternalUrlAnchor = ({ url, children = "" }) => {
+        const attributes = `\
+href="${url}" \
+draggable="false" \
+class="external-link" \
+rel="noopener" \
+target="_blank" \
+${this.#computeAnchorServicePartFromUrl(url)}`
+        return `<a ${attributes}>${children}</a>`;
     }
 
     /**
@@ -2549,6 +2613,19 @@ export class Renderer {
         </a>`
     }
 
+    //#endregion
+
+    /** Taken from Dataview */
+    renderMinimalDate(time, defaultDateTimeFormat = "HH:mm - dd MMMM yyyy") {
+        if (!this.utils.isObject(time)) return time
+
+        const locale = window.navigator?.language ?? "en-US"
+
+        return time.toLocal().toFormat(defaultDateTimeFormat, { locale });
+    }
+
+    //#region Audio
+
     #renderMP3Audio = ({src, preload, dataVolume = ""}) => (`
         <div class="audio-player">
             <button class="player-button">
@@ -2561,7 +2638,7 @@ export class Renderer {
     `)
 
     /**
-     * 
+     *
      * @param {object} _
      * @param {import('./_views').Link} _.audioFile
      * @param {number?} _.volumeOffset
@@ -2625,8 +2702,10 @@ export class Renderer {
         })
     }
 
+    //#endregion
+
     /**
-     * 
+     *
      * @param {import('./_views').Link} _.filelink
      */
     renderVideo = async ({ filelink, preload = "metadata" }) => {
@@ -2791,16 +2870,17 @@ export class Utils {
         this.app = app
     }
 
-    httpRegex =
-        /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
+    httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
 
+    // @link https://urlregex.com/
+    uriRegex = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
 
     //#region HTML
 
     /**
-     * 
-     * @param {HTMLElement} element 
-     * @param {string} className 
+     *
+     * @param {HTMLElement} element
+     * @param {string} className
      */
     getParentWithClass(element, className) {
         // Traverse up the DOM tree until the root (body or html) is reached
@@ -2887,8 +2967,8 @@ export class Utils {
     }
 
     /**
-     * @param {string} timecode 
-     * @returns {number} The timecode converted to seconds
+     * @param {string} timecode - In the form 00:00:00 or 00:00
+     * @returns {number} The timecode converted to seconds, can be NaN if it's not a valid timecode
     */
     convertTimecodeToDuration = (timecode) => {
         const timeArray = timecode?.split(':');
@@ -2915,7 +2995,7 @@ export class Utils {
     }
 
     /**
-     * @param {number} duration 
+     * @param {number} duration
      * @returns {number} The duration converted to a timecode of the format `00:00:00` or `00:00`
     */
     convertDurationToTimecode = (duration) => {
@@ -2923,11 +3003,28 @@ export class Utils {
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = Math.floor(duration % 60);
 
-        const hoursString = hours.toString().padStart(2, '0');
-        const minutesString = minutes.toString().padStart(2, '0');
+        const hoursString = hours.toString().padStart(1, '0');
+        const minutesString = minutes.toString().padStart(1, '0');
         const secondsString = seconds.toString().padStart(2, '0');
 
         return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
+    }
+
+    /**
+     * @param {RegExp} regex
+     * @returns {RegExp} a new regex based on the given one but with the global flag enabled
+     */
+    globalizeRegex = (regex) => {
+        let regexStr = regex.source // Get the string representation of the regex
+
+        if (regexStr.startsWith('^')) {
+            regexStr = regexStr.slice(1)
+        }
+
+        if (regexStr.endsWith('$')) {
+            regexStr = regexStr.slice(0, -1)
+        }
+        return new RegExp(regexStr, 'g')
     }
     //	#endregion
 
@@ -3037,6 +3134,35 @@ export class Utils {
             window.clearTimeout(timeoutId);
             timeoutId = setTimeout(() => { callback(...args); }, wait);
         };
+    }
+
+    /**
+     * Check if a given value is a valid property value.
+     * The function accept everything except:
+     * - Empty object
+     * - Empty array
+     * - Array with only empty strings / null / undefined
+     * - Empty string
+     * - Null
+     * - Undefined
+     *
+     * @param {any} value - The value to check
+     * @returns {boolean} - True if the value is valid, false otherwise
+     */
+    static isValidPropertyValue = (value) => {
+        if (
+            value === undefined
+            || value === null
+            || (typeof value === "object" && Object.entries(value).length === 0)
+            || (Array.isArray(value) && value.every(cell => {
+                return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
+            }))
+            || (typeof value === "string" && value.trim() === "")
+        ) {
+            return false
+        }
+
+        return true
     }
 
     //#endregion
@@ -3366,16 +3492,17 @@ export class ViewManager {
 
 /**
  * Binds a view to properties in the frontmatter. Thanks to Meta Bind's magic, the view will rerender if the watched properties change
- * 
+ *
  * @author Krakor <krakor.faivre@gmail.com>
  * @depends on Meta Bind and JS-Engine
  * @warning The code is a mess, but it works for now. I did it in only by looking at the repo examples,
  * so I probably missed some obvious solutions that would make the code less verbose, idk
- * @param {*} env 
+ * @param {*} env
  * @param {object} _
- * @param {string} _.path
+ * @param {Function} _.main
+ * @param {Function} _.buildViewParams
  * @param {string[]} _.propertiesToWatch
- * 
+ *
  * @todo Watch every properties if `propertiesToWatch` is empty
  */
 export async function bindViewToProperties(env, {
@@ -3398,7 +3525,7 @@ export async function bindViewToProperties(env, {
         // we force the unload of the view to remove the content created in the previous render
         container.dispatchEvent(new CustomEvent('view-unload'))
 
-        main(env, buildViewParams(props))
+        main(env, buildViewParams(module, props))
     }
 
     let initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
@@ -3420,7 +3547,7 @@ export async function bindViewToProperties(env, {
 
         // it has been confirmed that the new frontmatter should be used for the next render
         reactive.refresh(targetedFrontmatter)
-    }, 100)
+    }, 50)
 
     mb.reactiveMetadata(bindTargets, component, async (...targets) => {
         debouncedRefresh(targets)

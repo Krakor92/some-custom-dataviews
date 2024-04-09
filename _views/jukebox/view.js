@@ -3,7 +3,7 @@
  * @depends on JS-Engine and DataviewJS
  * @author Krakor <krakor.faivre@gmail.com>
  * @link https://github.com/Krakor92/some-custom-dataviews/tree/master/_views/jukebox
- * 
+ *
  * To mimic the behavior of dvjs automatic css insertion, you MUST pass a `path` property inside the `env` object equal to this current file path.
  * It is then interpreted by this view to find the css file in the same folder
  */
@@ -61,8 +61,10 @@ const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
 // Music longer than that won't be included when generating a playlist
 const MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST = "12:00"
 
-// If true, it doesn't display any icon and the whole image become the link
-const THUMBNAIL_IS_URL_LINK = true
+const ACCEPTS_MUSIC_OF_UNKNOWN_DURATION_AS_PART_OF_PLAYLIST = true
+
+// If true, displays a logo icon on the top right depending on the platform the url is on
+const DISPLAY_SERVICE_ICONS = false
 
 /** @type {'auto' | 'top' | 'center' | 'bottom'} */
 const ARTICLE_ALIGN = 'center'
@@ -139,7 +141,7 @@ const fileManager = new module.FileManager({
         async (fileManager, fieldsPayload) => {
             const textInClipboard = await navigator.clipboard.readText();
 
-            if (utils.httpRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
+            if (utils.uriRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
                 fieldsPayload.push({
                     name: URL_FIELD,
                     payload: { value: textInClipboard }
@@ -185,11 +187,20 @@ if (!vm.disableSet.has("buttons")) {
         })
     }
 
+    /**
+     * Button responsible of launching an anonymous YouTube playlist.
+     * 
+     * 
+     */
     buttonBar.addButton({
         name: 'playlist',
         icon: icons.listMusicIcon,
         event: () => {
-            const maxLengthAccepted = utils.convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
+            let maxLengthAccepted = utils.convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
+            if (isNaN(maxLengthAccepted)) {
+                // Every length is accepted
+                maxLengthAccepted = Number.MAX_SAFE_INTEGER
+            }
             const baseUrl = "https://www.youtube.com/watch_videos?video_ids="
             const aggregatedYoutubeUrls = pages.reduce((prev, cur) => {
                 const { url, length, file } = cur;
@@ -210,7 +221,14 @@ if (!vm.disableSet.has("buttons")) {
                     }
                 }
 
-                if (utils.convertTimecodeToDuration(length) > maxLengthAccepted) {
+                const duration = typeof length === "number" ? length : utils.convertTimecodeToDuration(length)
+
+                if (!ACCEPTS_MUSIC_OF_UNKNOWN_DURATION_AS_PART_OF_PLAYLIST && isNaN(duration)) {
+                    logger?.warn(`${file.name} has an unknown duration. It won't be added in the playlist`)
+                    return prev
+                }
+
+                if (!isNaN(duration) && duration > maxLengthAccepted) {
                     logger?.warn(`${file.name} is too long to be added in the playlist`)
                     return prev
                 }
@@ -307,44 +325,15 @@ const renderTimelineTrack = () => {
 }
 
 /**
- * 
+ *
  * @param {string|number} length - if it is a number, it will be converted to timecode
  * @param {boolean} trim
  */
-const renderTimecode = (length, trim = true) => {
+const renderTimecode = (length) => {
     if (typeof length === "number") {
         length = utils.convertDurationToTimecode(length)
     }
-    return `<div class="timecode"><span>${trim ? length.replace(/^[0:]+/, '') : length}</span></div>`
-}
-
-/**
- * Returns a string of the form: `data-service="${service}">${serviceIcon}`
- * Right now the data-service isn't used
- * @param {string} url 
- */
-const _resolveAnchorServicePartFromUrl = (url) => {
-    if (url.includes("youtu")) return `data-service="youtube">${icons.youtubeIcon}`
-    if (url.includes("soundcloud")) return `data-service="soundcloud">${icons.soundcloudIcon}`
-    if (url.includes("dailymotion")) return `data-service="dailymotion">${icons.dailymotionIcon}`
-    if (url.includes("dropbox")) return `data-service="dropbox">${icons.dropboxIcon}`
-    if (url.includes("spotify")) return `data-service="spotify">${icons.spotifyIcon}`
-    // The icon doesn't hide when HIDE_ICONS is set to true...
-    // if (url.includes("deezer")) return `data-service="deezer">${deezerIcon}`
-
-    return `data-service="unknown">${icons.linkIcon}`
-}
-
-/**
- * 
- * @param {object} _ 
- * @param {string} _.url 
- */
-const renderExternalUrlAnchor = ({ url, children = "", noIcon = false }) => {
-    const base = `<a href="${url}" draggable="false" class="external-link"`
-    return noIcon ?
-        `${base}>${children}</a>` :
-        `${base}${_resolveAnchorServicePartFromUrl(url)}${children}</a>`;
+    return `<div class="timecode"><span>${length}</span></div>`
 }
 
 const Renderer = new module.Renderer({utils, icons})
@@ -405,46 +394,46 @@ const buildExtraChildrenHTML = (p) => {
 
 await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
     let fileTag = ""
-    let thumbTag = ""
-    let imgTag = ""
-    let soundTag = ""
-    let trackTag = ""
-    let timecodeTag = ""
-    let urlTag = ""
-    let mediaTag = ""
+      , thumbTag = ""
+      , imgTag = ""
+      , soundTag = ""
+      , trackTag = ""
+      , timecodeTag = ""
+      , urlTag = ""
+      , serviceTag = ""
 
     if (!vm.disableSet.has("filelink")) {
         fileTag = `<span class="file-link"></span>`
     }
 
     if (!vm.disableSet.has("thumbnail")) {
-        if (!p[THUMBNAIL_FIELD]) {
-            imgTag = Renderer.renderThumbnailFromUrl(p[URL_FIELD])
-        } else if (typeof p[THUMBNAIL_FIELD] === "string") {
-            // Thumbnail is an url (for non youtube music)
-            imgTag = Renderer.renderThumbnailFromUrl(p[THUMBNAIL_FIELD])
+        if (!module.Utils.isValidPropertyValue(p[THUMBNAIL_FIELD])) {
+            imgTag = Renderer.renderImageFromUrl(p[URL_FIELD])
         } else {
-            imgTag = Renderer.renderThumbnailFromVault(p[THUMBNAIL_FIELD])
+            imgTag = Renderer.renderImage(p[THUMBNAIL_FIELD])
         }
     }
 
     if (p[URL_FIELD]) {
-        if (THUMBNAIL_IS_URL_LINK) {
-            imgTag = renderExternalUrlAnchor({
-                url: p[URL_FIELD],
-                children: imgTag,
-                noIcon: true,
-            })
-        } else if (!vm.disableSet.has("urlicon")) {
-            urlTag = `<span class="url-link">
-                ${renderExternalUrlAnchor({ url: p[URL_FIELD] })}
-            </span>`
+        imgTag = Renderer.renderExternalUrlAnchor({
+            url: p[URL_FIELD],
+            children: imgTag,
+        })
+    }
+
+    if (DISPLAY_SERVICE_ICONS) {
+        const serviceName = /data-service="([^"]*)"/.exec(imgTag)[1]
+
+        if (serviceName) {
+            serviceTag = icons[serviceName + "Icon"]
         }
     }
 
     if (p[LENGTH_FIELD] && !vm.disableSet.has("timecode")) {
         timecodeTag = renderTimecode(p[LENGTH_FIELD])
     }
+
+
 
     /*
     MP3 player bugs on Android unfortunately 😩 (at least on my personal android phone which runs on Android 13)
@@ -481,7 +470,7 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
         ${thumbTag ?? ""}
         ${fileTag}
         ${urlTag ?? ""}
-        ${mediaTag ?? ""}
+        ${serviceTag}
     </article>`
 
     return {
@@ -520,32 +509,6 @@ gridManager.initInfiniteLoading()
 logger.viewPerf()
 }}
 
-/**
- * Check if a given value is a valid property value.
- * The function accept everything except:
- * - Empty object
- * - Empty array
- * - Array with only empty strings
- * - Empty string
- * - Null
- * - Undefined
- * 
- * @param {any} value - The value to check
- * @returns {boolean} - True if the value is valid, false otherwise
- */
-const isValidPropertyValue = (value) => {
-    if (
-        value === undefined
-        || value === null
-        || (typeof value === "object" && Object.entries(value).length === 0)
-        || (Array.isArray(value) && value.every(cell => typeof cell === "string" && cell.trim() === ""))
-        || (typeof value === "string" && value.trim() === "")
-    ) {
-        return false
-    }
-
-    return true
-}
 
 const IGNORED_PROPS = [
     'alias',
@@ -557,10 +520,10 @@ const IGNORED_PROPS = [
 /**
  * @draft
  * Takes an object containing flattened parameters and returns them into an object passed to this view
- * 
+ *
  * @returns {object}
  */
-export const buildViewParams = (params = {}) => {
+export const buildViewParams = (module, params = {}) => {
     const filter = {}
 
     for (const prop in params) {
@@ -574,7 +537,7 @@ export const buildViewParams = (params = {}) => {
             // type: propType
         })
 
-        if (!prop || !isValidPropertyValue(params[prop])) {
+        if (!prop || !module.Utils.isValidPropertyValue(params[prop])) {
             continue
         }
 
@@ -585,7 +548,7 @@ export const buildViewParams = (params = {}) => {
 
     return {
         filter,
-        // sort: sort ?? "random",
+        sort: "random",
         // debug: true,
     }
 }

@@ -7,16 +7,17 @@ export class Utils {
         this.app = app
     }
 
-    httpRegex =
-        /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
+    httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
 
+    // @link https://urlregex.com/
+    uriRegex = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
 
     //#region HTML
 
     /**
-     * 
-     * @param {HTMLElement} element 
-     * @param {string} className 
+     *
+     * @param {HTMLElement} element
+     * @param {string} className
      */
     getParentWithClass(element, className) {
         // Traverse up the DOM tree until the root (body or html) is reached
@@ -103,8 +104,8 @@ export class Utils {
     }
 
     /**
-     * @param {string} timecode 
-     * @returns {number} The timecode converted to seconds
+     * @param {string} timecode - In the form 00:00:00 or 00:00
+     * @returns {number} The timecode converted to seconds, can be NaN if it's not a valid timecode
     */
     convertTimecodeToDuration = (timecode) => {
         const timeArray = timecode?.split(':');
@@ -131,7 +132,7 @@ export class Utils {
     }
 
     /**
-     * @param {number} duration 
+     * @param {number} duration
      * @returns {number} The duration converted to a timecode of the format `00:00:00` or `00:00`
     */
     convertDurationToTimecode = (duration) => {
@@ -139,11 +140,28 @@ export class Utils {
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = Math.floor(duration % 60);
 
-        const hoursString = hours.toString().padStart(2, '0');
-        const minutesString = minutes.toString().padStart(2, '0');
+        const hoursString = hours.toString().padStart(1, '0');
+        const minutesString = minutes.toString().padStart(1, '0');
         const secondsString = seconds.toString().padStart(2, '0');
 
         return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
+    }
+
+    /**
+     * @param {RegExp} regex
+     * @returns {RegExp} a new regex based on the given one but with the global flag enabled
+     */
+    globalizeRegex = (regex) => {
+        let regexStr = regex.source // Get the string representation of the regex
+
+        if (regexStr.startsWith('^')) {
+            regexStr = regexStr.slice(1)
+        }
+
+        if (regexStr.endsWith('$')) {
+            regexStr = regexStr.slice(0, -1)
+        }
+        return new RegExp(regexStr, 'g')
     }
     //	#endregion
 
@@ -253,6 +271,35 @@ export class Utils {
             window.clearTimeout(timeoutId);
             timeoutId = setTimeout(() => { callback(...args); }, wait);
         };
+    }
+
+    /**
+     * Check if a given value is a valid property value.
+     * The function accept everything except:
+     * - Empty object
+     * - Empty array
+     * - Array with only empty strings / null / undefined
+     * - Empty string
+     * - Null
+     * - Undefined
+     *
+     * @param {any} value - The value to check
+     * @returns {boolean} - True if the value is valid, false otherwise
+     */
+    static isValidPropertyValue = (value) => {
+        if (
+            value === undefined
+            || value === null
+            || (typeof value === "object" && Object.entries(value).length === 0)
+            || (Array.isArray(value) && value.every(cell => {
+                return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
+            }))
+            || (typeof value === "string" && value.trim() === "")
+        ) {
+            return false
+        }
+
+        return true
     }
 
     //#endregion

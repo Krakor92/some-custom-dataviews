@@ -3,7 +3,7 @@
  * @depends on JS-Engine and DataviewJS
  * @author Krakor <krakor.faivre@gmail.com>
  * @link https://github.com/Krakor92/some-custom-dataviews/tree/master/_views/gallery
- * 
+ *
  * To mimic the behavior of dvjs automatic css insertion, you MUST pass a`path` property inside the`env` object equal to this current file path.
  * It is then interpreted by this view to find the css file in the same folder
 */
@@ -189,9 +189,9 @@ await gridManager.buildChildrenHTML({
                 imgTag = ""
             } else if (typeof p[THUMBNAIL_FIELD] === "string") {
                 // Thumbnail is an url (for non youtube music)
-                imgTag = Renderer.renderThumbnailFromUrl(p[THUMBNAIL_FIELD])
+                imgTag = Renderer.renderImageFromUrl(p[THUMBNAIL_FIELD])
             } else {
-                imgTag = Renderer.renderThumbnailFromVault(p[THUMBNAIL_FIELD])
+                imgTag = Renderer.renderImageFromVault(p[THUMBNAIL_FIELD])
             }
         }
         thumbTag = `<div class="thumb-stack">

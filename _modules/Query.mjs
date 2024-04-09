@@ -530,7 +530,7 @@ export class Query {
      *
      * @param {object} _
      * @param {string} _.field - Name of the field to query on
-     * @param {string} _.path - A regex
+     * @param {RegExp | string} _.path - A regex / representation of a regex
      * @param {string} _.acceptStringField - If true, it fallbacks to comparing p[field] and path if p[field] isn't a link
      */
     withLinkFieldOfPathRegex({ field, path, acceptStringField = false }) {
@@ -556,10 +556,10 @@ export class Query {
             if (Array.isArray(p[field])) {
                 return p[field].some((l) => {
                     if (typeof l !== "object") {
-                        return acceptStringField ? !!l.match(regex) : false
+                        return acceptStringField ? !!l?.match(regex) : false
                     }
 
-                    return !!l.path.match(regex)
+                    return !!l?.path?.match(regex)
                 })
             }
 

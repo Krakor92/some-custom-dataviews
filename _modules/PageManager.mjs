@@ -170,6 +170,14 @@ export class PageManager {
          * @param {string} value 
          */
         const linkFilterFunction = (qs, field, value) => {
+            if (value instanceof RegExp) {
+                return qs.withLinkFieldOfPathRegex({
+                    field,
+                    path: value,
+                    // acceptStringField: true,
+                })
+            }
+
             const inLink = this.dv.parse(value) // transform [[value]] into a link
             this.logger?.log({ inLink })
 

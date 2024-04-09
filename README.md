@@ -1,9 +1,9 @@
 
 # Some custom dataviews
 
-Here you'll find js views I've written to harness Dataview's power to meet some of my specific needs.
+*Javascript views that harness Dataview's power.*
 
-Originally, they were used inside `dataviewjs` code blocks (hence the name of this repo) but with the arrival of JS Engine and its reactive component system, I've modified them to use `js-engine` code blocks instead.
+The views were originally used inside `dataviewjs` code blocks (hence the name of this repo) but with the arrival of JS Engine and its reactive component system, I've modified them to use `js-engine` code blocks instead.
 
 > [!NOTE]
 > Except if stated otherwise, these views should work on all types of devices. I've personally tested them on Android, iPadOS, Linux and Windows
