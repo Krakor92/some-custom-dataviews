@@ -65,20 +65,14 @@ export class Renderer {
     }
 
     /**
-     * @param {*} url
+     * @param {string} url
+     * @param {object} modules
      * @returns
      */
-    #computeImageTagFrom3rdPartyUrl(url) {
-        if (url.includes("youtu.be")) {
-            const startOfId = url.indexOf("youtu.be/") + 9
-            const id = url.substring(startOfId, startOfId + 11)
-            return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" ${this.imgBaseAttributes}>`
-        }
-
-        if (url.includes("www.youtube.com")) {
-            const startOfId = url.indexOf("?v=") + 3
-            const id = url.substring(startOfId, startOfId + 11)
-            return `<img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" ${this.imgBaseAttributes}>`
+    #computeImageTagFrom3rdPartyUrl(url, { YouTubeManager } = {}) {
+        const ytVideo = YouTubeManager?.extractInfoFromYouTubeUrl(url)
+        if (ytVideo) {
+            return `<img src="${YouTubeManager.buildYouTubeImgUrlFromId(ytVideo.id)}" ${this.imgBaseAttributes}>`
         }
 
         if (url.includes("dailymotion")) {
@@ -106,14 +100,17 @@ export class Renderer {
     }
 
     /**
-     *
      * @param {string} url
+     * @param {object} settings
+     * @param {object} modules
      */
-    renderImageFromUrl = (url) => {
+    renderImageFromUrl = (url, {tryToInfer = false} = {}, { YouTubeManager } = {}) => {
         if (!url) return ""
 
-        const resolvedUrl = this.#computeImageTagFrom3rdPartyUrl(url)
-        if (resolvedUrl) return resolvedUrl
+        if (tryToInfer) {
+            const resolvedUrl = this.#computeImageTagFrom3rdPartyUrl(url, { YouTubeManager })
+            if (resolvedUrl) return resolvedUrl
+        }
 
         let style = null;
         if (url[0] === '!') {

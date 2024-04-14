@@ -149,6 +149,8 @@ export class CollectionManager {
     buildChildrenHTML = async ({ pages, pageToChild }) => {
         let children = []
 
+        this.logger.reset()
+
         for (const p of pages) {
             const child = await pageToChild(p)
 
@@ -161,6 +163,7 @@ export class CollectionManager {
 
         this.children = children
         this.logger?.log({ children })
+        this.logger?.logPerf(`Building the HTML representation of the collection`)
     }
 
     /**

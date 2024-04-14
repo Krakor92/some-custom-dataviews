@@ -63,6 +63,9 @@ const MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST = "12:00"
 
 const ACCEPTS_MUSIC_OF_UNKNOWN_DURATION_AS_PART_OF_PLAYLIST = true
 
+// If true, YouTube Music urls will be played in YouTube directly
+const FORCE_CLASSIC_YOUTUBE_URL = true
+
 // If true, displays a logo icon on the top right depending on the platform the url is on
 const DISPLAY_SERVICE_ICONS = false
 
@@ -202,14 +205,11 @@ if (!vm.disableSet.has("buttons")) {
                 maxLengthAccepted = Number.MAX_SAFE_INTEGER
             }
 
-            const playlistUri = youTubeManager.generateAnonymousYouTubePlaylistUriFromPages(pages, {
+            const playlistUri = youTubeManager?.generateAnonymousYouTubePlaylistUriFromPages(pages, {
                 maxLengthAccepted,
                 maxTAccepted: MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST,
                 acceptsMusicOfUnknownDuration: ACCEPTS_MUSIC_OF_UNKNOWN_DURATION_AS_PART_OF_PLAYLIST,
             })
-
-            // Only open in default browser
-            // document.location = `https://www.youtube.com/watch_videos?video_ids=` + "qAzebXdaAKk,AxI0wTQLMLI"
 
             // Does open in Obsidian browser (using Surfing plugin)
             window.open(playlistUri)
@@ -376,17 +376,24 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
         fileTag = `<span class="file-link"></span>`
     }
 
+    const ytVideo = module.YouTubeManager?.extractInfoFromYouTubeUrl(p[URL_FIELD])
+
     if (!vm.disableSet.has("thumbnail")) {
         if (!module.Utils.isValidPropertyValue(p[THUMBNAIL_FIELD])) {
-            imgTag = Renderer.renderImageFromUrl(p[URL_FIELD])
+            if (ytVideo) {
+                imgTag = Renderer.renderImageFromUrl(module.YouTubeManager?.buildYouTubeImgUrlFromId(ytVideo.id))
+            } else {
+                imgTag = Renderer.renderImageFromUrl(p[URL_FIELD], { tryToInfer: true })
+            }
         } else {
             imgTag = Renderer.renderImage(p[THUMBNAIL_FIELD])
         }
     }
 
     if (p[URL_FIELD]) {
+        const url = (FORCE_CLASSIC_YOUTUBE_URL && ytVideo) ? module.YouTubeManager?.buildYouTubeUrlFromId(ytVideo.id) : p[URL_FIELD]
         imgTag = Renderer.renderExternalUrlAnchor({
-            url: p[URL_FIELD],
+            url,
             children: imgTag,
         })
     }

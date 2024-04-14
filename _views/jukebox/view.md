@@ -161,8 +161,8 @@ manual:: [[Falling Apart]]
 > ```
 
 
-- [-] 
-> [!NOTE]- *filter*.`in` - Regex mode
+- [x] 
+> [!NOTE]- *filter*.`in` - Regex mode (string)
 > ```js-engine
 > const path = '_js/_views/jukebox/view.js'
 > const { main } = await engine.importJs(path)
@@ -170,6 +170,19 @@ manual:: [[Falling Apart]]
 > main({...this, path}, {
 > 	filter: {
 > 		in: `Professor Layton`,
+> 	}
+> })
+> ```
+
+- [x] 
+> [!NOTE]- *filter*.`in` - Regex mode
+> ```js-engine
+> const path = '_js/_views/jukebox/view.js'
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	filter: {
+> 		in: /Chrono/,
 > 	}
 > })
 > ```
@@ -193,6 +206,19 @@ manual:: [[Falling Apart]]
 > ```
 
 #### string
+
+- [-] 
+> [!NOTE]- *filter*.`url` - Regex mode
+> ```js-engine
+> const path = '_js/_views/jukebox/view.js'
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	filter: {
+> 		url: /soundcloud/,
+> 	}
+> })
+> ```
 
 - [x] 
 > [!NOTE]- *filter*.`voice`
