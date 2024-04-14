@@ -187,10 +187,10 @@ if (!vm.disableSet.has("buttons")) {
         })
     }
 
+    const youTubeManager = new module.YouTubeManager({ utils, logger })
+
     /**
      * Button responsible of launching an anonymous YouTube playlist.
-     * 
-     * 
      */
     buttonBar.addButton({
         name: 'playlist',
@@ -201,48 +201,18 @@ if (!vm.disableSet.has("buttons")) {
                 // Every length is accepted
                 maxLengthAccepted = Number.MAX_SAFE_INTEGER
             }
-            const baseUrl = "https://www.youtube.com/watch_videos?video_ids="
-            const aggregatedYoutubeUrls = pages.reduce((prev, cur) => {
-                const { url, length, file } = cur;
 
-                if (!url || !url.includes("youtu")) return prev;
-
-                let id = url.indexOf("watch_videos")
-                if (id !== -1) {
-                    return prev + ',' + url.substring(id + 23)
-                }
-
-                id = url.indexOf("?t=")
-                if (id !== -1) {
-                    const t = url.substring(id + 3)
-                    if (parseInt(t) > MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST) {
-                        logger?.warn(`The 't' argument is too deep inside the video of url: '${url}' to be added in the playlist`)
-                        return prev
-                    }
-                }
-
-                const duration = typeof length === "number" ? length : utils.convertTimecodeToDuration(length)
-
-                if (!ACCEPTS_MUSIC_OF_UNKNOWN_DURATION_AS_PART_OF_PLAYLIST && isNaN(duration)) {
-                    logger?.warn(`${file.name} has an unknown duration. It won't be added in the playlist`)
-                    return prev
-                }
-
-                if (!isNaN(duration) && duration > maxLengthAccepted) {
-                    logger?.warn(`${file.name} is too long to be added in the playlist`)
-                    return prev
-                }
-
-                const sep = prev !== "" ? ',' : ''
-
-                return prev + sep + url.substring(17, 28)
-            }, "")
+            const playlistUri = youTubeManager.generateAnonymousYouTubePlaylistUriFromPages(pages, {
+                maxLengthAccepted,
+                maxTAccepted: MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST,
+                acceptsMusicOfUnknownDuration: ACCEPTS_MUSIC_OF_UNKNOWN_DURATION_AS_PART_OF_PLAYLIST,
+            })
 
             // Only open in default browser
             // document.location = `https://www.youtube.com/watch_videos?video_ids=` + "qAzebXdaAKk,AxI0wTQLMLI"
 
             // Does open in Obsidian browser (using Surfing plugin)
-            window.open(baseUrl + aggregatedYoutubeUrls)
+            window.open(playlistUri)
         }
     })
 

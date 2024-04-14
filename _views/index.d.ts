@@ -38,11 +38,12 @@ export interface UserFile {
     file: TFile
 
     artist?: Link | Array<Link>
+    audio?: Link | string
     bpm?: number
     genre?: string | Array<string>
     in?: Link | Array<Link>
     instruments?: string | Array<string>
-    length?: string //Format: hh:mm:ss
+    length?: string
     media?: string
     mode?: string
     mp3?: Link

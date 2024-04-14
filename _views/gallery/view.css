@@ -26,25 +26,35 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	}
 }
 
-.gallery {
-	position: relative;
-	cursor: default;
+@keyframes fadeInAnimation {
+	0% {
+		opacity: 0;
+	}
+
+	100% {
+		opacity: 1;
+	}
 }
 
-.gallery span {
+.gallery {
+
+position: relative;
+cursor: default;
+
+span {
 	display: contents;
 }
 
 /* #region thumbnail */
-.gallery .thumb-stack {
+.thumb-stack {
 	display: grid;
 }
 
-.gallery .thumb-stack .internal-link {
+.thumb-stack .internal-link {
 	display: inherit;
 }
 
-.gallery img {
+img {
 	object-fit: var(--gallery-cards-image-fit);
 	width: 100%;
 	max-height: var(--gallery-cards-image-height);
@@ -58,25 +68,16 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	justify-self: center;
 }
 
-.gallery img {
+img {
 	animation: fadeInAnimation ease 0.4s;
 	animation-iteration-count: 1;
 	animation-fill-mode: forwards;
 }
 
-@keyframes fadeInAnimation {
-	0% {
-		opacity: 0;
-	}
-
-	100% {
-		opacity: 1;
-	}
-}
 
 /* #endregion */
 
-.gallery .grid {
+.grid {
 	display: grid;
 	grid-template-columns: var(--gallery-cards-columns);
 	grid-column-gap: 0.75rem;
@@ -84,15 +85,15 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 }
 
 /*#region .article*/
-.theme-light .gallery article {
+.theme-light & article {
 	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-light);
 }
 
-.theme-light .gallery article:hover {
+.theme-light & article:hover {
 	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-hover-light);
 }
 
-.gallery article {
+article {
 	z-index: 0;
 	/* needed for mobile ?*/
 	position: relative;
@@ -107,7 +108,7 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	max-width: var(--gallery-cards-max-width);
 }
 
-.gallery article:hover {
+article:hover {
 	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-hover);
 	box-shadow:
 		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
@@ -117,7 +118,7 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	transition: box-shadow 0.15s linear;
 }
 
-.gallery article.add-file {
+article.add-file {
 	min-height: var(--gallery-cards-image-height);
 	cursor: pointer;
 	padding: 0;
@@ -126,14 +127,15 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 	color: var(--gallery-background-modifier-border);
 }
 
-.gallery article.add-file:hover {
+article.add-file:hover {
 	color: var(--gallery-background-modifier-border-hover);
 }
 
 /*#endregion*/
 
+/* #region links */
 
-.gallery span.file-link {
+span.file-link {
 	display: inline-block;
 	padding: calc(var(--gallery-cards-padding)/2) 0;
 	border-bottom: none;
@@ -149,13 +151,15 @@ The grid layout is copied from there https://github.com/kepano/obsidian-minimal/
 }
 
 /* For better integration of the Metadata Menu icons */
-.gallery .fileclass-icon {
+.fileclass-icon {
 	align-self: center;
 }
 
 /* ONLY for Link Favicons users */
-.gallery img.link-favicon {
+img.link-favicon {
 	display: none !important;
 }
 
 /* #endregion */
+
+}

@@ -29,43 +29,6 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 	}
 }
 
-.jukebox {
-	position: relative;
-	cursor: default;
-}
-
-.jukebox span {
-	display: contents;
-}
-
-/* #region thumbnail */
-.jukebox .thumb-stack {
-	display: grid;
-
-	/* Hide Sanctum's img overflowing */
-	overflow: hidden;
-}
-
-.jukebox .thumb-stack img {
-	object-fit: var(--jukebox-cards-image-fit);
-	width: 100%;
-	max-height: var(--jukebox-cards-image-height);
-	border-radius: var(--jukebox-cards-border-radius);
-	margin: 0;
-	pointer-events: none;
-	z-index: -1;
-	grid-column: 1;
-	grid-row: 1;
-	align-self: center;
-	justify-self: center;
-}
-
-.jukebox img {
-	animation: fadeInAnimation ease 0.4s;
-	animation-iteration-count: 1;
-	animation-fill-mode: forwards;
-}
-
 @keyframes fadeInAnimation {
 	0% {
 		opacity: 0;
@@ -76,18 +39,57 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 	}
 }
 
-/* When the thumbnail is wrapped in <a> */
-.jukebox .thumb-stack a {
-	display: flex;
-	grid-column: 1;
-	grid-row: 1;
-	/* transition: transform .5s ease; */
+.jukebox {
+
+position: relative;
+cursor: default;
+
+span {
+	display: contents;
+}
+
+/* #region thumbnail */
+.thumb-stack {
+	display: grid;
+
+	/* Hide Sanctum's img overflowing */
+	overflow: hidden;
+
+	/* When the thumbnail is wrapped in <a> */
+	a {
+		display: flex;
+		grid-column: 1;
+		grid-row: 1;
+		/* transition: transform .5s ease; */
+	}
+
+	img {
+		object-fit: var(--jukebox-cards-image-fit);
+		width: 100%;
+		max-height: var(--jukebox-cards-image-height);
+		border-radius: var(--jukebox-cards-border-radius);
+		margin: 0;
+		pointer-events: none;
+		z-index: -1;
+		grid-column: 1;
+		grid-row: 1;
+		align-self: center;
+		justify-self: center;
+	}
+}
+
+img {
+	animation: fadeInAnimation ease 0.4s;
+	animation-iteration-count: 1;
+	animation-fill-mode: forwards;
 }
 
 
+/* #endregion */
+
 
 /* #region .buttons */
-.jukebox .buttons {
+.buttons {
 	display: flex;
 	justify-content: flex-end;
 
@@ -100,23 +102,23 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 	gap: 0.5rem
 }
 
-.jukebox button.active,
-.jukebox.playlist button.playlist,
-.jukebox.no-voice button.no-voice {
+button.active,
+&.playlist button.playlist,
+&.no-voice button.no-voice {
 	background: var(--background-modifier-active-hover);
 }
 
-body:not(.is-mobile) .jukebox button:not(.active):hover {
+body:not(.is-mobile) & button:not(.active):hover {
 	background: var(--background-modifier-hover);
 }
 
-.jukebox button.active svg,
-.jukebox.playlist button.playlist svg,
-.jukebox.no-voice button.no-voice svg {
+button.active svg,
+&.playlist button.playlist svg,
+&.no-voice button.no-voice svg {
 	stroke: var(--icon-color-active) !important;
 }
 
-.jukebox button {
+button {
 	background-color: transparent;
 	display: inline-flex;
 	align-items: center;
@@ -137,28 +139,29 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	flex: 0;
 }
 
-.jukebox.no-voice article.voice {
+&.no-voice article.voice {
 	display: none;
 }
 
 /* #endregion */
 
-.jukebox .grid {
+
+.grid {
 	display: grid;
 	grid-template-columns: var(--jukebox-cards-columns);
 	gap: 0.75rem;
 }
 
 /*#region .article*/
-.theme-light .jukebox article {
+.theme-light & article {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-light);
 }
 
-.theme-light .jukebox article:hover {
+.theme-light & article:hover {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover-light);
 }
 
-.jukebox article {
+article {
 	z-index: 0;
 	/* needed for mobile ?*/
 	position: relative;
@@ -173,7 +176,7 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	max-width: var(--jukebox-cards-max-width);
 }
 
-.jukebox article:hover {
+article:hover {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover);
 	box-shadow:
 		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
@@ -183,7 +186,7 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	transition: box-shadow 0.15s linear;
 }
 
-.jukebox article.add-file {
+article.add-file {
 	height: var(--jukebox-cards-add-file-height);
 	cursor: pointer;
 	padding: 0;
@@ -192,12 +195,12 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 	color: var(--jukebox-background-modifier-border);
 }
 
-.jukebox article.add-file:hover {
+article.add-file:hover {
 	color: var(--jukebox-background-modifier-border-hover);
 }
 
-.jukebox.no-border article,
-.jukebox.no-border article:hover {
+&.no-border article,
+&.no-border article:hover {
 	border: 0;
 	box-shadow: none;
 }
@@ -206,7 +209,7 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 
 /*#region .audio-player*/
 /* build from: https://blog.shahednasser.com/how-to-style-an-audio-element/ */
-.jukebox .audio-player {
+.audio-player {
 	opacity: 0.8;
 	transition: opacity 0.3s ease;
 
@@ -227,16 +230,16 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 }
 
 @media (hover: hover) {
-	.jukebox .audio-player:hover {
+	.audio-player:hover {
 		opacity: 1;
 	}
 }
 
-.jukebox .audio-player:active svg {
+.audio-player:active svg {
 	color: var(--color-base-10);
 }
 
-.jukebox button.player-button {
+button.player-button {
 	color: var(--color-accent);
 	background-color: transparent;
 	border: 0;
@@ -247,11 +250,11 @@ body:not(.is-mobile) .jukebox button:not(.active):hover {
 }
 
 /* To get rid of the hideous semi-transparent white rectangle when hovering over it */
-body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
+body:not(.is-mobile) & button.player-button:not(.active):hover {
 	background: none;
 }
 
-.jukebox .player-button svg {
+.player-button svg {
 	width: 48px;
 	height: 48px;
 }
@@ -259,7 +262,7 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 /* #endregion */
 
 /* #region .timeline */
-.jukebox .timeline {
+.timeline {
 	/* Strange behaviour, all inputs don't respond equally to this ?_? some are smaller than others */
 	z-index: 20;
 	height: 2px;
@@ -274,12 +277,12 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	margin: 0;
 }
 
-.jukebox .timeline::before,
-.jukebox .timeline::after {
+.timeline::before,
+.timeline::after {
 	display: none
 }
 
-.jukebox .timeline::-webkit-slider-thumb {
+.timeline::-webkit-slider-thumb {
 	width: 1em;
 	height: 1em;
 	border-radius: 50%;
@@ -290,15 +293,15 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	background-color: var(--color-accent);
 }
 
-.jukebox .timeline::-webkit-slider-thumb:hover {
+.timeline::-webkit-slider-thumb:hover {
 	background-color: var(--color-accent);
 }
 
-.jukebox .timeline:hover::-webkit-slider-thumb {
+.timeline:hover::-webkit-slider-thumb {
 	opacity: 1;
 }
 
-.jukebox .timeline::-webkit-slider-runnable-track {
+.timeline::-webkit-slider-runnable-track {
 	box-shadow: none;
 	border: none;
 	background: transparent;
@@ -306,7 +309,8 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 
 /* #endregion */
 
-.jukebox span.file-link {
+/* #region links */
+span.file-link {
 	display: inline-block;
 	padding: calc(var(--jukebox-cards-padding)/2) 0;
 	border-bottom: none;
@@ -322,11 +326,11 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 }
 
 /* For better integration of the Metadata Menu icons */
-.jukebox .fileclass-icon {
+.fileclass-icon {
 	align-self: center;
 }
 
-.jukebox span.url-link a {
+span.url-link a {
 	position: absolute;
 	top: 4px;
 	right: 6px;
@@ -335,7 +339,7 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 	font-size: 0;
 }
 
-.jukebox a {
+a {
 	/* To remove the icon added by default next to external-link */
 	background-image: none;
 	padding: 0;
@@ -343,18 +347,19 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 }
 
 /* ONLY for ITS - External Link Icons users */
-.jukebox a::before,
-.jukebox a::after {
+a::before,
+a::after {
 	display: none
 }
 
 /* ONLY for Link Favicons users */
-.jukebox img.link-favicon {
+img.link-favicon {
 	display: none !important;
 }
+/* #endregion */
 
 /*#region .timecode*/
-.jukebox .timecode {
+.timecode {
 	background-color: rgba(0, 0, 0, .8);
 	display: flex;
 	justify-content: center;
@@ -372,13 +377,15 @@ body:not(.is-mobile) .jukebox button.player-button:not(.active):hover {
 
 	/* To add a little space when the thumbnail image is disabled */
 	margin-top: 28px;
-}
 
-.jukebox .timecode span {
-	color: #eff1f5;
-	display: inline-block;
-	font-size: 0.8em;
-	font-weight: 600;
+	span {
+		color: #eff1f5;
+		display: inline-block;
+		font-size: 0.8em;
+		font-weight: 600;
+	}
 }
 
 /* #endregion */
+
+}
