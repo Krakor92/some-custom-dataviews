@@ -312,7 +312,7 @@ export class ButtonBar {
  * @abstract
  * 
  * @description
- * This class is no longer Dataview dependant. This makes it agnostic of the engine its running on
+ * This class is no longer Dataview dependant. This makes it agnostic of the engine its running on.
  * It might be Dataview, Datacore or even JS-Engine, this class shouldn't care
  * 
  * This class is the blueprint to use for classes that manage a collection of children node in the DOM.
@@ -362,6 +362,10 @@ export class CollectionManager {
         utils,
         icons,
 
+        //Mandatory
+        pages,
+        pageToChild,
+
         //Optional
         disableSet,
         numberOfElementsPerBatch = 20,
@@ -398,10 +402,24 @@ export class CollectionManager {
         /** @type {HTMLElement} */
         this.collection = null
 
-        /** @type {(string|object)[]} */
-        this.children = []
+        /**
+         * An array of array of HTML representation of the children
+         * Each time `bakeNextHTMLBatch` is called, a new array is pushed
+         * @type {(string|object)[][]}
+         */
+        this.bakedChildren = []
+        this.bakedBatchIndex = 0
+        this.totalNumberOfChildrenInsertedInTheDOM = 0
 
-        this.batchesFetchedCount = 0
+        /** @type {*} dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface) */
+        this.pages = pages
+
+        /**
+         * @type {Function} - This function get a page as its parameter and is suppose to return an html string or an array of html strings
+         */
+        this.pageToChild = pageToChild
+
+        // this.batchesFetchedCount = 0
         this.numberOfElementsPerBatch = numberOfElementsPerBatch
 
         /** @type {Array<function(CollectionManager): Promise<void>>} */
@@ -416,7 +434,15 @@ export class CollectionManager {
         this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this), intersectionOptions);
     }
 
-    everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.children.length)
+    /**
+     * There aren't any HTML to consume/render anymore (but there was at some point)
+     */
+    everyElementsHaveBeenInsertedInTheDOM = () => (
+        this.bakedChildren.length === 0 &&
+        this.bakedBatchIndex > 0 
+        && this.totalNumberOfChildrenInsertedInTheDOM >= this.pages.length
+    )
+    // everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.children.length)
 
     /**
      * Susceptible to be overriden by a more specialized Collection instance
@@ -431,63 +457,44 @@ export class CollectionManager {
         return this.collection
     }
 
-    /**
-     * Build the complete list of children that will eventually be rendered on the screen
-     * (if you scroll all the way down)
-     * This method params can be quite obscure and for a reason: The `MarkdownRenderer.renderMarkdown` method
-     *
-     * @param {object} _
-     * @param {*} _.pages - dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface)
-     * @param {Function} _.pageToChild - This function get a page as its parameter and is suppose to return an html string or an array of html strings
-     * @returns {string[]} Each value of the array contains some HTML equivalent to a cell on the grid
-     */
-    buildChildrenHTML = async ({ pages, pageToChild }) => {
-        let children = []
-
-        this.logger.reset()
-
-        for (const p of pages) {
-            const child = await pageToChild(p)
-
-            if (Array.isArray(child)) {
-                children = [...children, ...child]
-            } else {
-                children.push(child)
-            }
-        }
-
-        this.children = children
-        this.logger?.log({ children })
-        this.logger?.logPerf(`Building the HTML representation of the collection`)
+    cleanTheOvens() {
+        this.bakedChildren = []
+        this.bakedBatchIndex = 0
+        this.totalNumberOfChildrenInsertedInTheDOM = 0
     }
 
     /**
-     * TODO: finish this generator/yield implementation to have a true lazy generation of HTML
-     * Hence I need to modify handleLastChildIntersection and insertNewChunk
-     * Is it really worth it though? The current buildChildrenHTML isn't that slow
+     * It bakes a new batch of HTML children every time it is called
+     * so they can be rendered in a lazy way by the `insertNewChunk` method.
+     * 
+     * A new batch is saved inside `this.bakedChildren` array on each call
+     * 
+     * @param {object} _
+     * @returns {Promise<(string|object)[]>}
      */
-    async *generateChildrenHTML({ pages, pageToChild }) {
-        let pageIndex = 0;
+    async bakeNextHTMLBatch() {
+        const pagesBatch = this.pages.slice(
+            this.bakedBatchIndex * this.numberOfElementsPerBatch,
+            (this.bakedBatchIndex + 1) * this.numberOfElementsPerBatch);
 
-        while (pageIndex < pages.length) {
-            const batchPages = pages.slice(pageIndex, pageIndex + this.numberOfElementsPerBatch);
-            const batchHTML = [];
+        const HTMLBatch = [];
 
-            for (const page of batchPages) {
-                const child = await pageToChild(page)
+        for (const page of pagesBatch) {
+            const child = await this.pageToChild(page)
 
-                if (Array.isArray(child)) {
-                    batchHTML = [...batchHTML, ...child]
-                } else {
-                    batchHTML.push(child)
-                }
+            if (Array.isArray(child)) {
+                HTMLBatch = [...HTMLBatch, ...child]
+            } else {
+                HTMLBatch.push(child)
             }
-
-            pageIndex += this.numberOfElementsPerBatch;
-
-            this.batchChildrenHTML = batchHTML
-            yield this.batchChildrenHTML; // Yield the batch of HTML strings
         }
+
+        if (HTMLBatch.length !== 0) {
+            this.bakedBatchIndex++;
+            this.bakedChildren.push(HTMLBatch)
+        }
+
+        return HTMLBatch
     }
 
     initInfiniteLoading() {
@@ -516,10 +523,14 @@ export class CollectionManager {
      * if `MarkdownRenderer.renderMarkdown` had a consistent behavior no matter what tags were passed to it
      */
     async insertNewChunk() {
-        const fromSliceIndex = this.batchesFetchedCount * this.numberOfElementsPerBatch
-        const toSliceIndex = (this.batchesFetchedCount + 1) * this.numberOfElementsPerBatch
+        // const fromSliceIndex = this.batchesFetchedCount * this.numberOfElementsPerBatch
+        // const toSliceIndex = (this.batchesFetchedCount + 1) * this.numberOfElementsPerBatch
 
-        const newChunk = this.children.slice(fromSliceIndex, toSliceIndex).reduce((acc, cur) => {
+        // Like a queue, we retrieve the first batch of children that has been baked
+        const bakedChildrenChunk = this.bakedChildren.shift()
+        if (bakedChildrenChunk.length === 0) return;
+
+        const actualChunkToInsert = bakedChildrenChunk.reduce((acc, cur) => {
             if (typeof cur === "string") {
                 return acc + cur
             }
@@ -530,14 +541,14 @@ export class CollectionManager {
         // Needed for metadata-menu to trigger and render extra buttons
         const extraChunkDOM = this.container.createEl('div')
         let extraChunkHTML = ''
-        for (let i = fromSliceIndex; i < toSliceIndex; i++) {
-            if (!this.children[i]?.extra) {
+        for (let i = 0; i < bakedChildrenChunk.length; i++) {
+            if (!bakedChildrenChunk[i]?.extra) {
                 extraChunkHTML += `<div></div>`
                 continue;
             }
 
             extraChunkHTML += `<div>`
-            for (const [selector, html] of Object.entries(this.children[i].extra)) {
+            for (const [selector, html] of Object.entries(bakedChildrenChunk[i].extra)) {
                 extraChunkHTML += `<div data-selector="${selector}">`
                 extraChunkHTML += html
                 extraChunkHTML += `</div>`
@@ -552,14 +563,14 @@ export class CollectionManager {
             return console.error("Something went wrong, the collection parent element doesn't exist in the DOM")
         }
 
-        this.parent.insertAdjacentHTML('beforeend', newChunk)
+        this.parent.insertAdjacentHTML('beforeend', actualChunkToInsert)
 
-        // 2nd part with the extraChunkDOm
-        for (let i = 0; i < this.numberOfElementsPerBatch; i++) {
+        // 2nd part with the extraChunkDOM
+        for (let i = 0; i < bakedChildrenChunk.length; i++) {
             const extra = extraChunkDOM.children[i]
             if (!extra) continue
 
-            const currentChild = this.parent.children[i + fromSliceIndex]
+            const currentChild = this.parent.children[i + this.totalNumberOfChildrenInsertedInTheDOM]
             // That means we've reach the end of the infinite loading
             if (!currentChild) break
 
@@ -579,9 +590,11 @@ export class CollectionManager {
         extraChunkDOM.remove()
         // ---
 
-        this.batchesFetchedCount++
+        this.totalNumberOfChildrenInsertedInTheDOM += bakedChildrenChunk.length
+        this.logger?.log({ totalNumberOfChildrenInsertedInTheDOM: this.totalNumberOfChildrenInsertedInTheDOM })
+        // this.batchesFetchedCount++
 
-        this.logger?.log({ batchesFetchedCount: this.batchesFetchedCount })
+        // this.logger?.log({ batchesFetchedCount: this.batchesFetchedCount })
 
         for (const fn of this.extraLogicOnNewChunk) {
             await fn(this)
@@ -590,21 +603,27 @@ export class CollectionManager {
 
     handleLastChildIntersection(entries) {
         entries.map(async (entry) => {
-            if (entry.isIntersecting) {
-                this.logger.log(entry)
-                this.logger.reset()
+            if (!entry.isIntersecting) return
 
-                this.childObserver.unobserve(entries[0].target);
+            this.logger.log(entry)
+            this.logger.reset()
 
-                await this.insertNewChunk()
+            this.childObserver.unobserve(entry.target);
 
-                this.logger.logPerf("Appending new children at the end of the grid")
+            /**
+             * We can do both in parallel because the cooking is for the next rendering batch
+             */
+            await Promise.all([
+                this.insertNewChunk(),
+                this.bakeNextHTMLBatch(),
+            ])
 
-                if (this.batchesFetchedCount * this.numberOfElementsPerBatch < this.children.length) {
-                    this.logger?.log(`Batch to load next: ${this.batchesFetchedCount * this.numberOfElementsPerBatch}`)
-                    const lastChild = this.parent.querySelector(`${this.childTag}:last-of-type`)
-                    this.childObserver.observe(lastChild)
-                }
+            this.logger.logPerf("Appending new children at the end of the grid + loading next batch")
+
+            if (this.totalNumberOfChildrenInsertedInTheDOM < this.pages.length) {
+                this.logger?.log(`Estimated batch to load next: ${this.bakedBatchIndex * this.numberOfElementsPerBatch}`)
+                const lastChild = this.parent.querySelector(`${this.childTag}:last-of-type`)
+                this.childObserver.observe(lastChild)
             }
         });
     }

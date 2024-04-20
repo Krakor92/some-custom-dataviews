@@ -10,7 +10,7 @@
 
 //#region Settings
 
-// The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
+/** The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available */
 const USER_FIELDS = new Map()
     .set('added', 'date')
     .set('release', 'date')
@@ -326,33 +326,6 @@ function resolveArticleStyle({ options }) {
     return style !== "" ? `style="${style}"` : ""
 }
 
-const gridManager = module.CollectionManager.makeGridManager({
-    obsidian,
-    container,
-    component,
-    currentFilePath,
-    logger, icons, utils,
-    numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
-    disableSet: vm.disableSet,
-    extraLogicOnNewChunk: [
-        (gm) => {
-            audioManager.manageMp3Scores(gm)
-        },
-        (gm) => {
-            if (!gm.everyElementsHaveBeenInsertedInTheDOM()) return
-
-            gm.logger?.log(`Finish to load: ${gm.batchesFetchedCount * gm.numberOfElementsPerBatch}`)
-            if (gm.disableSet.has("addscore") || gm.disableSet.has("addscorecell")) return;
-
-            const addScoreCellDOM = gm.container.createEl("article", { cls: "add-file" })
-            addScoreCellDOM.innerHTML = gm.icons.filePlusIcon(24)
-            gm.parent.appendChild(addScoreCellDOM);
-
-            addScoreCellDOM.onclick = fileManager.handleAddFile.bind(fileManager)
-        }
-    ],
-})
-
 const buildExtraChildrenHTML = (p) => {
     const extra = {}
 
@@ -365,7 +338,7 @@ const buildExtraChildrenHTML = (p) => {
     return extra
 }
 
-await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
+const pageToChild = async (p) => {
     let fileTag = ""
       , thumbTag = ""
       , imgTag = ""
@@ -462,10 +435,45 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
         html: article,
         extra: buildExtraChildrenHTML(p),
     }
-}})
+}
+
+
+const gridManager = module.CollectionManager.makeGridManager({
+    obsidian,
+    container,
+    component,
+    currentFilePath,
+    pages,
+    pageToChild,
+    logger, icons, utils,
+    numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
+    disableSet: vm.disableSet,
+    extraLogicOnNewChunk: [
+        (gm) => {
+            audioManager.manageMp3Scores(gm)
+        },
+        (gm) => {
+            if (!gm.everyElementsHaveBeenInsertedInTheDOM()) return
+
+            gm.logger?.log(`Grid has finished rendering and has now ${gm.totalNumberOfChildrenInsertedInTheDOM} elements in the DOM`)
+            if (gm.disableSet.has("addscore") || gm.disableSet.has("addscorecell")) return;
+
+            const addScoreCellDOM = gm.container.createEl("article", { cls: "add-file" })
+            addScoreCellDOM.innerHTML = gm.icons.filePlusIcon(24)
+            gm.parent.appendChild(addScoreCellDOM);
+
+            addScoreCellDOM.onclick = fileManager.handleAddFile.bind(fileManager)
+        }
+    ],
+})
 
 gridManager.buildParent()
-await gridManager.insertNewChunk()
+
+await gridManager.bakeNextHTMLBatch()
+await gridManager.insertNewChunk(),
+
+
+logger?.logPerf("Baking and inserting first cells in the DOM")
 
 vm.root.appendChild(gridManager.parent);
 //#endregion
@@ -489,6 +497,8 @@ if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 }
 //#endregion
 
+// Prepare for next batch
+await gridManager.bakeNextHTMLBatch(),
 gridManager.initInfiniteLoading()
 
 logger.viewPerf()

@@ -10,7 +10,7 @@ Contains every scenario supposed to be handled by this view. It is used for debu
 
 > [!NOTE]- All - Every files in the vault sorted alphabetically (no extra settings)
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path})
@@ -23,7 +23,7 @@ Contains every scenario supposed to be handled by this view. It is used for debu
 - [-]  It doesn't work yet
 > [!NOTE]- *filter*.<`Array`>
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -39,7 +39,7 @@ Contains every scenario supposed to be handled by this view. It is used for debu
 - [x] 
 > [!NOTE]- *filter*.`manual`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -54,7 +54,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`from`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -67,7 +67,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`tags`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -81,7 +81,7 @@ manual:: [[Falling Apart]]
 - [?] Can't test it inside this file
 > [!NOTE]- *filter*.`current`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -94,7 +94,7 @@ manual:: [[Falling Apart]]
 - [?] Can't test it inside this file either
 > [!NOTE]- *filter*.`backlinks`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -106,7 +106,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`bookmarks`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -119,7 +119,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`audioOnly`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -135,7 +135,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`artist`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -149,7 +149,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`in`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -160,10 +160,10 @@ manual:: [[Falling Apart]]
 > ```
 
 
-- [-] 
+- [x] 
 > [!NOTE]- *filter*.`in` - Regex mode
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -178,7 +178,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`release`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -196,7 +196,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- *filter*.`voice`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -208,7 +208,7 @@ manual:: [[Falling Apart]]
 
 > [!NOTE]- *filter*.`voice`.*not*
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -224,7 +224,7 @@ manual:: [[Falling Apart]]
 - [x] 
 > [!NOTE]- Sort - 🎲 Random/Shuffle
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -235,7 +235,7 @@ manual:: [[Falling Apart]]
 - [x] Thank you GoldenSeal 😊
 > [!NOTE]- Sort - 🎲 Seeded Shuffle
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -246,7 +246,7 @@ manual:: [[Falling Apart]]
 - [!] Don't work as expected
 > [!NOTE]- Sort - 📬 Recently added
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -257,7 +257,7 @@ manual:: [[Falling Apart]]
 - [!] Don't work as expected
 > [!NOTE]- Sort - ⌛ Recently released
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -268,7 +268,7 @@ manual:: [[Falling Apart]]
 - [-] 
 > [!NOTE]- Sort - 🫳 Manual
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -281,7 +281,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 - [?] Does it work though?
 > [!NOTE]- Sort - 🌬️ None/Filter
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -295,7 +295,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 - [x] 
 > [!NOTE]- *disable*.`buttons`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -306,7 +306,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 - [x] 
 > [!NOTE]- *disable*.`filelink`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -317,7 +317,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 - [x] 
 > [!NOTE]- *disable*.`query`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {
@@ -328,7 +328,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 - [x] 
 > [!NOTE]- *disable*.`masonry`
 > ```js-engine
-> const path = '_js/_views/gallery/view.js'
+> const path = `_js/_views/gallery/view.js`
 > const { main } = await engine.importJs(path)
 >
 > main({...this, path}, {

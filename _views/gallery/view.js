@@ -10,15 +10,15 @@
 
 //#region Settings
 
-// The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
+/** The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available */
 const USER_FIELDS = new Map()
-USER_FIELDS.set('added', 'date')
-USER_FIELDS.set('release', 'date')
-USER_FIELDS.set('from', 'link')
-USER_FIELDS.set('in', 'link')
-USER_FIELDS.set('artist', 'link')
-USER_FIELDS.set('is', 'link')
-USER_FIELDS.set('links', 'link')
+    .set('added', 'date')
+    .set('release', 'date')
+    .set('from', 'link')
+    .set('in', 'link')
+    .set('artist', 'link')
+    .set('is', 'link')
+    .set('links', 'link')
 
 // These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
 const TITLE_FIELD = "title"
@@ -117,7 +117,7 @@ const orphanPages = vm.disableSet.has("orphans")
 //#region Query the pages based on filters
 
 const pageManager = new module.PageManager({
-    dv, logger, utils,
+    dv, logger, utils, currentFilePath,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
 })
@@ -155,16 +155,6 @@ function resolveArticleStyle({ options }) {
     return style !== "" ? `style="${style}"` : ""
 }
 
-const gridManager = module.CollectionManager.makeGridManager({
-    obsidian,
-    container,
-    component,
-    currentFilePath,
-    logger, icons, utils,
-    numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
-    disableSet: vm.disableSet,
-})
-
 const buildExtraChildrenHTML = (p) => {
     const extra = {}
 
@@ -177,51 +167,65 @@ const buildExtraChildrenHTML = (p) => {
     return extra
 }
 
-await gridManager.buildChildrenHTML({
-    pages, pageToChild: async (p) => {
-        let fileTag = ""
-        let thumbTag = ""
-        let imgTag = ""
+const pageToChild = async (p) => {
+    let fileTag = ""
+      , thumbTag = ""
+      , imgTag = ""
 
-        if (!vm.disableSet.has("filelink")) {
-            fileTag = `<span class="file-link"></span>`
-        }
+    if (!vm.disableSet.has("filelink")) {
+        fileTag = `<span class="file-link"></span>`
+    }
 
-        if (!vm.disableSet.has("thumbnail")) {
-            if (!p[THUMBNAIL_FIELD]) {
-                imgTag = ""
-            } else if (typeof p[THUMBNAIL_FIELD] === "string") {
-                // Thumbnail is an url (for non youtube music)
-                imgTag = Renderer.renderImageFromUrl(p[THUMBNAIL_FIELD])
-            } else {
-                imgTag = Renderer.renderImageFromVault(p[THUMBNAIL_FIELD])
-            }
+    if (!vm.disableSet.has("thumbnail")) {
+        if (!p[THUMBNAIL_FIELD]) {
+            imgTag = ""
+        } else if (typeof p[THUMBNAIL_FIELD] === "string") {
+            // Thumbnail is an url (for non youtube music)
+            imgTag = Renderer.renderImageFromUrl(p[THUMBNAIL_FIELD])
+        } else {
+            imgTag = Renderer.renderImageFromVault(p[THUMBNAIL_FIELD])
         }
-        thumbTag = `<div class="thumb-stack">
+    }
+    thumbTag = `<div class="thumb-stack">
 ${Renderer.renderInternalFileAnchor({ path: p.file.path, name: imgTag, ariaLabel: false, mdmIcon: false })}
 </div>`
 
-        const articleStyle = resolveArticleStyle({
-            page: p, options: {
-                align: ARTICLE_ALIGN,
-            }
-        })
+    const articleStyle = resolveArticleStyle({
+        page: p, options: {
+            align: ARTICLE_ALIGN,
+        }
+    })
 
-        const article = `<article class="internal-link" ${articleStyle}>
+    const article = `<article class="internal-link" ${articleStyle}>
 ${thumbTag ?? ""}
 ${fileTag}
 </article>
 `
 
-        return {
-            html: article,
-            extra: buildExtraChildrenHTML(p),
-        }
+    return {
+        html: article,
+        extra: buildExtraChildrenHTML(p),
     }
+}
+
+const gridManager = module.CollectionManager.makeGridManager({
+    obsidian,
+    container,
+    component,
+    currentFilePath,
+    pages,
+    pageToChild,
+    logger, icons, utils,
+    numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
+    disableSet: vm.disableSet,
 })
 
 gridManager.buildParent()
-await gridManager.insertNewChunk()
+
+await gridManager.bakeNextHTMLBatch()
+await gridManager.insertNewChunk(),
+
+logger?.logPerf("Baking and inserting first cells in the DOM")
 
 vm.root.appendChild(gridManager.parent);
 //#endregion
@@ -238,6 +242,7 @@ if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 }
 //#endregion
 
+await gridManager.bakeNextHTMLBatch(),
 gridManager.initInfiniteLoading()
 
 logger.viewPerf()
