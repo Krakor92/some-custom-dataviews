@@ -12,11 +12,11 @@
 
 // The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available
 const USER_FIELDS = new Map()
-USER_FIELDS.set('added', 'date')
-USER_FIELDS.set('release', 'date')
-USER_FIELDS.set('from', 'link')
-USER_FIELDS.set('in', 'link')
-USER_FIELDS.set('artist', 'link')
+    .set('added', 'date')
+    .set('release', 'date')
+    .set('from', 'link')
+    .set('in', 'link')
+    .set('artist', 'link')
 
 // These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
 const TITLE_FIELD = "title"
@@ -113,6 +113,9 @@ await module.setupView({
     disable,
     debug,
  })
+
+// It's an empty string when used inside a canvas card
+const currentFilePath = context.file?.path ?? ''
 // #endregion
 
 async function renderView({ vm, logger, utils }) {
@@ -128,15 +131,13 @@ const scriptPathNoExt = scriptPath.replace(/(?:\.[\w-]+)$/, "");
 // If it didn't find scriptPath, we assume, this view doesn't need have any css
 if (scriptPathNoExt) {
     const Stylist = new module.Stylist({ app, container: vm.root })
-    await Stylist.setStyleContentFromFile(`${scriptPathNoExt}.css`, context.file.path)
+    await Stylist.setStyleContentFromFile(`${scriptPathNoExt}.css`, currentFilePath)
 }
 
 //#endregion
 
-
 const fileManager = new module.FileManager({
-    dv, utils, app,
-    currentFilePath: context.file.path,
+    dv, utils, app, currentFilePath,
     directoryWhereToAddFile: DEFAULT_SCORE_DIRECTORY,
     properties: filter,
     userFields: USER_FIELDS,
@@ -261,16 +262,18 @@ const orphanage = new module.Orphanage({
 
 const orphanPages = vm.disableSet.has("orphans")
     ? []
-    : orphanage.raise(dv.page(context.file.path)[ORPHANS_FIELD])
+    : orphanage.raise(dv.page(currentFilePath)?.[ORPHANS_FIELD])
 
 const pageManager = new module.PageManager({
-    dv, logger, utils, orphanage,
-    currentFilePath: context.file.path,
+    dv, logger, utils, orphanage, currentFilePath,
     customFields,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
     seed: RANDOM_SEED,
 })
+
+logger?.logPerf("Everything before querying pages")
+
 
 let queriedPages = []
 if (!vm.disableSet.has("query")) {
@@ -327,7 +330,7 @@ const gridManager = module.CollectionManager.makeGridManager({
     obsidian,
     container,
     component,
-    currentFilePath: context.file.path,
+    currentFilePath,
     logger, icons, utils,
     numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
     disableSet: vm.disableSet,
@@ -391,7 +394,12 @@ await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {
     }
 
     if (p[URL_FIELD]) {
-        const url = (FORCE_CLASSIC_YOUTUBE_URL && ytVideo) ? module.YouTubeManager?.buildYouTubeUrlFromId(ytVideo.id) : p[URL_FIELD]
+        let url = (FORCE_CLASSIC_YOUTUBE_URL && ytVideo) ? module.YouTubeManager?.buildYouTubeUrlFromId(ytVideo.id) : p[URL_FIELD]
+        
+        if (ytVideo?.t) {
+            url += `&t=${ytVideo.t}`
+        }
+
         imgTag = Renderer.renderExternalUrlAnchor({
             url,
             children: imgTag,
@@ -502,16 +510,20 @@ const IGNORED_PROPS = [
  */
 export const buildViewParams = (module, params = {}) => {
     const filter = {}
+    let sort = {}
 
+    // Handle filters
     for (const prop in params) {
         if (IGNORED_PROPS.some(p => p === prop)) continue
 
-        // const propType = USER_FIELDS.get(prop)
+        if (prop === "sort") continue
+
+        const propType = USER_FIELDS.get(prop)
 
         console.log({
             prop,
             value: params[prop],
-            // type: propType
+            type: propType
         })
 
         if (!prop || !module.Utils.isValidPropertyValue(params[prop])) {
@@ -521,12 +533,12 @@ export const buildViewParams = (module, params = {}) => {
         filter[prop] = params[prop]
     }
 
-    console.log({filter})
+    sort = params.sort
 
     return {
         filter,
-        sort: "random",
-        // debug: true,
+        sort,
+        debug: true,
     }
 }
 

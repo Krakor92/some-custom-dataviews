@@ -1,10 +1,12 @@
 /**
  * Binds a view to properties in the frontmatter. Thanks to Meta Bind's magic, the view will rerender if the watched properties change
  *
- * @author Krakor <krakor.faivre@gmail.com>
  * @depends on Meta Bind and JS-Engine
  * @warning The code is a mess, but it works for now. I did it in only by looking at the repo examples,
  * so I probably missed some obvious solutions that would make the code less verbose, idk
+ * 
+ * We create two ReactiveComponent. The one with `reactiveMetadata` refresh the second one when the frontmatter changes
+ * 
  * @param {*} env
  * @param {object} _
  * @param {Function} _.main
@@ -36,16 +38,16 @@ export async function bindViewToProperties(env, {
         main(env, buildViewParams(module, props))
     }
 
-    let initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
+    const initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
     let previousFrontmatterStringified = JSON.stringify(initialTargettedFrontmatter)
 
     // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
     const reactive = engine.reactive(render, initialTargettedFrontmatter);
 
     const debouncedRefresh = utils.debounce((data) => {
-        const targetedFrontmatter = propertiesToWatch.reduce((acc, property, i) => {
-            acc[property] = data[i]
-            return acc
+        const targetedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
+            properties[property] = data[i]
+            return properties
         }, {})
 
         const currentTargettedFrontmatterStringified = JSON.stringify(targetedFrontmatter)
@@ -57,7 +59,7 @@ export async function bindViewToProperties(env, {
         reactive.refresh(targetedFrontmatter)
     }, 50)
 
-    mb.reactiveMetadata(bindTargets, component, async (...targets) => {
+    mb.reactiveMetadata(bindTargets, component, (...targets) => {
         debouncedRefresh(targets)
     })
 

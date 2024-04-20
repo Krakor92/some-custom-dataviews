@@ -342,8 +342,8 @@ export class Query {
 
     /**
      * Only works for fields of scalar type (string, boolean, number) and array of scalar type
+     * 
      * Private function used inside with/outFieldOfValue
-     * @private
      * @param {object} _
      * @param {string} _.name
      * @param {string|boolean|number} _.value
@@ -464,6 +464,76 @@ export class Query {
             with_: false,
         })
     }
+
+    /**
+     * Only works for fields of scalar type (string, boolean, number) and array of scalar type
+     * 
+     * Private function used inside with/outFieldOfValue
+     * @param {object} _
+     * @param {string} _.name
+     * @param {string|RegExp} _.value
+     * @param {boolean} _.with_ if false, it means the function does a without
+     * @param {boolean} _.fileField if true, it means the property belongs to the `file` field
+     * @param {boolean} _.acceptArray
+     * - If true, then it will return {{with_}} if {{value}} is find inside the array {{name}}.
+     * - If false, it will return !{{with_}} as soon as an array is encountered
+     */
+    // #fieldOfRegexValue({
+    //     name,
+    //     value,
+    //     with_ = true,
+    //     fileField = false,
+    //     acceptArray = true,
+    // }) {
+    //     if (!this._pages) {
+    //         console.error(this._warningMsg)
+    //         return null
+    //     }
+
+    //     if (typeof path !== "string" && !path instanceof RegExp) {
+    //         console.error(`${path} must be a regex`)
+    //         return null
+    //     }
+
+    //     const regex = path instanceof RegExp ? path : new RegExp(path)
+    //     if (!regex) {
+    //         console.error(`${path} must be a valid regex`)
+    //         return null
+    //     }
+    //     this.logger?.log(
+    //         `Before filtering on ${name} with value '${with_ ? "" : "-"
+    //         }${value}', we have a total number of ${this._pages.length
+    //         } pages`
+    //     )
+
+    //     this._pages = this._pages.filter((p) => {
+    //         if (!p[field]) return false
+
+    //         if (Array.isArray(p[field])) {
+    //             return p[field].some((l) => {
+    //                 if (typeof l !== "object") {
+    //                     return acceptStringField ? !!l?.match(regex) : false
+    //                 }
+
+    //                 return !!l?.path?.match(regex)
+    //             })
+    //         }
+
+    //         if (typeof p[field] !== "object") {
+    //             return acceptStringField ? !!p[field].match(regex) : false
+    //         }
+
+    //         const match = p[field].path.match(regex)
+    //         return !!match
+    //     })
+
+    //     this.logger?.log(
+    //         `After filtering on ${name} with value '${with_ ? "" : "-"
+    //         }${value}', we have a total number of ${this._pages.length
+    //         } pages`
+    //     )
+    //     return this
+    // }
 
     //#endregion
 

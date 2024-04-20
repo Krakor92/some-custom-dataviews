@@ -13,16 +13,16 @@ export class YouTubeManager {
 
     /**
      * It extract the video id from a youtube url and its query parameters
-     * 
+     *
      * It supports these different types of YouTube urls:
-     * 
-     * https://www.youtube.com/watch?v=dQw4w9WgXcQ - Classic/Desktop format  
-     * https://youtu.be/dQw4w9WgXcQ - Short mobile format  
-     * https://music.youtube.com/watch?v=oqy2N1jM2tU - YouTube Music format  
-     * https://www.youtube.com/watch_videos?video_ids=dQw4w9WgXcQ,y6120QOlsfU - Anonymous playlist format  
-     * 
+     *
+     * https://www.youtube.com/watch?v=dQw4w9WgXcQ - Classic/Desktop format
+     * https://youtu.be/dQw4w9WgXcQ - Short mobile format
+     * https://music.youtube.com/watch?v=oqy2N1jM2tU - YouTube Music format
+     * https://www.youtube.com/watch_videos?video_ids=dQw4w9WgXcQ,y6120QOlsfU - Anonymous playlist format
+     *
      * In the case of a playlist, it extract the ids after the `video_ids=`
-     * 
+     *
      * @param {string} url
      */
     static extractInfoFromYouTubeUrl(url) {
@@ -61,8 +61,8 @@ export class YouTubeManager {
 
     /**
      * In addition to the url itself, it uses a length property to add extra options to the generated playlist
-     * 
-     * @param {import('../_views').UserFile[]} pages 
+     *
+     * @param {import('../_views').UserFile[]} pages
      * @param {object} settings
      */
     generateAnonymousYouTubePlaylistUriFromPages(pages, {
@@ -105,7 +105,7 @@ export class YouTubeManager {
 
             return prev + separator + video.id
         }, "")
-    
+
         return baseUrl + aggregatedYoutubeUrls
-    } 
+    }
 }

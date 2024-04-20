@@ -77,6 +77,9 @@ await module.setupView({
     disable,
     debug,
 })
+
+// It's an empty string when used inside a canvas card
+const currentFilePath = context.file?.path ?? ''
 // #endregion
 
 async function renderView({ vm, logger, utils }) {
@@ -93,7 +96,7 @@ const scriptPathNoExt = scriptPath.replace(/(?:\.[\w-]+)$/, "");
 // If it didn't find scriptPath, we assume, this view doesn't need have any css
 if (scriptPathNoExt) {
     const Stylist = new module.Stylist({ app, container: vm.root })
-    await Stylist.setStyleContentFromFile(`${scriptPathNoExt}.css`, context.file.path)
+    await Stylist.setStyleContentFromFile(`${scriptPathNoExt}.css`, currentFilePath)
 }
 
 //#endregion
@@ -108,7 +111,7 @@ const orphanage = new module.Orphanage({
 
 const orphanPages = vm.disableSet.has("orphans")
     ? []
-    : orphanage.raise(dv.page(context.file.path)[ORPHANS_FIELD])
+    : orphanage.raise(dv.page(currentFilePath)?.[ORPHANS_FIELD])
 
 
 //#region Query the pages based on filters
@@ -156,7 +159,7 @@ const gridManager = module.CollectionManager.makeGridManager({
     obsidian,
     container,
     component,
-    currentFilePath: context.file.path,
+    currentFilePath,
     logger, icons, utils,
     numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
     disableSet: vm.disableSet,

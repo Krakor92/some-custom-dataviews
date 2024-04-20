@@ -8,10 +8,6 @@ export class Renderer {
         this.icons = icons
     }
 
-    renderLink(link) {
-
-    }
-
     //#region Image
 
     imgBaseAttributes = `referrerpolicy="no-referrer"`
@@ -165,6 +161,29 @@ export class Renderer {
     //#endregion
 
     //#region Links
+
+    /**
+     * @todo why do I need this again?
+     * @param {*} link
+     * @param {*} fallback
+     * @returns
+     */
+    renderLink(link, fallback = "link") {
+        if (!link) return fallback
+        if (typeof link === "string") return link
+
+        const file = window.app.vault.getAbstractFileByPath(link.path);
+        if (!file) return fallback;
+
+        return `<a
+data-href="${file.basename}"
+href="${file.basename}"
+class="internal-link"
+target="_blank"
+rel="noopener"
+>${file.basename}</a>`;
+    }
+
 
 
     /**

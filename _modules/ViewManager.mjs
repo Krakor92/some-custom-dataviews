@@ -47,15 +47,12 @@ export class ViewManager {
 
         // 1. When the component containing this view is unloaded
         this.component?.register(() => {
+            this.logger?.log(this.tid, `This view is unloaded the normal way (1)`)
             this.#cleanView()
         })
 
         // 2. When another script explictly send this `view-unload` event to the container tag
-        const onUnload = () => {
-            this.container.removeEventListener("view-unload", onUnload)
-            this.#cleanView()
-        }
-        this.container.addEventListener("view-unload", onUnload)
+        this.container.addEventListener("view-unload", this.#cleanView.bind(this))
 
         // 3. When the leaf which contains this view is removed from the DOM
         if (this.leaf) {
@@ -76,8 +73,12 @@ export class ViewManager {
         this.leaf = null
         this.observer?.disconnect()
         this.observer = null
+        this.container?.removeEventListener("view-unload", this.#cleanView.bind(this))
         this.container?.empty()
         this.container = null
+
+        clearInterval(this.healthcheckInterval)
+
         this.logger?.log(this.tid, "🪦")
     }
 
@@ -91,10 +92,10 @@ export class ViewManager {
             if (this.healthcheck()) {
                 // this.logger?.log(this.tid, "👍")
                 return
-                }
+            }
 
-                this.#cleanView()
-                clearInterval(this.healthcheckInterval)
+            this.logger?.log(this.tid, "This view resources have been freed thanks to an healthcheck logic (3)")
+            this.#cleanView()
         }, timeBetweenEachHealthcheck)
     }
 

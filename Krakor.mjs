@@ -1375,7 +1375,6 @@ export class PageManager {
                 return qs.withLinkFieldOfPathRegex({
                     field,
                     path: value,
-                    // acceptStringField: true,
                 })
             }
 
@@ -1538,6 +1537,8 @@ export class PageManager {
             this.#runStringFilterQuery({filter, qs})
         } else if (Array.isArray(filter)) {
             this.#runArrayFilterQuery({filter, qs})
+        } else if (filter instanceof RegExp) {
+            this.#runStringFilterQuery({filter, qs})
         } else {
             await this.#runObjectFilterQuery({filter, qs})
         }
@@ -1982,8 +1983,8 @@ export class Query {
 
     /**
      * Only works for fields of scalar type (string, boolean, number) and array of scalar type
+     * 
      * Private function used inside with/outFieldOfValue
-     * @private
      * @param {object} _
      * @param {string} _.name
      * @param {string|boolean|number} _.value
@@ -2104,6 +2105,76 @@ export class Query {
             with_: false,
         })
     }
+
+    /**
+     * Only works for fields of scalar type (string, boolean, number) and array of scalar type
+     * 
+     * Private function used inside with/outFieldOfValue
+     * @param {object} _
+     * @param {string} _.name
+     * @param {string|RegExp} _.value
+     * @param {boolean} _.with_ if false, it means the function does a without
+     * @param {boolean} _.fileField if true, it means the property belongs to the `file` field
+     * @param {boolean} _.acceptArray
+     * - If true, then it will return {{with_}} if {{value}} is find inside the array {{name}}.
+     * - If false, it will return !{{with_}} as soon as an array is encountered
+     */
+    // #fieldOfRegexValue({
+    //     name,
+    //     value,
+    //     with_ = true,
+    //     fileField = false,
+    //     acceptArray = true,
+    // }) {
+    //     if (!this._pages) {
+    //         console.error(this._warningMsg)
+    //         return null
+    //     }
+
+    //     if (typeof path !== "string" && !path instanceof RegExp) {
+    //         console.error(`${path} must be a regex`)
+    //         return null
+    //     }
+
+    //     const regex = path instanceof RegExp ? path : new RegExp(path)
+    //     if (!regex) {
+    //         console.error(`${path} must be a valid regex`)
+    //         return null
+    //     }
+    //     this.logger?.log(
+    //         `Before filtering on ${name} with value '${with_ ? "" : "-"
+    //         }${value}', we have a total number of ${this._pages.length
+    //         } pages`
+    //     )
+
+    //     this._pages = this._pages.filter((p) => {
+    //         if (!p[field]) return false
+
+    //         if (Array.isArray(p[field])) {
+    //             return p[field].some((l) => {
+    //                 if (typeof l !== "object") {
+    //                     return acceptStringField ? !!l?.match(regex) : false
+    //                 }
+
+    //                 return !!l?.path?.match(regex)
+    //             })
+    //         }
+
+    //         if (typeof p[field] !== "object") {
+    //             return acceptStringField ? !!p[field].match(regex) : false
+    //         }
+
+    //         const match = p[field].path.match(regex)
+    //         return !!match
+    //     })
+
+    //     this.logger?.log(
+    //         `After filtering on ${name} with value '${with_ ? "" : "-"
+    //         }${value}', we have a total number of ${this._pages.length
+    //         } pages`
+    //     )
+    //     return this
+    // }
 
     //#endregion
 
@@ -2401,10 +2472,6 @@ export class Renderer {
         this.icons = icons
     }
 
-    renderLink(link) {
-
-    }
-
     //#region Image
 
     imgBaseAttributes = `referrerpolicy="no-referrer"`
@@ -2558,6 +2625,29 @@ export class Renderer {
     //#endregion
 
     //#region Links
+
+    /**
+     * @todo why do I need this again?
+     * @param {*} link
+     * @param {*} fallback
+     * @returns
+     */
+    renderLink(link, fallback = "link") {
+        if (!link) return fallback
+        if (typeof link === "string") return link
+
+        const file = window.app.vault.getAbstractFileByPath(link.path);
+        if (!file) return fallback;
+
+        return `<a
+data-href="${file.basename}"
+href="${file.basename}"
+class="internal-link"
+target="_blank"
+rel="noopener"
+>${file.basename}</a>`;
+    }
+
 
 
     /**
@@ -2820,7 +2910,7 @@ background-color: black;
     }
 
     async setStyleContentFromFile(filepath, currentFilePath) {
-        const cssFile = this.app.metadataCache.getFirstLinkpathDest(filepath, currentFilePath)
+        const cssFile = this.app.metadataCache.getFirstLinkpathDest(filepath, currentFilePath ?? '')
         if (!cssFile) return false
 
         const cssContents = await this.app.vault.read(cssFile)
@@ -3207,15 +3297,12 @@ export class ViewManager {
 
         // 1. When the component containing this view is unloaded
         this.component?.register(() => {
+            this.logger?.log(this.tid, `This view is unloaded the normal way (1)`)
             this.#cleanView()
         })
 
         // 2. When another script explictly send this `view-unload` event to the container tag
-        const onUnload = () => {
-            this.container.removeEventListener("view-unload", onUnload)
-            this.#cleanView()
-        }
-        this.container.addEventListener("view-unload", onUnload)
+        this.container.addEventListener("view-unload", this.#cleanView.bind(this))
 
         // 3. When the leaf which contains this view is removed from the DOM
         if (this.leaf) {
@@ -3236,8 +3323,12 @@ export class ViewManager {
         this.leaf = null
         this.observer?.disconnect()
         this.observer = null
+        this.container?.removeEventListener("view-unload", this.#cleanView.bind(this))
         this.container?.empty()
         this.container = null
+
+        clearInterval(this.healthcheckInterval)
+
         this.logger?.log(this.tid, "🪦")
     }
 
@@ -3251,10 +3342,10 @@ export class ViewManager {
             if (this.healthcheck()) {
                 // this.logger?.log(this.tid, "👍")
                 return
-                }
+            }
 
-                this.#cleanView()
-                clearInterval(this.healthcheckInterval)
+            this.logger?.log(this.tid, "This view resources have been freed thanks to an healthcheck logic (3)")
+            this.#cleanView()
         }, timeBetweenEachHealthcheck)
     }
 
@@ -3495,16 +3586,16 @@ export class YouTubeManager {
 
     /**
      * It extract the video id from a youtube url and its query parameters
-     * 
+     *
      * It supports these different types of YouTube urls:
-     * 
-     * https://www.youtube.com/watch?v=dQw4w9WgXcQ - Classic/Desktop format  
-     * https://youtu.be/dQw4w9WgXcQ - Short mobile format  
-     * https://music.youtube.com/watch?v=oqy2N1jM2tU - YouTube Music format  
-     * https://www.youtube.com/watch_videos?video_ids=dQw4w9WgXcQ,y6120QOlsfU - Anonymous playlist format  
-     * 
+     *
+     * https://www.youtube.com/watch?v=dQw4w9WgXcQ - Classic/Desktop format
+     * https://youtu.be/dQw4w9WgXcQ - Short mobile format
+     * https://music.youtube.com/watch?v=oqy2N1jM2tU - YouTube Music format
+     * https://www.youtube.com/watch_videos?video_ids=dQw4w9WgXcQ,y6120QOlsfU - Anonymous playlist format
+     *
      * In the case of a playlist, it extract the ids after the `video_ids=`
-     * 
+     *
      * @param {string} url
      */
     static extractInfoFromYouTubeUrl(url) {
@@ -3543,8 +3634,8 @@ export class YouTubeManager {
 
     /**
      * In addition to the url itself, it uses a length property to add extra options to the generated playlist
-     * 
-     * @param {import('./_views').UserFile[]} pages 
+     *
+     * @param {import('./_views').UserFile[]} pages
      * @param {object} settings
      */
     generateAnonymousYouTubePlaylistUriFromPages(pages, {
@@ -3587,19 +3678,21 @@ export class YouTubeManager {
 
             return prev + separator + video.id
         }, "")
-    
+
         return baseUrl + aggregatedYoutubeUrls
-    } 
+    }
 }
 
 
 /**
  * Binds a view to properties in the frontmatter. Thanks to Meta Bind's magic, the view will rerender if the watched properties change
  *
- * @author Krakor <krakor.faivre@gmail.com>
  * @depends on Meta Bind and JS-Engine
  * @warning The code is a mess, but it works for now. I did it in only by looking at the repo examples,
  * so I probably missed some obvious solutions that would make the code less verbose, idk
+ * 
+ * We create two ReactiveComponent. The one with `reactiveMetadata` refresh the second one when the frontmatter changes
+ * 
  * @param {*} env
  * @param {object} _
  * @param {Function} _.main
@@ -3631,16 +3724,16 @@ export async function bindViewToProperties(env, {
         main(env, buildViewParams(module, props))
     }
 
-    let initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
+    const initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
     let previousFrontmatterStringified = JSON.stringify(initialTargettedFrontmatter)
 
     // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
     const reactive = engine.reactive(render, initialTargettedFrontmatter);
 
     const debouncedRefresh = utils.debounce((data) => {
-        const targetedFrontmatter = propertiesToWatch.reduce((acc, property, i) => {
-            acc[property] = data[i]
-            return acc
+        const targetedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
+            properties[property] = data[i]
+            return properties
         }, {})
 
         const currentTargettedFrontmatterStringified = JSON.stringify(targetedFrontmatter)
@@ -3652,7 +3745,7 @@ export async function bindViewToProperties(env, {
         reactive.refresh(targetedFrontmatter)
     }, 50)
 
-    mb.reactiveMetadata(bindTargets, component, async (...targets) => {
+    mb.reactiveMetadata(bindTargets, component, (...targets) => {
         debouncedRefresh(targets)
     })
 

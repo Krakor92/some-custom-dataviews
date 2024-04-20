@@ -35,7 +35,7 @@ background-color: black;
     }
 
     async setStyleContentFromFile(filepath, currentFilePath) {
-        const cssFile = this.app.metadataCache.getFirstLinkpathDest(filepath, currentFilePath)
+        const cssFile = this.app.metadataCache.getFirstLinkpathDest(filepath, currentFilePath ?? '')
         if (!cssFile) return false
 
         const cssContents = await this.app.vault.read(cssFile)

@@ -174,7 +174,6 @@ export class PageManager {
                 return qs.withLinkFieldOfPathRegex({
                     field,
                     path: value,
-                    // acceptStringField: true,
                 })
             }
 
@@ -337,6 +336,8 @@ export class PageManager {
             this.#runStringFilterQuery({filter, qs})
         } else if (Array.isArray(filter)) {
             this.#runArrayFilterQuery({filter, qs})
+        } else if (filter instanceof RegExp) {
+            this.#runStringFilterQuery({filter, qs})
         } else {
             await this.#runObjectFilterQuery({filter, qs})
         }
