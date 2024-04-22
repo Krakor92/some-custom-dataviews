@@ -26,10 +26,12 @@ export const setupView = async ({
     })
 
     const onReady = async () => {
-        vm.container.removeEventListener("view-ready", onReady)
-
         debug && performance.mark(`${viewName}-start`);
-        await render.call(null, {vm, logger, utils})
+        // If the container is still present in the DOM
+        if (vm.container) {
+            vm.container.removeEventListener("view-ready", onReady)
+            await render.call(null, {vm, logger, utils})
+        }
         if (debug) {
             performance.mark(`${viewName}-end`);
             const code_perf = performance.measure(viewName, `${viewName}-start`, `${viewName}-end`);

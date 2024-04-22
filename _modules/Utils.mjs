@@ -48,34 +48,6 @@ export class Utils {
     }
 
     /**
-     * Implementation given as is by ChatGPT
-     * It doesn't handle functions, circular reference or non enumerable properties
-     */
-    deepClone(obj) {
-        if (obj === null || typeof obj !== 'object') {
-            return obj; // Return primitives and null as is
-        }
-
-        if (Array.isArray(obj)) {
-            const newArray = [];
-            for (let i = 0; i < obj.length; i++) {
-                newArray[i] = this.deepClone(obj[i]);
-            }
-            return newArray; // Clone arrays
-        }
-
-        if (typeof obj === 'object') {
-            const newObj = {};
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    newObj[key] = this.deepClone(obj[key]);
-                }
-            }
-            return newObj; // Clone objects
-        }
-    }
-
-    /**
      * Seeded RNG using Linear Congruential Generator
      * @param {number} seed
      */
@@ -203,12 +175,13 @@ export class Utils {
     /**
      * This function will transform a field containing an array and flatten it while calling JSON.parse() on any string it encounteers
      * @param {*} field
+     * @returns {Array}
      */
     normalizeArrayOfObjectField(field) {
         if (!field) return []
 
         // Single object in yaml frontmatter
-        if (this.isObject(field)) return [this.deepClone(field)]
+        if (this.isObject(field)) return [deepClone(field)]
 
         try {
             // Single string as inline field
@@ -219,7 +192,7 @@ export class Utils {
                     return [...a, ...this.normalizeArrayOfObjectField(c)]
                 }
 
-                if (this.isObject(c)) return [...a, this.deepClone(c)]
+                if (this.isObject(c)) return [...a, deepClone(c)]
 
                 return [...a, JSON.parse(c)]
             }, [])
@@ -263,44 +236,149 @@ export class Utils {
         }
         return dv.date(value)
     }
+    //#endregion
+}
 
-    /* from: https://stackoverflow.com/a/75988895 */
-    debounce(callback, wait = 300) {
-        let timeoutId = null;
-        return (...args) => {
-            window.clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => { callback(...args); }, wait);
-        };
+/* from: https://stackoverflow.com/a/75988895 */
+export const debounce = (callback, wait = 300) => {
+    let timeoutId = null;
+    return (...args) => {
+        window.clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => { callback(...args); }, wait);
+    };
+}
+
+/**
+ * Implementation given as is by ChatGPT
+ * It doesn't handle functions, circular reference or non enumerable properties
+ */
+export const deepClone = (obj) => {
+    if (obj === null || typeof obj !== 'object') {
+        return obj; // Return primitives and null as is
     }
 
-    /**
-     * Check if a given value is a valid property value.
-     * The function accept everything except:
-     * - Empty object
-     * - Empty array
-     * - Array with only empty strings / null / undefined
-     * - Empty string
-     * - Null
-     * - Undefined
-     *
-     * @param {any} value - The value to check
-     * @returns {boolean} - True if the value is valid, false otherwise
-     */
-    static isValidPropertyValue = (value) => {
-        if (
-            value === undefined
-            || value === null
-            || (typeof value === "object" && Object.entries(value).length === 0)
-            || (Array.isArray(value) && value.every(cell => {
-                return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
-            }))
-            || (typeof value === "string" && value.trim() === "")
-        ) {
+    if (Array.isArray(obj)) {
+        const newArray = [];
+        for (let i = 0; i < obj.length; i++) {
+            newArray[i] = deepClone(obj[i]);
+        }
+        return newArray; // Clone arrays
+    }
+
+    // At this point we're dealing with an object
+    // We can duplicate it making sure we keep its prototype intact
+    const newObj = Object.create(Object.getPrototypeOf(obj));
+    for (const key in obj) {
+        // We make sure to ignore properties from the prototype chain
+        if (obj.hasOwnProperty(key)) {
+            newObj[key] = deepClone(obj[key]);
+        }
+    }
+    return newObj; // Clone objects
+}
+
+
+/**
+ * A naïve deep equality check written by ChatGPT
+ * Only handles scalar values, arrays and objects
+ */
+export const isEqual = (a, b) => {
+    // Handle primitives and null
+    if (a === b) {
+        return true;
+    }
+
+    // Handle arrays
+    if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) {
+            return false;
+        }
+        for (let i = 0; i < a.length; i++) {
+            if (!isEqual(a[i], b[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Handle objects
+    if (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null) {
+        // The two objects do not share the same prototype, they are not equal
+        if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
             return false
         }
 
-        return true
+        const keysA = Object.keys(a);
+        const keysB = Object.keys(b);
+
+        if (keysA.length !== keysB.length) {
+            return false;
+        }
+
+        for (const key of keysA) {
+            if (!keysB.includes(key) || !isEqual(a[key], b[key])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    //#endregion
+    // If types are different, they are not equal
+    return false;
+}
+
+/**
+ * Check if a given value is a valid property value.
+ * The function accept everything except:
+ * - Empty object
+ * - Empty array
+ * - Array with only empty strings / null / undefined
+ * - Empty string
+ * - Null
+ * - Undefined
+ *
+ * @param {any} value - The value to check
+ * @returns {boolean} - True if the value is valid, false otherwise
+ */
+export const isValidPropertyValue = (value) => {
+    if (
+        value === undefined
+        || value === null
+        || (typeof value === "object" && Object.entries(value).length === 0)
+        || (Array.isArray(value) && value.every(cell => {
+            return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
+        }))
+        || (typeof value === "string" && value.trim() === "")
+    ) {
+        return false
+    }
+
+    return true
+}
+
+export const scrollToElement = (target) => {
+    let element;
+
+    // Check if the provided parameter is a string (selector)
+    if (typeof target === 'string') {
+        // If it's a string, use document.querySelector() to get the element
+        element = document.querySelector(target);
+
+        // Check if the selector returned a valid element
+        if (!element) {
+            console.error("Element not found for selector:", target);
+            return;
+        }
+    } else if (target instanceof Element) {
+        // If it's already a DOM element, use it directly
+        element = target;
+    } else {
+        // Invalid parameter
+        console.error("Invalid element or selector provided.");
+        return;
+    }
+
+    // Scroll the element into view
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
 }

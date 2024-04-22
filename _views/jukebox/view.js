@@ -55,6 +55,14 @@ const DEFAULT_VOLUME = 0.4
 // Replace it with a number if you desire your mix to be predictable with a given set of tracks
 const RANDOM_SEED = null
 
+/**
+ * Since we query files using dv api, the "natural" order in which files are indexed and thus retrieved vary upon devices.
+ * Hence, if we want a uniform order when using the random seed, we must do an additional sort to begin with so we can have a predictable output
+ * 
+ * Set to false if you don't care about the above
+ */
+const UNIFORM_ORDER_WITH_RANDOM_SEED_ON_ALL_DEVICES = true
+
 // Until how many seconds in youtube url (?t=) should we consider the music to not be elegible to playlist
 const MAX_T_ACCEPTED_TO_BE_PART_OF_PLAYLIST = 12
 
@@ -290,7 +298,16 @@ if (!pages.length) {
 
 //#endregion
 
-await pageManager.sortPages({ pages, sort })
+/**
+ * At this point, the pages have a random sort.
+ * For example when trying the same query on 3 different devices, all on the same vault, the order will be different
+ * It means that when relying on the seeded random number, the order in which the pages are displayed will be different on each device
+ */
+const extraSortOptions = {
+    standardizeOrder: UNIFORM_ORDER_WITH_RANDOM_SEED_ON_ALL_DEVICES
+}
+
+await pageManager.sortPages({ pages, sort, options: extraSortOptions })
 
 //#region Build the grid of score for the DOM
 const renderTimelineTrack = () => {
@@ -355,7 +372,7 @@ const pageToChild = async (p) => {
     const ytVideo = module.YouTubeManager?.extractInfoFromYouTubeUrl(p[URL_FIELD])
 
     if (!vm.disableSet.has("thumbnail")) {
-        if (!module.Utils.isValidPropertyValue(p[THUMBNAIL_FIELD])) {
+        if (!module.isValidPropertyValue(p[THUMBNAIL_FIELD])) {
             if (ytVideo) {
                 imgTag = Renderer.renderImageFromUrl(module.YouTubeManager?.buildYouTubeImgUrlFromId(ytVideo.id))
             } else {
@@ -518,11 +535,11 @@ const IGNORED_PROPS = [
  *
  * @returns {object}
  */
-export const buildViewParams = (module, params = {}) => {
+export const buildViewParams = (dependencies, params = {}) => {
     const filter = {}
     let sort = {}
 
-    // Handle filters
+    // Handles filters
     for (const prop in params) {
         if (IGNORED_PROPS.some(p => p === prop)) continue
 
@@ -536,19 +553,29 @@ export const buildViewParams = (module, params = {}) => {
             type: propType
         })
 
-        if (!prop || !module.Utils.isValidPropertyValue(params[prop])) {
+        if (!prop || !dependencies?.isValidPropertyValue(params[prop])) {
             continue
         }
 
         filter[prop] = params[prop]
     }
 
-    sort = params.sort
+    // Handles sort
+    const seed = parseInt(params.sort, 10)
+    if (!Number.isNaN(seed)) {
+        sort = {
+            shuffle: seed
+        }
+    } else {
+        sort = params.sort
+    }
+
+    console.log({filter, sort})
 
     return {
         filter,
         sort,
-        debug: true,
+        // debug: true,
     }
 }
 

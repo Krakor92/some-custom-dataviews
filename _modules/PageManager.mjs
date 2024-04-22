@@ -1,3 +1,15 @@
+const SORTING_KEYWORDS = {
+    asc: "ascending",
+    ascending: "ascending",
+    firstly: "ascending",
+    oldly: "ascending",
+    desc: "descending",
+    descending: "descending",
+    newly: "descending",
+    recently: "descending",
+    lastly: "descending",
+}
+
 /**
  * It's build on top of the Query class which is itself built on top of DataviewAPI
  * 
@@ -51,13 +63,23 @@ export class PageManager {
         this.seed = seed
 
         this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
-        this.customFields = customFields ?? new Map()
-        this.customFields.forEach((value, key) =>
-            this.queryFilterFunctionsMap.set(key, value)
-        )
+        if (customFields){
+            customFields.forEach((value, key) =>
+                this.queryFilterFunctionsMap.set(key, value)
+            )
+        }
+        
 
         this.queryDefaultFilterFunctionsMap = this.#buildDefaultQueryFilterFunctionMap()
         this.userFields = userFields ?? new Map()
+
+        /** @type {string[]} */
+        this.dateUserFields = Array.from(this.userFields).reduce((acc, [field, type]) => {
+            if (type === "date") {
+                acc.push(field)
+            }
+            return acc
+        }, [])
 
         // Draft for special sort functions just like filters above
         this.querySortFunctionsMap = new Map()
@@ -94,14 +116,22 @@ export class PageManager {
                 const aDate = this.utils.valueToDateTime({
                     value: a[field],
                     dv: this.dv,
-                })
+                }) ?? (value === "ascending" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER)
                 const bDate = this.utils.valueToDateTime({
                     value: b[field],
                     dv: this.dv,
-                })
-                if (!aDate || !bDate) return 0
+                }) ?? (value === "ascending" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER)
 
-                return value === "desc" ? bDate - aDate : aDate - bDate
+                return value === "descending"
+                    ? bDate - aDate
+                    : aDate - bDate
+            })
+        })
+        this.queryDefaultSortFunctionsMap.set("path", (pages, value) => {
+            return pages.sort((a, b) => {
+                return value === "descending"
+                    ? b.file.path.localeCompare(a.file.path)
+                    : a.file.path.localeCompare(b.file.path)
             })
         })
     }
@@ -347,6 +377,9 @@ export class PageManager {
         return qs.query()
     }
 
+    /**
+     * @param {string} value 
+     */
     #specialStringSort = (value, pages) => {
         switch (value) {
             case "shuffle":
@@ -358,18 +391,44 @@ export class PageManager {
             case "none":
                 return true
 
-            default:
-                console.warn(`The '${value}' sort value isn't recognized by this view`);
-                return false
+            default: break;
         }
+
+        const [keyword, field] = value?.split(' ')
+
+        if (!keyword || !field) {
+            console.warn(`The '${value}' sort value isn't recognized by this view`);
+            return false
+        }
+
+        const sortOrder = SORTING_KEYWORDS[keyword.toLowerCase()] ?? SORTING_KEYWORDS[keyword.toLowerCase() + 'ly']
+
+        const lowerCaseField = field.toLowerCase()
+
+        // try date field
+        const actualField = this.dateUserFields.find(dateField => dateField.toLowerCase() === lowerCaseField)
+        if (actualField) {
+            this.queryDefaultSortFunctionsMap.get("date")(pages, actualField, sortOrder)
+            return true
+        }
+
+        // try other
+        if (lowerCaseField === 'alphabetical') {
+            this.queryDefaultSortFunctionsMap.get("path")(pages, sortOrder)
+            return true
+        }
+
+        console.warn(`The '${value}' sort value isn't recognized by this view`);
+        return false
     }
 
     /**
      * @param {object} _
      * @param {object} _.sort
      * @param {import('../_views').ScoreFile[]} _.pages
+     * @param {object} _.options
      */
-    #sortPages = async ({ sort, pages }) => {
+    #sortPages = async ({ sort, pages, options }) => {
         if (typeof sort === "function") {
             return pages.sort(sort)
         }
@@ -401,28 +460,14 @@ export class PageManager {
             return pages.sort((a, b) => a.file.ctime - b.file.ctime)
         }
 
-        if (sort?.hasOwnProperty("recentlyReleased")) {
-            return pages.sort((a, b) => {
-                const aReleased = this.utils.valueToDateTime({
-                    value: a.release,
-                    dv: this.dv,
-                })
-                const bReleased = this.utils.valueToDateTime({
-                    value: b.release,
-                    dv: this.dv,
-                })
-                if (!aReleased || !bReleased) return 0
-
-                return sort.recentlyReleased
-                    ? bReleased - aReleased
-                    : aReleased - bReleased
-            })
-        }
-
         if (sort?.shuffle) {
             if (typeof sort.shuffle === "boolean") {
+                if (options?.standardizeOrder && typeof this.seed === 'number') {
+                    this.queryDefaultSortFunctionsMap.get("path")(pages)
+                }
                 return this.utils.shuffleArray(pages, this.seed);
             } else if (typeof sort.shuffle === "number") {
+                this.queryDefaultSortFunctionsMap.get("path")(pages)
                 return this.utils.shuffleArray(pages, sort.shuffle);
             }
         }

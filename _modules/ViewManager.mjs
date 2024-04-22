@@ -117,7 +117,7 @@ export class ViewManager {
      * For example, a tab or a popover are perfect candidate because they always stays in the DOM as long as the user want them to stay.
      * It doesn't depend on Obsidian's shenanigans that I have no control over
      * 
-     * Then once I've found the leaf, I can correctly setup a naive garbage collector-like function for this view
+     * Then once I've found the leaf, I can correctly setup a naïve garbage collector-like function for this view
      */
     #resolveCurrentLeaf() {
         let leaf = this.utils.getParentWithClass(this.host.parentNode, "workspace-leaf")
@@ -307,16 +307,16 @@ export class ViewManager {
 
     handleViewIntersection(entries) {
         entries.map((entry) => {
-            if (entry.isIntersecting) {
-                this.logger?.reset(performance.now(), true)
-                this.observer.unobserve(entries[0].target);
+            if (!entry.isIntersecting) return
 
-                if (!this.managedToHideEditButton) {// try now that it has been loaded in the DOM
-                    this.#hideEditButtonLogic(this.host.parentNode?.nextSibling)
-                }
+            this.logger?.reset(performance.now(), true)
+            this.observer.unobserve(entry.target);
 
-                this.container.dispatchEvent(new CustomEvent('view-ready'))
+            if (!this.managedToHideEditButton) {// try now that it has been loaded in the DOM
+                this.#hideEditButtonLogic(this.host.parentNode?.nextSibling)
             }
+
+            this.container.dispatchEvent(new CustomEvent('view-ready'))
         });
     }
 }

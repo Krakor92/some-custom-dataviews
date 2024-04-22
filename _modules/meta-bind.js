@@ -6,6 +6,7 @@
  * so I probably missed some obvious solutions that would make the code less verbose, idk
  * 
  * We create two ReactiveComponent. The one with `reactiveMetadata` refresh the second one when the frontmatter changes
+ * It surely leaks some memory in the process but I don't see any other way
  * 
  * @param {*} env
  * @param {object} _
@@ -19,6 +20,7 @@ export async function bindViewToProperties(env, {
     main,
     buildViewParams,
     propertiesToWatch,
+    debounceWait = 50,
 }) {
     // JS-Engine specific setup
     const { app, engine, component, container, context, obsidian } = env.globals
@@ -28,38 +30,44 @@ export async function bindViewToProperties(env, {
     const bindTargets = propertiesToWatch.map(property => mb.parseBindTarget(property, context.file.path));
 
     const module = await engine.importJs('_js/Krakor.mjs')
-
-    const utils = new module.Utils({ app })
+    const { debounce, isEqual, isValidPropertyValue, scrollToElement } = module
 
     function render(props) {
         // we force the unload of the view to remove the content created in the previous render
         container.dispatchEvent(new CustomEvent('view-unload'))
 
-        main(env, buildViewParams(module, props))
+        main(env, props)
     }
 
-    const initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
-    let previousFrontmatterStringified = JSON.stringify(initialTargettedFrontmatter)
+    const previousTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
+    let previousViewParams = buildViewParams({isValidPropertyValue}, previousTargettedFrontmatter)
 
     // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
-    const reactive = engine.reactive(render, initialTargettedFrontmatter);
+    const reactive = engine.reactive(render, previousViewParams);
 
-    const debouncedRefresh = utils.debounce((data) => {
-        const targetedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
+    const debouncedRefresh = debounce((data) => {
+        // adjust the timeout if needed
+        setTimeout(() => {
+            scrollToElement(container)
+        }, 200)
+
+        const currentTargettedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
             properties[property] = data[i]
             return properties
         }, {})
 
-        const currentTargettedFrontmatterStringified = JSON.stringify(targetedFrontmatter)
-        if (previousFrontmatterStringified === currentTargettedFrontmatterStringified) return; //no-op
+        const newViewParams = buildViewParams({ isValidPropertyValue }, currentTargettedFrontmatter)
 
-        previousFrontmatterStringified = currentTargettedFrontmatterStringified
+        const viewParamsHaventChanged = isEqual(previousViewParams, newViewParams)
+        if (viewParamsHaventChanged) return; //no-op
+
+        previousViewParams = newViewParams
 
         // it has been confirmed that the new frontmatter should be used for the next render
-        reactive.refresh(targetedFrontmatter)
-    }, 50)
+        reactive.refresh(newViewParams)
+    }, debounceWait)
 
-    mb.reactiveMetadata(bindTargets, component, (...targets) => {
+    const reactives = mb.reactiveMetadata(bindTargets, component, (...targets) => {
         debouncedRefresh(targets)
     })
 

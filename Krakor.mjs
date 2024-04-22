@@ -1218,6 +1218,18 @@ export class Orphanage {
     }
 }
 
+const SORTING_KEYWORDS = {
+    asc: "ascending",
+    ascending: "ascending",
+    firstly: "ascending",
+    oldly: "ascending",
+    desc: "descending",
+    descending: "descending",
+    newly: "descending",
+    recently: "descending",
+    lastly: "descending",
+}
+
 /**
  * It's build on top of the Query class which is itself built on top of DataviewAPI
  * 
@@ -1271,13 +1283,23 @@ export class PageManager {
         this.seed = seed
 
         this.queryFilterFunctionsMap = this.#buildQueryFilterFunctionMap()
-        this.customFields = customFields ?? new Map()
-        this.customFields.forEach((value, key) =>
-            this.queryFilterFunctionsMap.set(key, value)
-        )
+        if (customFields){
+            customFields.forEach((value, key) =>
+                this.queryFilterFunctionsMap.set(key, value)
+            )
+        }
+        
 
         this.queryDefaultFilterFunctionsMap = this.#buildDefaultQueryFilterFunctionMap()
         this.userFields = userFields ?? new Map()
+
+        /** @type {string[]} */
+        this.dateUserFields = Array.from(this.userFields).reduce((acc, [field, type]) => {
+            if (type === "date") {
+                acc.push(field)
+            }
+            return acc
+        }, [])
 
         // Draft for special sort functions just like filters above
         this.querySortFunctionsMap = new Map()
@@ -1314,14 +1336,22 @@ export class PageManager {
                 const aDate = this.utils.valueToDateTime({
                     value: a[field],
                     dv: this.dv,
-                })
+                }) ?? (value === "ascending" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER)
                 const bDate = this.utils.valueToDateTime({
                     value: b[field],
                     dv: this.dv,
-                })
-                if (!aDate || !bDate) return 0
+                }) ?? (value === "ascending" ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER)
 
-                return value === "desc" ? bDate - aDate : aDate - bDate
+                return value === "descending"
+                    ? bDate - aDate
+                    : aDate - bDate
+            })
+        })
+        this.queryDefaultSortFunctionsMap.set("path", (pages, value) => {
+            return pages.sort((a, b) => {
+                return value === "descending"
+                    ? b.file.path.localeCompare(a.file.path)
+                    : a.file.path.localeCompare(b.file.path)
             })
         })
     }
@@ -1567,6 +1597,9 @@ export class PageManager {
         return qs.query()
     }
 
+    /**
+     * @param {string} value 
+     */
     #specialStringSort = (value, pages) => {
         switch (value) {
             case "shuffle":
@@ -1578,18 +1611,44 @@ export class PageManager {
             case "none":
                 return true
 
-            default:
-                console.warn(`The '${value}' sort value isn't recognized by this view`);
-                return false
+            default: break;
         }
+
+        const [keyword, field] = value?.split(' ')
+
+        if (!keyword || !field) {
+            console.warn(`The '${value}' sort value isn't recognized by this view`);
+            return false
+        }
+
+        const sortOrder = SORTING_KEYWORDS[keyword.toLowerCase()] ?? SORTING_KEYWORDS[keyword.toLowerCase() + 'ly']
+
+        const lowerCaseField = field.toLowerCase()
+
+        // try date field
+        const actualField = this.dateUserFields.find(dateField => dateField.toLowerCase() === lowerCaseField)
+        if (actualField) {
+            this.queryDefaultSortFunctionsMap.get("date")(pages, actualField, sortOrder)
+            return true
+        }
+
+        // try other
+        if (lowerCaseField === 'alphabetical') {
+            this.queryDefaultSortFunctionsMap.get("path")(pages, sortOrder)
+            return true
+        }
+
+        console.warn(`The '${value}' sort value isn't recognized by this view`);
+        return false
     }
 
     /**
      * @param {object} _
      * @param {object} _.sort
      * @param {import('./_views').ScoreFile[]} _.pages
+     * @param {object} _.options
      */
-    #sortPages = async ({ sort, pages }) => {
+    #sortPages = async ({ sort, pages, options }) => {
         if (typeof sort === "function") {
             return pages.sort(sort)
         }
@@ -1621,28 +1680,14 @@ export class PageManager {
             return pages.sort((a, b) => a.file.ctime - b.file.ctime)
         }
 
-        if (sort?.hasOwnProperty("recentlyReleased")) {
-            return pages.sort((a, b) => {
-                const aReleased = this.utils.valueToDateTime({
-                    value: a.release,
-                    dv: this.dv,
-                })
-                const bReleased = this.utils.valueToDateTime({
-                    value: b.release,
-                    dv: this.dv,
-                })
-                if (!aReleased || !bReleased) return 0
-
-                return sort.recentlyReleased
-                    ? bReleased - aReleased
-                    : aReleased - bReleased
-            })
-        }
-
         if (sort?.shuffle) {
             if (typeof sort.shuffle === "boolean") {
+                if (options?.standardizeOrder && typeof this.seed === 'number') {
+                    this.queryDefaultSortFunctionsMap.get("path")(pages)
+                }
                 return this.utils.shuffleArray(pages, this.seed);
             } else if (typeof sort.shuffle === "number") {
+                this.queryDefaultSortFunctionsMap.get("path")(pages)
                 return this.utils.shuffleArray(pages, sort.shuffle);
             }
         }
@@ -3010,34 +3055,6 @@ export class Utils {
     }
 
     /**
-     * Implementation given as is by ChatGPT
-     * It doesn't handle functions, circular reference or non enumerable properties
-     */
-    deepClone(obj) {
-        if (obj === null || typeof obj !== 'object') {
-            return obj; // Return primitives and null as is
-        }
-
-        if (Array.isArray(obj)) {
-            const newArray = [];
-            for (let i = 0; i < obj.length; i++) {
-                newArray[i] = this.deepClone(obj[i]);
-            }
-            return newArray; // Clone arrays
-        }
-
-        if (typeof obj === 'object') {
-            const newObj = {};
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    newObj[key] = this.deepClone(obj[key]);
-                }
-            }
-            return newObj; // Clone objects
-        }
-    }
-
-    /**
      * Seeded RNG using Linear Congruential Generator
      * @param {number} seed
      */
@@ -3165,12 +3182,13 @@ export class Utils {
     /**
      * This function will transform a field containing an array and flatten it while calling JSON.parse() on any string it encounteers
      * @param {*} field
+     * @returns {Array}
      */
     normalizeArrayOfObjectField(field) {
         if (!field) return []
 
         // Single object in yaml frontmatter
-        if (this.isObject(field)) return [this.deepClone(field)]
+        if (this.isObject(field)) return [deepClone(field)]
 
         try {
             // Single string as inline field
@@ -3181,7 +3199,7 @@ export class Utils {
                     return [...a, ...this.normalizeArrayOfObjectField(c)]
                 }
 
-                if (this.isObject(c)) return [...a, this.deepClone(c)]
+                if (this.isObject(c)) return [...a, deepClone(c)]
 
                 return [...a, JSON.parse(c)]
             }, [])
@@ -3225,47 +3243,153 @@ export class Utils {
         }
         return dv.date(value)
     }
+    //#endregion
+}
 
-    /* from: https://stackoverflow.com/a/75988895 */
-    debounce(callback, wait = 300) {
-        let timeoutId = null;
-        return (...args) => {
-            window.clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => { callback(...args); }, wait);
-        };
+/* from: https://stackoverflow.com/a/75988895 */
+export const debounce = (callback, wait = 300) => {
+    let timeoutId = null;
+    return (...args) => {
+        window.clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => { callback(...args); }, wait);
+    };
+}
+
+/**
+ * Implementation given as is by ChatGPT
+ * It doesn't handle functions, circular reference or non enumerable properties
+ */
+export const deepClone = (obj) => {
+    if (obj === null || typeof obj !== 'object') {
+        return obj; // Return primitives and null as is
     }
 
-    /**
-     * Check if a given value is a valid property value.
-     * The function accept everything except:
-     * - Empty object
-     * - Empty array
-     * - Array with only empty strings / null / undefined
-     * - Empty string
-     * - Null
-     * - Undefined
-     *
-     * @param {any} value - The value to check
-     * @returns {boolean} - True if the value is valid, false otherwise
-     */
-    static isValidPropertyValue = (value) => {
-        if (
-            value === undefined
-            || value === null
-            || (typeof value === "object" && Object.entries(value).length === 0)
-            || (Array.isArray(value) && value.every(cell => {
-                return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
-            }))
-            || (typeof value === "string" && value.trim() === "")
-        ) {
+    if (Array.isArray(obj)) {
+        const newArray = [];
+        for (let i = 0; i < obj.length; i++) {
+            newArray[i] = deepClone(obj[i]);
+        }
+        return newArray; // Clone arrays
+    }
+
+    // At this point we're dealing with an object
+    // We can duplicate it making sure we keep its prototype intact
+    const newObj = Object.create(Object.getPrototypeOf(obj));
+    for (const key in obj) {
+        // We make sure to ignore properties from the prototype chain
+        if (obj.hasOwnProperty(key)) {
+            newObj[key] = deepClone(obj[key]);
+        }
+    }
+    return newObj; // Clone objects
+}
+
+
+/**
+ * A naïve deep equality check written by ChatGPT
+ * Only handles scalar values, arrays and objects
+ */
+export const isEqual = (a, b) => {
+    // Handle primitives and null
+    if (a === b) {
+        return true;
+    }
+
+    // Handle arrays
+    if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) {
+            return false;
+        }
+        for (let i = 0; i < a.length; i++) {
+            if (!isEqual(a[i], b[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Handle objects
+    if (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null) {
+        // The two objects do not share the same prototype, they are not equal
+        if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
             return false
         }
 
-        return true
+        const keysA = Object.keys(a);
+        const keysB = Object.keys(b);
+
+        if (keysA.length !== keysB.length) {
+            return false;
+        }
+
+        for (const key of keysA) {
+            if (!keysB.includes(key) || !isEqual(a[key], b[key])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    //#endregion
+    // If types are different, they are not equal
+    return false;
 }
+
+/**
+ * Check if a given value is a valid property value.
+ * The function accept everything except:
+ * - Empty object
+ * - Empty array
+ * - Array with only empty strings / null / undefined
+ * - Empty string
+ * - Null
+ * - Undefined
+ *
+ * @param {any} value - The value to check
+ * @returns {boolean} - True if the value is valid, false otherwise
+ */
+export const isValidPropertyValue = (value) => {
+    if (
+        value === undefined
+        || value === null
+        || (typeof value === "object" && Object.entries(value).length === 0)
+        || (Array.isArray(value) && value.every(cell => {
+            return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
+        }))
+        || (typeof value === "string" && value.trim() === "")
+    ) {
+        return false
+    }
+
+    return true
+}
+
+export const scrollToElement = (target) => {
+    let element;
+
+    // Check if the provided parameter is a string (selector)
+    if (typeof target === 'string') {
+        // If it's a string, use document.querySelector() to get the element
+        element = document.querySelector(target);
+
+        // Check if the selector returned a valid element
+        if (!element) {
+            console.error("Element not found for selector:", target);
+            return;
+        }
+    } else if (target instanceof Element) {
+        // If it's already a DOM element, use it directly
+        element = target;
+    } else {
+        // Invalid parameter
+        console.error("Invalid element or selector provided.");
+        return;
+    }
+
+    // Scroll the element into view
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 
 /**
  * This class is responsible of the view it is instancied in.
@@ -3386,7 +3510,7 @@ export class ViewManager {
      * For example, a tab or a popover are perfect candidate because they always stays in the DOM as long as the user want them to stay.
      * It doesn't depend on Obsidian's shenanigans that I have no control over
      * 
-     * Then once I've found the leaf, I can correctly setup a naive garbage collector-like function for this view
+     * Then once I've found the leaf, I can correctly setup a naïve garbage collector-like function for this view
      */
     #resolveCurrentLeaf() {
         let leaf = this.utils.getParentWithClass(this.host.parentNode, "workspace-leaf")
@@ -3576,16 +3700,16 @@ export class ViewManager {
 
     handleViewIntersection(entries) {
         entries.map((entry) => {
-            if (entry.isIntersecting) {
-                this.logger?.reset(performance.now(), true)
-                this.observer.unobserve(entries[0].target);
+            if (!entry.isIntersecting) return
 
-                if (!this.managedToHideEditButton) {// try now that it has been loaded in the DOM
-                    this.#hideEditButtonLogic(this.host.parentNode?.nextSibling)
-                }
+            this.logger?.reset(performance.now(), true)
+            this.observer.unobserve(entry.target);
 
-                this.container.dispatchEvent(new CustomEvent('view-ready'))
+            if (!this.managedToHideEditButton) {// try now that it has been loaded in the DOM
+                this.#hideEditButtonLogic(this.host.parentNode?.nextSibling)
             }
+
+            this.container.dispatchEvent(new CustomEvent('view-ready'))
         });
     }
 }
@@ -3711,6 +3835,7 @@ export class YouTubeManager {
  * so I probably missed some obvious solutions that would make the code less verbose, idk
  * 
  * We create two ReactiveComponent. The one with `reactiveMetadata` refresh the second one when the frontmatter changes
+ * It surely leaks some memory in the process but I don't see any other way
  * 
  * @param {*} env
  * @param {object} _
@@ -3724,6 +3849,7 @@ export async function bindViewToProperties(env, {
     main,
     buildViewParams,
     propertiesToWatch,
+    debounceWait = 50,
 }) {
     // JS-Engine specific setup
     const { app, engine, component, container, context, obsidian } = env.globals
@@ -3733,38 +3859,44 @@ export async function bindViewToProperties(env, {
     const bindTargets = propertiesToWatch.map(property => mb.parseBindTarget(property, context.file.path));
 
     const module = await engine.importJs('_js/Krakor.mjs')
-
-    const utils = new module.Utils({ app })
+    const { debounce, isEqual, isValidPropertyValue, scrollToElement } = module
 
     function render(props) {
         // we force the unload of the view to remove the content created in the previous render
         container.dispatchEvent(new CustomEvent('view-unload'))
 
-        main(env, buildViewParams(module, props))
+        main(env, props)
     }
 
-    const initialTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
-    let previousFrontmatterStringified = JSON.stringify(initialTargettedFrontmatter)
+    const previousTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
+    let previousViewParams = buildViewParams({isValidPropertyValue}, previousTargettedFrontmatter)
 
     // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
-    const reactive = engine.reactive(render, initialTargettedFrontmatter);
+    const reactive = engine.reactive(render, previousViewParams);
 
-    const debouncedRefresh = utils.debounce((data) => {
-        const targetedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
+    const debouncedRefresh = debounce((data) => {
+        // adjust the timeout if needed
+        setTimeout(() => {
+            scrollToElement(container)
+        }, 200)
+
+        const currentTargettedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
             properties[property] = data[i]
             return properties
         }, {})
 
-        const currentTargettedFrontmatterStringified = JSON.stringify(targetedFrontmatter)
-        if (previousFrontmatterStringified === currentTargettedFrontmatterStringified) return; //no-op
+        const newViewParams = buildViewParams({ isValidPropertyValue }, currentTargettedFrontmatter)
 
-        previousFrontmatterStringified = currentTargettedFrontmatterStringified
+        const viewParamsHaventChanged = isEqual(previousViewParams, newViewParams)
+        if (viewParamsHaventChanged) return; //no-op
+
+        previousViewParams = newViewParams
 
         // it has been confirmed that the new frontmatter should be used for the next render
-        reactive.refresh(targetedFrontmatter)
-    }, 50)
+        reactive.refresh(newViewParams)
+    }, debounceWait)
 
-    mb.reactiveMetadata(bindTargets, component, (...targets) => {
+    const reactives = mb.reactiveMetadata(bindTargets, component, (...targets) => {
         debouncedRefresh(targets)
     })
 
@@ -3800,10 +3932,12 @@ export const setupView = async ({
     })
 
     const onReady = async () => {
-        vm.container.removeEventListener("view-ready", onReady)
-
         debug && performance.mark(`${viewName}-start`);
-        await render.call(null, {vm, logger, utils})
+        // If the container is still present in the DOM
+        if (vm.container) {
+            vm.container.removeEventListener("view-ready", onReady)
+            await render.call(null, {vm, logger, utils})
+        }
         if (debug) {
             performance.mark(`${viewName}-end`);
             const code_perf = performance.measure(viewName, `${viewName}-start`, `${viewName}-end`);
