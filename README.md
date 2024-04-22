@@ -1,7 +1,7 @@
 
 # Some custom dataviews
 
-*Javascript views that harness Dataview's power.*
+*Collection of JavaScript views combining the power of JS Engine and Dataview*
 
 The views were originally used inside `dataviewjs` code blocks (hence the name of this repo) but with the arrival of JS Engine and its reactive component system, I've modified them to use `js-engine` code blocks instead.
 
@@ -34,6 +34,7 @@ Here is an explanation of the top level folders/files:
 
 All this views depend on the following plugins:
 
-- [`JS Engine`](https://github.com/mProjectsCode/obsidian-js-engine-plugin) - for its neat code blocks, which can be reactive when needed + because it allows me to divide my logic into isolated modules, so to speak, to get cleaner code that's easier to maintain
+- [`JS Engine`](https://github.com/mProjectsCode/obsidian-js-engine-plugin) - for its neat code blocks, which can be reactive when needed. It also has a solid import system, on par with the Modules plugin, and without the inconvenience of having to install yet another plugin just for this purpose.
 
-- [`Dataview`](https://github.com/blacksmithgu/obsidian-dataview) - for its API
+- [`Dataview`](https://github.com/blacksmithgu/obsidian-dataview) - for its (still) unmatched API
+

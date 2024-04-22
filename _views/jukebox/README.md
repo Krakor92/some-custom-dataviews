@@ -5,6 +5,51 @@ A [JS Engine](https://github.com/mProjectsCode/obsidian-js-engine-plugin) view t
 
 ![](https://user-images.githubusercontent.com/24924824/232079357-dc71dc66-14d1-476e-b8f4-549618b60df0.png)
 
+
+## Table of Contents
+
+- [Obsidian Jukebox](#obsidian-jukebox)
+	- [Table of Contents](#table-of-contents)
+	- [🎼 What to expect from this view](#-what-to-expect-from-this-view)
+	- [🚩 Some known caveats](#-some-known-caveats)
+		- [due to external factors](#due-to-external-factors)
+		- [by design](#by-design)
+	- [🎯 Motivations](#-motivations)
+	- [📜 Story](#-story)
+	- [🎧 How to use it](#-how-to-use-it)
+		- [🏗️ Setup](#️-setup)
+			- [🧩 Plugins](#-plugins)
+			- [📍 Actual setup](#-actual-setup)
+			- [Global Settings](#global-settings)
+		- [✍️ The code block](#️-the-code-block)
+		- [🗃️ Metadata](#️-metadata)
+			- [Special Metadata](#special-metadata)
+				- [🔗 Url](#-url)
+				- [🖼️ Thumbnail](#️-thumbnail)
+				- [🐥 Orphans](#-orphans)
+			- [User Metadata](#user-metadata)
+		- [🔘 Buttons](#-buttons)
+			- [The (YouTube) playlist button](#the-youtube-playlist-button)
+			- [The `+` button](#the--button)
+				- [Automatic insertion of fields on file creation](#automatic-insertion-of-fields-on-file-creation)
+			- [The last cell](#the-last-cell)
+		- [⚙️ View options / settings](#️-view-options--settings)
+			- [Global](#global)
+			- [Local](#local)
+				- [The `not` filter property](#the-not-filter-property)
+				- [Pass string to filter / sort](#pass-string-to-filter--sort)
+				- [Pass function to filter / sort (Advanced)](#pass-function-to-filter--sort-advanced)
+				- [Date Object](#date-object)
+				- [Disable values](#disable-values)
+	- [👀 Some examples](#-some-examples)
+	- [❔ Some questions you might ask](#-some-questions-you-might-ask)
+	- [🔮 Future](#-future)
+		- [Datacore](#datacore)
+		- [Better settings / Utility plugin](#better-settings--utility-plugin)
+	- [🙏 Acknowledgements](#-acknowledgements)
+		- [Logic](#logic)
+		- [Styling](#styling)
+
 ## 🎼 What to expect from this view
 
 > When I mention `music file`, I'm talking about a local markdown file with custom properties.
@@ -203,7 +248,7 @@ If you correctly followed every steps described above, you should be able to wri
 
 ~~~
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path})
@@ -229,7 +274,8 @@ As stated earlier, each music file can have a variety of metadata. Right now, th
 >You can define your metadata either in the *yaml frontmatter* or as *dataview inline fields* in your file. This means that both `field: value` (inside frontmatter) and `field:: value` are perfectly valid and understood in the context of this view
 > 
 >Prior to Obsidian 1.4.x, it was necessary to use inline notation for file links, as they were not recognized by Obsidian when placed in the frontmatter.
->Now that this problem no longer exists, I encourage everyone to **put everything in the frontmatter** and, if necessary, use [Meta Bind](https://github.com/mProjectsCode/obsidian-meta-bind-plugin) to interact with the property inside the body of the file.  
+>Now that this problem no longer exists, I encourage everyone to **put everything in the frontmatter** and, if necessary, use [Meta Bind](https://github.com/mProjectsCode/obsidian-meta-bind-plugin) to interact with the property inside the body of the file.
+>  
 >You'll see below, but `url` and `audio` might be the only properties that I still prefer written the inline way as Obsidian renders them
 
 #### Special Metadata
@@ -407,10 +453,10 @@ Same as the + button but located at the end of the grid
 
 I'm not going to develop here because each const variable's name and their comments inside `view.js` are enough to understand what they do and how to modify them.
 
-To look for them inside `view.js`, simply search for `//#region Settings`. The variables in this region are easily recognizable because they are all capitalized.
+To look for them inside `view.js`, simply search for `//#region Settings`, it should be right at the top of the file. The variables in this region are easily recognizable because they are all capitalized.
 
 > [!IMPORTANT]
-> It seems obvious, but still: As Obsidian only supports markdown files by default, you'll need to do theses changes inside another app
+> It seems obvious, but still: As Obsidian only supports the edition of markdown files by default, you'll need to do theses changes inside another app
 
 
 #### Local
@@ -422,7 +468,7 @@ Here is the syntax:
 
 ````
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -459,7 +505,7 @@ Now you want to query all of these files inside "Hans Zimmer.md". You might want
 // In file "Hans Zimmer.md"
 
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -476,7 +522,7 @@ and it would work but there is actually a better way to do it using `current`:
 // In file "Hans Zimmer.md"
 
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -499,7 +545,7 @@ Now you want to query only music files with 'chorus' or 'no' as their `voice` pr
 
 ~~~
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -536,7 +582,7 @@ Example:
 
 ~~~
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -590,7 +636,7 @@ main({...this, path}, {
 > [!NOTE]
 > The values aren't sensitive to casse
 
-## 👀 Some Examples
+## 👀 Some examples
 
 In the examples below:
 - `in` and `artist` are both `link` fields
@@ -601,7 +647,7 @@ In the examples below:
 // Arcane emotional OSTs with vocals + disable the buttons and tile to add score, file names and borders
 
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path},
@@ -625,7 +671,7 @@ main({...this, path},
 // OSTs from Professor Layton's games
 
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path},
@@ -651,7 +697,7 @@ So in this example, it will retrieve every musics with a `in` field that contain
 // Musics with saxophones + shuffle the order
 
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -670,7 +716,7 @@ main({...this, path}, {
 // Every OST in the order specified in a property with minimal display
 
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -707,7 +753,7 @@ Note that I've disabled the masonry layout because it messes a bit (or a lot dep
 // Sting's songs released in the 80s + sort by firstly released
 
 ```js-engine
-const path = '_js/_views/jukebox/view.js'
+const path = `_js/_views/jukebox/view.js`
 const { main } = await engine.importJs(path)
 
 main({...this, path}, {
@@ -733,9 +779,9 @@ Note 1: I know there should be a lot more music from Sting in this time span but
 Note 2: Albeit `Every Breath You Take` is a song by `The Police`, I've added Sting to the artist property so that it comes up when searching for his songs.
 
 
-## ❔ FAQ
+## ❔ Some questions you might ask
 
-*Why didn't you build a plugin instead?*
+***Why didn't you build a plugin instead?***
 
 Great question!
 
@@ -743,16 +789,31 @@ As I said, it all started when I discovered the Obsidian-task-calendar view and 
 
 However, I think that at some point it would probably have been better for me to go down the plugin route.
 
-At the moment, I'm a bit torn about doing this.
+Though at the moment, I'm a bit torn about doing this.
 On the one hand, I know it would allow the BRAT plugin to work transparently with this view and increase the likelihood of someone using it, but it would mean rewriting most of it...
 On the other hand, it would add yet another plugin to the vault and I personally prefer to have as few plugins as possible because the more you have, the more it tends to slow down the opening of your vault. Also we're talking about a simple view that displays a grid in your vault, I find it overkill to build a plugin for that
 
 Inside me, I'm hoping that someone build a kind of store / BRAT-like but for js views.
 
-  
-  
 
-*How can I contribute?*
+***Why isn't it reactive like a dataview(js) code block?***
+
+Dataview has a feature called `Automatic View Refresh` in its settings. The default value is 2500ms. It's this setting that permit each code blocks to keep up to date with your vault data. In addition, each time you modify and save a file, it triggers a certain dataview event, which may result in a new rendering of each open view.
+
+Js-Engine doesn't have any of that because it is unopinionated. It do have reactive capabilities but they aren't enabled by default. I could theoretically make it reactive to any changes in your vault but the performance would be abysmal.
+
+Why is this? Well, every time one of your files is saved by Obsidian, each open view would need to redo their query (which is usually the longest part to compute compared to the rest) and re-render everything if the result has changed. It's very inefficient but I have no choice (afaik) because the event (`dataview:metadata-change` in this case) sent by Dataview to tell me that a change has occurred doesn't contain much information apart from which file has been impacted. I don't have access to the diff and certainly don't want to track it for each view.
+
+
+***Why doesn't it support playing YouTube links directly in the view?***
+
+Unfortunately, this is far from trivial. We can't retrieve a YouTube stream easily from a url. At the moment, the only plugin I know of that manages to do this is [Media Extended](https://github.com/pkm-er/media-extended).
+
+I don't intend to try and implement that here, it's well outside the scope of this view.
+
+
+
+***How can I contribute?***
 
 The way I've written this view doesn't really take external contribution under consideration. It's really not as straightforward as with a proper plugin. Right now, I'd say the best thing is to open an issue and suggest improvements.
 
@@ -762,9 +823,9 @@ The way I've written this view doesn't really take external contribution under c
 
 ### Datacore
 
-I will eventually port this view to be compatible with [Datacore](https://github.com/blacksmithgu/datacore) when it is released, but it will highly depend on how mature the early versions are and what features it unlocks if I decide to switch to its new React API.
+I will eventually port this view to be compatible with [Datacore](https://github.com/blacksmithgu/datacore) (at least it's querying API) when it is released, but it will highly depend on how mature the early versions are and what features it unlocks if I decide to switch to its new React API.
 
-As for the performance improvement promised by the [readme](https://github.com/blacksmithgu/datacore#datacore), I doubt it will have any significant impact on this view, given how fast it already runs, even when querying thousands of files. Who knows, maybe its API will be more powerful than Dataview's.
+As for the performance improvement promised by the [readme](https://github.com/blacksmithgu/datacore#datacore), it will definitely not be as significant on this view, given how fast it already runs, even when querying thousands of files.
 
 ### Better settings / Utility plugin
 
@@ -775,7 +836,6 @@ Right now, the settings are directly written inside the source code of the view.
 
 > On reflection, a good alternative would be to have a separate yaml file containing just the global settings. But that would mean that this view would have to track versions of this file and I'm not sure I want to do that either.
 
-
 ## 🙏 Acknowledgements
 
 This view was made possible thanks to these different resources:
@@ -783,14 +843,9 @@ This view was made possible thanks to these different resources:
 ### Logic
 
 - [Dataview](https://github.com/blacksmithgu/obsidian-dataview)
-	- I don't need to explain why. Without it i wouldn't even have used Obsidian in the first place
-
 - [JS Engine](https://github.com/mProjectsCode/obsidian-js-engine-plugin)
-	- Super underated plugin in my opinion. Not only does it have much better codeblocks than dvjs, it also has a solid import system, on par with the Modules plugin one, and without the inconvenience of having to install yet another plugin just for this purpose.
-
 - [702573N's Obsidian-Tasks-Calendar](https://github.com/702573N/Obsidian-Tasks-Calendar)
 	- It helped me figure out how to format my js and css at the beginning
-
 
 ### Styling
 

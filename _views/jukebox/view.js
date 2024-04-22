@@ -36,6 +36,12 @@ const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
 // Only used by the orphan system
 const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
 
+// The path where the main module is
+const MODULE_PATH = "_js/Krakor.mjs"
+
+// You can add any disable values here to globally disable them in every view
+const GLOBAL_DISABLE = ""
+
 // How many pages do you want to render at first and each time you reach the end of the grid
 const NUMBER_OF_SCORES_PER_BATCH = 20
 
@@ -46,7 +52,10 @@ const ENABLE_SIMULTANEOUS_AUDIO_PLAYING = false
 // If false, then the end of the last loaded music will start the first one in the grid
 const STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC = true
 
-/** @type {'auto'|'metadata'|'none'} */
+/**
+ * more info here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#preload
+ *  @type {'auto'|'metadata'|'none'}
+*/
 const AUDIO_DEFAULT_PRELOAD = 'metadata'
 
 // Between 0 (silent) and 1 (loudest)
@@ -104,13 +113,7 @@ const { app, engine, component, container, context, obsidian } = env.globals
 // We retrieve the dv api object
 const dv = engine.getPlugin('dataview')?.api
 
-// You can add any disable values here to globally disable them in every view
-const GLOBAL_DISABLE = ""
-
 disable = GLOBAL_DISABLE + ' ' + disable
-
-// The path where the main module is
-const MODULE_PATH = "_js/Krakor.mjs"
 
 const module = await engine.importJs(MODULE_PATH)
 

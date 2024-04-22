@@ -228,9 +228,6 @@ export class CollectionManager {
      * if `MarkdownRenderer.renderMarkdown` had a consistent behavior no matter what tags were passed to it
      */
     async insertNewChunk() {
-        // const fromSliceIndex = this.batchesFetchedCount * this.numberOfElementsPerBatch
-        // const toSliceIndex = (this.batchesFetchedCount + 1) * this.numberOfElementsPerBatch
-
         // Like a queue, we retrieve the first batch of children that has been baked
         const bakedChildrenChunk = this.bakedChildren.shift()
         if (bakedChildrenChunk.length === 0) return;
