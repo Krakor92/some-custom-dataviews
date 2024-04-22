@@ -37,6 +37,11 @@ export async function bindViewToProperties(env, {
         container.dispatchEvent(new CustomEvent('view-unload'))
 
         main(env, props)
+
+        // adjust the timeout if needed
+        setTimeout(() => {
+            scrollToElement(container)
+        }, 0)
     }
 
     const previousTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
@@ -46,11 +51,6 @@ export async function bindViewToProperties(env, {
     const reactive = engine.reactive(render, previousViewParams);
 
     const debouncedRefresh = debounce((data) => {
-        // adjust the timeout if needed
-        setTimeout(() => {
-            scrollToElement(container)
-        }, 200)
-
         const currentTargettedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
             properties[property] = data[i]
             return properties

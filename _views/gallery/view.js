@@ -31,6 +31,12 @@ const DEFAULT_FROM = '-"_templates"'
 const DEFAULT_FILE_DIRECTORY = 'DB'
 const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
 
+// The path where the main module is
+const MODULE_PATH = "_js/Krakor.mjs"
+
+// You can add any disable values here to globally disable them in every view
+const GLOBAL_DISABLE = ""
+
 // How many pages do you want to render at first and each time you reach the end of the grid
 const NB_FILE_BATCH_PER_PAGE = 20
 
@@ -60,13 +66,9 @@ const { app, engine, component, container, context, obsidian } = env.globals
 // We retrieve the dv api object
 const dv = engine.getPlugin('dataview')?.api
 
-// You can add any disable values here to globally disable them in every view
-const GLOBAL_DISABLE = ""
+
 
 disable = GLOBAL_DISABLE + ' ' + disable
-
-// The path where the main module is
-const MODULE_PATH = "_js/Krakor.mjs"
 
 const module = await engine.importJs(MODULE_PATH)
 
@@ -82,8 +84,24 @@ await module.setupView({
 const currentFilePath = context.file?.path ?? ''
 // #endregion
 
-async function renderView({ vm, logger, utils }) {
+async function renderView({ vm, logger }) {
 
+/** We extract all the utils functions that we'll need later on */
+const {
+    clamp,
+    convertDurationToTimecode,
+    convertTimecodeToDuration,
+    delay,
+    getOS,
+    isEmpty,
+    isObject,
+    linkExists,
+    normalizeArrayOfObjectField,
+    normalizeLinksPath,
+    shuffleArray,
+    uriRegex,
+    valueToDateTime,
+} = module
 
 //#region Css insertion
 
@@ -104,7 +122,7 @@ if (scriptPathNoExt) {
 const icons = new module.IconManager()
 
 const orphanage = new module.Orphanage({
-    utils,
+    utils: { normalizeArrayOfObjectField },
     directory: DEFAULT_FILE_DIRECTORY,
     thumbnailDirectory: DEFAULT_THUMBNAIL_DIRECTORY,
 })
@@ -117,12 +135,13 @@ const orphanPages = vm.disableSet.has("orphans")
 //#region Query the pages based on filters
 
 const pageManager = new module.PageManager({
-    dv, logger, utils, currentFilePath,
+    utils: { normalizeLinksPath, valueToDateTime, isEmpty, isObject, shuffleArray },
+    dv, logger, currentFilePath,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
 })
 
-const qs = new module.Query({ dv })
+const qs = new module.Query({ utils: { isObject }, dv, logger })
 
 let queriedPages = []
 
@@ -138,7 +157,10 @@ const pages = [...queriedPages, ...orphanPages]
 await pageManager.sortPages({ pages, sort })
 
 
-const Renderer = new module.Renderer({ utils, icons })
+const Renderer = new module.Renderer({
+    utils: { clamp, uriRegex, isObject, linkExists },
+    icons,
+})
 
 /**
  * @param {object} _
@@ -215,7 +237,7 @@ const gridManager = module.CollectionManager.makeGridManager({
     currentFilePath,
     pages,
     pageToChild,
-    logger, icons, utils,
+    logger, icons,
     numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
     disableSet: vm.disableSet,
 })

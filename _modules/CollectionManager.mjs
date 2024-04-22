@@ -36,7 +36,7 @@
  *      container,
  *      component,
  *      currentFilePath,
- *      logger, icons, utils,
+ *      logger, icons,
  *      numberOfElementsPerBatch: 20,
  *  })
  * 
@@ -64,7 +64,6 @@ export class CollectionManager {
         component,
         currentFilePath,
         logger,
-        utils,
         icons,
 
         //Mandatory
@@ -97,7 +96,6 @@ export class CollectionManager {
 
         this.logger = logger
         this.icons = icons
-        this.utils = utils
         this.disableSet = disableSet
 
         this.childTag = childTag

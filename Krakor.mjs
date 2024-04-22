@@ -1,6 +1,7 @@
 
 export class AudioManager {
     constructor({
+        app,
         enableSimultaneousPlaying = false,
         autoplay = true,
         stopAutoplayWhenReachingLastMusic = true,
@@ -11,7 +12,7 @@ export class AudioManager {
         this.logger = logger
         this.icons = icons
         this.utils = utils
-        this.os = utils.getOS()
+        this.os = utils.getOS(app)
 
         // Options
         this.enableSimultaneousPlaying = enableSimultaneousPlaying
@@ -331,7 +332,7 @@ export class ButtonBar {
  *      container,
  *      component,
  *      currentFilePath,
- *      logger, icons, utils,
+ *      logger, icons,
  *      numberOfElementsPerBatch: 20,
  *  })
  * 
@@ -359,7 +360,6 @@ export class CollectionManager {
         component,
         currentFilePath,
         logger,
-        utils,
         icons,
 
         //Mandatory
@@ -392,7 +392,6 @@ export class CollectionManager {
 
         this.logger = logger
         this.icons = icons
-        this.utils = utils
         this.disableSet = disableSet
 
         this.childTag = childTag
@@ -1190,11 +1189,16 @@ export class Orphanage {
         this.thumbnailProp = thumbnailProp
     }
     /**
-     * @param {string[]} orphansData
+     * Used to disguise orphans as real ScoreFile (mock Link to TFile)
+     * It also specializes each orphans based on the context in which they are defined
+     * 
+     * @param {object} _
+     * @param {string[]} _.data
+     * @param {object} _.context - The context in which the orphans should be raised. Contains the actual file in which they are defined and the filters they should apply to
      * @returns {import('./_views').ScoreFile[]}
      */
-    raise(orphansData) {
-        const orphans = this.utils.normalizeArrayOfObjectField(orphansData)
+    raise({data, context}) {
+        const orphans = this.utils.normalizeArrayOfObjectField(data)
 
         // Needed to disguise orphans as real ScoreFile (mock Link to TFile)
         for (const o of orphans) {
@@ -1202,6 +1206,12 @@ export class Orphanage {
             if (o[this.thumbnailProp] && !o[this.thumbnailProp].includes("/")) {
                 o[this.thumbnailProp] = {
                     path: `${this.thumbnailDirectory}/${o[this.thumbnailProp].replace(/\[|\]/g, '')}`
+                }
+            }
+
+            if (context.disguiseAs) {
+                o[context.disguiseAs] = {
+                    path: context.currentFilePath
                 }
             }
 
@@ -1490,11 +1500,12 @@ export class PageManager {
      * @param {object} _
      * @param {string} _.filter - 
      * @param {Query} _.qs
+     * @param {boolean} _.keepCurrentPages
      */
-    #runStringFilterQuery = ({filter, qs}) => {
+    #runStringFilterQuery = ({filter, qs, keepCurrentPages = false}) => {
         switch (filter) {
             case "backlinks":
-                qs.from(`${this.defaultFrom} AND [[${this.dv.page(this.currentFilePath).file.path}]]`)
+                qs.from(`${this.defaultFrom} AND [[${this.dv.page(this.currentFilePath).file.path}]]`, keepCurrentPages)
                 break;
             default:
                 break;
@@ -1515,15 +1526,16 @@ export class PageManager {
      * @param {object} _
      * @param {object} _.filter
      * @param {Query} _.qs
+     * @param {boolean} _.keepCurrentPages
      */
-    #runObjectFilterQuery = async ({filter, qs}) => {
+    #runObjectFilterQuery = async ({ filter, qs, keepCurrentPages = false}) => {
         let fromQuery = filter?.from ?? this.defaultFrom
         fromQuery = this.#updateFromStringBasedOnSpecialFilters(
             fromQuery,
             filter
         )
 
-        qs.from(fromQuery)
+        qs.from(fromQuery, keepCurrentPages)
 
         for (const prop in filter) {
             this.logger?.log(`filter.${prop} =`, filter[prop])
@@ -1574,19 +1586,24 @@ export class PageManager {
      * @param {object} _
      * @param {*} [_.filter]
      * @param {Query} _.qs
+     * @param {import('./_views').UserFile[]} [_.initialSubset]
      * @returns {import('./_views').UserFile[]}
      */
-    buildAndRunFileQuery = async ({ filter, qs }) => {
+    buildAndRunFileQuery = async ({ filter, qs, initialSubset }) => {
+        if (initialSubset) {
+            qs.setPages(initialSubset)
+        }
+
         if (typeof filter === "function") {
             await filter(qs)
         } else if (typeof filter === "string") {
-            this.#runStringFilterQuery({filter, qs})
+            this.#runStringFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         } else if (Array.isArray(filter)) {
-            this.#runArrayFilterQuery({filter, qs})
+            this.#runArrayFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         } else if (filter instanceof RegExp) {
-            this.#runStringFilterQuery({filter, qs})
+            this.#runStringFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         } else {
-            await this.#runObjectFilterQuery({filter, qs})
+            await this.#runObjectFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         }
 
         this.logger?.logPerf("Dataview js query: filtering")
@@ -1710,8 +1727,9 @@ export class PageManager {
  * const orPages = [...new Set(pages1.concat(pages2))]
  */
 export class Query {
-    constructor({dv, logger}) {
+    constructor({dv, utils, logger}) {
         this.dv = dv
+        this.utils = utils
         this.logger = logger
         this._pages = null
         this._source = ''
@@ -1719,9 +1737,6 @@ export class Query {
 
     _warningMsg = "You forgot to call from or pages before calling this"
     _delimiter = "=-------------------------------="
-
-    _isObject = (o) => o !== null && typeof o === 'object' && Array.isArray(o) === false
-
 
     /**
      * There is probably a better way (less space/time complexity) to do it but using a map was the easiest solution for me
@@ -1797,8 +1812,14 @@ export class Query {
         return this
     }
 
-    from(source) {
-        this._pages = this.dv.pages(source)
+    /**
+     * 
+     * @param {string} source - a valid dataview source
+     * @param {boolean} keepCurrentPages
+     */
+    from(source, keepCurrentPages = false) {
+        const newPages = this.dv.pages(source)
+        this._pages = keepCurrentPages ? [...this._pages, ...newPages] : newPages
         this._source = source
         return this
     }
@@ -1935,7 +1956,11 @@ export class Query {
         }
 
         this._pages = this._pages.filter((p) => {
-            return p.file.etags.includes(tag)
+            // to support naïve orphans
+            if (!p.file.etags) {
+                return p.tags.includes(tag[0] === '#' ? tag.slice(1) : tag)
+            }
+            return p.file.etags?.includes(tag)
         })
     }
 
@@ -2243,7 +2268,7 @@ export class Query {
 
     withLinkField({field, value}) {
         const link = this._convertStringToLink(value)
-        if (!this._isObject(link)) {
+        if (!this.utils.isObject(link)) {
             console.warn(`File named ${value} couldn't be parsed by dv.page. Make sure to wrap the value with [[]]`)
             return this
         }
@@ -3003,244 +3028,164 @@ background-color: black;
 }
 
 /**
- * Class that contains miscelaneous utility functions
- * It is used by most of the classes here and an instance of it need to be passed in their constructor
+ * File that contains miscelaneous utility functions
+ * They are used by most of the classes here and they usally need to be passed in their constructor via a `utils` property
  */
-export class Utils {
-    constructor({ app }) {
-        this.app = app
-    }
 
-    httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
+export const httpRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/
 
-    // @link https://urlregex.com/
-    uriRegex = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
+// @link https://urlregex.com/
+export const uriRegex = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
 
-    //#region HTML
+//#region HTML
 
-    /**
-     *
-     * @param {HTMLElement} element
-     * @param {string} className
-     */
-    getParentWithClass(element, className) {
-        // Traverse up the DOM tree until the root (body or html) is reached
-        while (element && element !== document.body && element !== document.documentElement) {
-            element = element.parentElement;
-            if (element?.classList.contains(className)) {
-                return element;
-            }
-        }
-        return null;
-    }
-
-    //#endregion
-
-    //#region Javascript
-    // Clamp number between two values with the following line:
-    clamp = (num, min, max) => Math.min(Math.max(num, min), max)
-
-    delay = async (time) =>
-        new Promise((resolve) => setTimeout(resolve, time))
-
-    isObject(o) {
-        return (
-            o !== null &&
-            typeof o === "object" &&
-            Array.isArray(o) === false
-        )
-    }
-
-    /**
-     * Seeded RNG using Linear Congruential Generator
-     * @param {number} seed
-     */
-    seededRNG(seed) {
-        return () => {
-            seed = (seed * 1664525 + 1013904223) % 4294967296;
-            return seed / 4294967296;
-        };
-    }
-
-    /**
-     * It alters the array
-     * @from https://stackoverflow.com/a/6274381
-     * @param {Array} a
-     * @param {number} seed
-     */
-    shuffleArray(a, seed) {
-        const rng = (typeof seed === 'number') ? this.seededRNG(seed) : Math.random;
-        let j, x, i;
-        for (i = a.length - 1; i > 0; i--) {
-            j = Math.floor(rng() * (i + 1));
-            x = a[i];
-            a[i] = a[j];
-            a[j] = x;
+/**
+ *
+ * @param {HTMLElement} element
+ * @param {string} className
+ */
+export const getParentWithClass = (element, className) => {
+    // Traverse up the DOM tree until the root (body or html) is reached
+    while (element && element !== document.body && element !== document.documentElement) {
+        element = element.parentElement;
+        if (element?.classList.contains(className)) {
+            return element;
         }
     }
+    return null;
+}
 
-    /**
-     * @param {string} timecode - In the form 00:00:00 or 00:00
-     * @returns {number} The timecode converted to seconds, can be NaN if it's not a valid timecode
-    */
-    convertTimecodeToDuration = (timecode) => {
-        const timeArray = timecode?.split(':');
-        if (!timeArray || timeArray.length < 2 || timeArray.length > 3) { // It only supports 00:00 or 00:00:00
-            return NaN;
+export const scrollToElement = (target) => {
+    let element;
+
+    // Check if the provided parameter is a string (selector)
+    if (typeof target === 'string') {
+        // If it's a string, use document.querySelector() to get the element
+        element = document.querySelector(target);
+
+        // Check if the selector returned a valid element
+        if (!element) {
+            console.error("Element not found for selector:", target);
+            return;
         }
-
-        let i = 0
-        let total = 0
-        if (timeArray.length === 3) {
-            const hours = parseInt(timeArray[i++], 10)
-            if (isNaN(hours)) return NaN
-            total += hours * 3600
-        }
-
-        const minutes = parseInt(timeArray[i++], 10)
-        if (isNaN(minutes)) return NaN
-        total += minutes * 60
-
-        const seconds = parseInt(timeArray[i], 10)
-        if (isNaN(seconds)) return NaN
-
-        return total + seconds
+    } else if (target instanceof Element) {
+        // If it's already a DOM element, use it directly
+        element = target;
+    } else {
+        // Invalid parameter
+        console.error("Invalid element or selector provided.");
+        return;
     }
 
-    /**
-     * @param {number} duration
-     * @returns {number} The duration converted to a timecode of the format `00:00:00` or `00:00`
-    */
-    convertDurationToTimecode = (duration) => {
-        const hours = Math.floor(duration / 3600);
-        const minutes = Math.floor((duration % 3600) / 60);
-        const seconds = Math.floor(duration % 60);
+    // Scroll the element into view
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-        const hoursString = hours.toString().padStart(1, '0');
-        const minutesString = minutes.toString().padStart(1, '0');
-        const secondsString = seconds.toString().padStart(2, '0');
+//#endregion
 
-        return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
+//#region Javascript
+
+// Clamp number between two values with the following line:
+export const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
+
+export const delay = async (time) =>
+    new Promise((resolve) => setTimeout(resolve, time))
+
+export const isObject = (o) => {
+    return (
+        o !== null &&
+        typeof o === "object" &&
+        Array.isArray(o) === false
+    )
+}
+
+/**
+ * Seeded RNG using Linear Congruential Generator
+ * @param {number} seed
+ */
+const seededRNG = (seed) => {
+    return () => {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        return seed / 4294967296;
+    };
+}
+
+/**
+ * It alters the array
+ * @from https://stackoverflow.com/a/6274381
+ * @param {Array} a
+ * @param {number} seed
+ */
+export const shuffleArray = (a, seed) => {
+    const rng = (typeof seed === 'number') ? seededRNG(seed) : Math.random;
+    let j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(rng() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+}
+
+/**
+ * @param {string} timecode - In the form 00:00:00 or 00:00
+ * @returns {number} The timecode converted to seconds, can be NaN if it's not a valid timecode
+*/
+export const convertTimecodeToDuration = (timecode) => {
+    const timeArray = timecode?.split(':');
+    if (!timeArray || timeArray.length < 2 || timeArray.length > 3) { // It only supports 00:00 or 00:00:00
+        return NaN;
     }
 
-    /**
-     * @param {RegExp} regex
-     * @returns {RegExp} a new regex based on the given one but with the global flag enabled
-     */
-    globalizeRegex = (regex) => {
-        let regexStr = regex.source // Get the string representation of the regex
-
-        if (regexStr.startsWith('^')) {
-            regexStr = regexStr.slice(1)
-        }
-
-        if (regexStr.endsWith('$')) {
-            regexStr = regexStr.slice(0, -1)
-        }
-        return new RegExp(regexStr, 'g')
-    }
-    //	#endregion
-
-    //#region Obsidian
-    getOS() {
-        const { isMobile } = this.app
-
-        // I would like to use `navigator.userAgentData.platform` since `navigator.platform` is deprecated but it doesn't work on mobile
-        // TODO: see if I can use appVersion instead -> https://liamca.in/Obsidian/API+FAQ/OS/check+the+current+OS
-        const { platform } = navigator
-
-        if (platform.indexOf("Win") !== -1) return "Windows"
-        // if (platform.indexOf("Mac") !== -1) return "MacOS";
-        if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux"
-        if (platform.indexOf("Linux") !== -1 && isMobile) return "Android"
-        if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS"
-
-        return "Unknown OS"
+    let i = 0
+    let total = 0
+    if (timeArray.length === 3) {
+        const hours = parseInt(timeArray[i++], 10)
+        if (isNaN(hours)) return NaN
+        total += hours * 3600
     }
 
-    /**
-     * @param {HTMLElement} tag
-     */
-    removeTagChildDVSpan(tag) {
-        const span = tag.querySelector("span")
-        if (!span) return
+    const minutes = parseInt(timeArray[i++], 10)
+    if (isNaN(minutes)) return NaN
+    total += minutes * 60
 
-        span.outerHTML = span.innerHTML
+    const seconds = parseInt(timeArray[i], 10)
+    if (isNaN(seconds)) return NaN
+
+    return total + seconds
+}
+
+/**
+ * @param {number} duration
+ * @returns {number} The duration converted to a timecode of the format `00:00:00` or `00:00`
+*/
+export const convertDurationToTimecode = (duration) => {
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
+    const seconds = Math.floor(duration % 60);
+
+    const hoursString = hours.toString().padStart(1, '0');
+    const minutesString = minutes.toString().padStart(1, '0');
+    const secondsString = seconds.toString().padStart(2, '0');
+
+    return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
+}
+
+/**
+ * @param {RegExp} regex
+ * @returns {RegExp} a new regex based on the given one but with the global flag enabled
+ */
+export const globalizeRegex = (regex) => {
+    let regexStr = regex.source // Get the string representation of the regex
+
+    if (regexStr.startsWith('^')) {
+        regexStr = regexStr.slice(1)
     }
 
-    /**
-     * @param {import('./view').Link} link
-     */
-    async linkExists(link) {
-        if (!this.isObject(link)) return false
-        return await window.app.vault.adapter.exists(link.path)
+    if (regexStr.endsWith('$')) {
+        regexStr = regexStr.slice(0, -1)
     }
-
-    /**
-     * This function will transform a field containing an array and flatten it while calling JSON.parse() on any string it encounteers
-     * @param {*} field
-     * @returns {Array}
-     */
-    normalizeArrayOfObjectField(field) {
-        if (!field) return []
-
-        // Single object in yaml frontmatter
-        if (this.isObject(field)) return [deepClone(field)]
-
-        try {
-            // Single string as inline field
-            if (!Array.isArray(field)) return [JSON.parse(field)]
-
-            return field.reduce((a, c) => {
-                if (Array.isArray(c)) {
-                    return [...a, ...this.normalizeArrayOfObjectField(c)]
-                }
-
-                if (this.isObject(c)) return [...a, deepClone(c)]
-
-                return [...a, JSON.parse(c)]
-            }, [])
-        } catch (e) {
-            console.error(e)
-            return []
-        }
-    }
-
-    /**
-     * Prepend the path of orphans (uncreated) files with a base directory
-     * @param {Array<import('./_views').Link|string>} links
-     * @param {string} baseDir
-     */
-    normalizeLinksPath = async (links, baseDir) => {
-        return await Promise.all(
-            links.map(async (l) => {
-                // l is a string
-                if (!l.path) {
-                    return { path: `${baseDir}/${l}.md` }
-                }
-
-                // l is an empty link
-                if (!(await this.linkExists(l))) {
-                    return { ...l, path: `${baseDir}/${l.path}.md` }
-                }
-
-                return l
-            })
-        )
-    }
-
-    /**
-     * Let me handle YYYY format too (luxon don't recognized this format as a single year -_-)
-     * @param {object|number} value
-     */
-    valueToDateTime({ value, dv }) {
-        if (typeof value === "number") {
-            // that means its just a year
-            return dv.luxon.DateTime.fromObject({ year: value })
-        }
-        return dv.date(value)
-    }
-    //#endregion
+    return new RegExp(regexStr, 'g')
 }
 
 /* from: https://stackoverflow.com/a/75988895 */
@@ -3281,7 +3226,38 @@ export const deepClone = (obj) => {
     return newObj; // Clone objects
 }
 
+/**
+ * An empty check written by ChatGPT
+ */
+export function isEmpty(value) {
+    if (value == null) {
+        // Check for null or undefined
+        return true;
+    } else if (Array.isArray(value)) {
+        // Check for empty array
+        return value.length === 0;
+    } else if (typeof value === 'object') {
+        // Check for empty object
+        if (Object.prototype.toString.call(value) === '[object Object]') {
+            return Object.keys(value).length === 0;
+        }
+        // Check for other types of objects
+        for (let key in value) {
+            if (value.hasOwnProperty(key)) {
+                return false;
+            }
+        }
+        return true; // If no enumerable properties found
+    } else if (typeof value === 'string') {
+        // Check for empty string
+        return value.trim() === '';
+    } else if (typeof value === 'number' && isNaN(value)) {
+        // Check for NaN
+        return true;
+    }
 
+    return false; // For other types, consider them non-empty
+}
 /**
  * A naïve deep equality check written by ChatGPT
  * Only handles scalar values, arrays and objects
@@ -3332,6 +3308,26 @@ export const isEqual = (a, b) => {
     return false;
 }
 
+//	#endregion
+
+//#region Obsidian
+
+export const getOS = (app) => {
+    const { isMobile } = app
+
+    // I would like to use `navigator.userAgentData.platform` since `navigator.platform` is deprecated but it doesn't work on mobile
+    // TODO: see if I can use appVersion instead -> https://liamca.in/Obsidian/API+FAQ/OS/check+the+current+OS
+    const { platform } = navigator
+
+    if (platform.indexOf("Win") !== -1) return "Windows"
+    // if (platform.indexOf("Mac") !== -1) return "MacOS";
+    if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux"
+    if (platform.indexOf("Linux") !== -1 && isMobile) return "Android"
+    if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS"
+
+    return "Unknown OS"
+}
+
 /**
  * Check if a given value is a valid property value.
  * The function accept everything except:
@@ -3361,31 +3357,91 @@ export const isValidPropertyValue = (value) => {
     return true
 }
 
-export const scrollToElement = (target) => {
-    let element;
-
-    // Check if the provided parameter is a string (selector)
-    if (typeof target === 'string') {
-        // If it's a string, use document.querySelector() to get the element
-        element = document.querySelector(target);
-
-        // Check if the selector returned a valid element
-        if (!element) {
-            console.error("Element not found for selector:", target);
-            return;
-        }
-    } else if (target instanceof Element) {
-        // If it's already a DOM element, use it directly
-        element = target;
-    } else {
-        // Invalid parameter
-        console.error("Invalid element or selector provided.");
-        return;
-    }
-
-    // Scroll the element into view
-    element.scrollIntoView({ behavior: "smooth", block: "start" });
+/**
+ * @param {import('./view').Link} link
+ */
+export const linkExists = async (link) => {
+    if (!isObject(link)) return false
+    return await window.app.vault.adapter.exists(link.path)
 }
+
+/**
+ * This function will transform a field containing an array and flatten it while calling JSON.parse() on any string it encounteers
+ * @param {*} field
+ * @returns {Array}
+ */
+export const normalizeArrayOfObjectField = (field) => {
+    if (!field) return []
+
+    // Single object in yaml frontmatter
+    if (isObject(field)) return [deepClone(field)]
+
+    try {
+        // Single string as inline field
+        if (!Array.isArray(field)) return [JSON.parse(field)]
+
+        return field.reduce((a, c) => {
+            if (Array.isArray(c)) {
+                return [...a, ...normalizeArrayOfObjectField(c)]
+            }
+
+            if (isObject(c)) return [...a, deepClone(c)]
+
+            return [...a, JSON.parse(c)]
+        }, [])
+    } catch (e) {
+        console.error(e)
+        return []
+    }
+}
+
+/**
+ * Prepend the path of orphans (uncreated) files with a base directory
+ * @param {Array<import('./_views').Link|string>} links
+ * @param {string} baseDir
+ * @returns {Array<import('./_views').Link|string>}
+ */
+export const normalizeLinksPath = async (links, baseDir) => {
+    return await Promise.all(
+        links.map(async (l) => {
+            // l is a string
+            if (!l.path) {
+                return { path: `${baseDir}/${l}.md` }
+            }
+
+            // l is an empty link
+            if (!(await linkExists(l))) {
+                return { ...l, path: `${baseDir}/${l.path}.md` }
+            }
+
+            return l
+        })
+    )
+}
+
+/**
+ * @param {HTMLElement} tag
+ */
+export const removeTagChildDVSpan = (tag) => {
+    const span = tag.querySelector("span")
+    if (!span) return
+
+    span.outerHTML = span.innerHTML
+}
+
+/**
+ * Let me handle YYYY format too (luxon don't recognized this format as a single year -_-)
+ * @param {object|number} value
+ */
+export const valueToDateTime = ({ value, dv }) => {
+    if (typeof value === "number") {
+        // that means its just a year
+        return dv.luxon.DateTime.fromObject({ year: value })
+    }
+    return dv.date(value)
+}
+
+//#endregion
 
 
 /**
@@ -3863,6 +3919,11 @@ export async function bindViewToProperties(env, {
         container.dispatchEvent(new CustomEvent('view-unload'))
 
         main(env, props)
+
+        // adjust the timeout if needed
+        setTimeout(() => {
+            scrollToElement(container)
+        }, 0)
     }
 
     const previousTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
@@ -3872,11 +3933,6 @@ export async function bindViewToProperties(env, {
     const reactive = engine.reactive(render, previousViewParams);
 
     const debouncedRefresh = debounce((data) => {
-        // adjust the timeout if needed
-        setTimeout(() => {
-            scrollToElement(container)
-        }, 200)
-
         const currentTargettedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
             properties[property] = data[i]
             return properties
@@ -3914,7 +3970,6 @@ export const setupView = async ({
     const LOGGER_TYPE = "console"
     const DEBUG_LOG_FILE = "🙈/Log.md"
 
-    const utils = new module.Utils({ app })
     const logger = new module.Logger({
         app,
         dry: !debug,
@@ -3922,8 +3977,11 @@ export const setupView = async ({
         filepath: DEBUG_LOG_FILE,
     })
 
+    const {getParentWithClass} = module
+
     const vm = new module.ViewManager({
-        app, component, container, logger, utils,
+        utils: {getParentWithClass},
+        app, component, container, logger,
         name: viewName,
         disable,
     })
@@ -3933,7 +3991,7 @@ export const setupView = async ({
         // If the container is still present in the DOM
         if (vm.container) {
             vm.container.removeEventListener("view-ready", onReady)
-            await render.call(null, {vm, logger, utils})
+            await render.call(null, {vm, logger})
         }
         if (debug) {
             performance.mark(`${viewName}-end`);

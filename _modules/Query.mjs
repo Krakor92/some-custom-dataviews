@@ -8,8 +8,9 @@
  * const orPages = [...new Set(pages1.concat(pages2))]
  */
 export class Query {
-    constructor({dv, logger}) {
+    constructor({dv, utils, logger}) {
         this.dv = dv
+        this.utils = utils
         this.logger = logger
         this._pages = null
         this._source = ''
@@ -17,9 +18,6 @@ export class Query {
 
     _warningMsg = "You forgot to call from or pages before calling this"
     _delimiter = "=-------------------------------="
-
-    _isObject = (o) => o !== null && typeof o === 'object' && Array.isArray(o) === false
-
 
     /**
      * There is probably a better way (less space/time complexity) to do it but using a map was the easiest solution for me
@@ -95,8 +93,14 @@ export class Query {
         return this
     }
 
-    from(source) {
-        this._pages = this.dv.pages(source)
+    /**
+     * 
+     * @param {string} source - a valid dataview source
+     * @param {boolean} keepCurrentPages
+     */
+    from(source, keepCurrentPages = false) {
+        const newPages = this.dv.pages(source)
+        this._pages = keepCurrentPages ? [...this._pages, ...newPages] : newPages
         this._source = source
         return this
     }
@@ -233,7 +237,11 @@ export class Query {
         }
 
         this._pages = this._pages.filter((p) => {
-            return p.file.etags.includes(tag)
+            // to support naïve orphans
+            if (!p.file.etags) {
+                return p.tags.includes(tag[0] === '#' ? tag.slice(1) : tag)
+            }
+            return p.file.etags?.includes(tag)
         })
     }
 
@@ -541,7 +549,7 @@ export class Query {
 
     withLinkField({field, value}) {
         const link = this._convertStringToLink(value)
-        if (!this._isObject(link)) {
+        if (!this.utils.isObject(link)) {
             console.warn(`File named ${value} couldn't be parsed by dv.page. Make sure to wrap the value with [[]]`)
             return this
         }

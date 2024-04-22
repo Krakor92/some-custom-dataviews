@@ -1,5 +1,6 @@
 export class AudioManager {
     constructor({
+        app,
         enableSimultaneousPlaying = false,
         autoplay = true,
         stopAutoplayWhenReachingLastMusic = true,
@@ -10,7 +11,7 @@ export class AudioManager {
         this.logger = logger
         this.icons = icons
         this.utils = utils
-        this.os = utils.getOS()
+        this.os = utils.getOS(app)
 
         // Options
         this.enableSimultaneousPlaying = enableSimultaneousPlaying

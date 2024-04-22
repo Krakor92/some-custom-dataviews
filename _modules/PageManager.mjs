@@ -273,11 +273,12 @@ export class PageManager {
      * @param {object} _
      * @param {string} _.filter - 
      * @param {Query} _.qs
+     * @param {boolean} _.keepCurrentPages
      */
-    #runStringFilterQuery = ({filter, qs}) => {
+    #runStringFilterQuery = ({filter, qs, keepCurrentPages = false}) => {
         switch (filter) {
             case "backlinks":
-                qs.from(`${this.defaultFrom} AND [[${this.dv.page(this.currentFilePath).file.path}]]`)
+                qs.from(`${this.defaultFrom} AND [[${this.dv.page(this.currentFilePath).file.path}]]`, keepCurrentPages)
                 break;
             default:
                 break;
@@ -298,15 +299,16 @@ export class PageManager {
      * @param {object} _
      * @param {object} _.filter
      * @param {Query} _.qs
+     * @param {boolean} _.keepCurrentPages
      */
-    #runObjectFilterQuery = async ({filter, qs}) => {
+    #runObjectFilterQuery = async ({ filter, qs, keepCurrentPages = false}) => {
         let fromQuery = filter?.from ?? this.defaultFrom
         fromQuery = this.#updateFromStringBasedOnSpecialFilters(
             fromQuery,
             filter
         )
 
-        qs.from(fromQuery)
+        qs.from(fromQuery, keepCurrentPages)
 
         for (const prop in filter) {
             this.logger?.log(`filter.${prop} =`, filter[prop])
@@ -357,19 +359,24 @@ export class PageManager {
      * @param {object} _
      * @param {*} [_.filter]
      * @param {Query} _.qs
+     * @param {import('../_views').UserFile[]} [_.initialSubset]
      * @returns {import('../_views').UserFile[]}
      */
-    buildAndRunFileQuery = async ({ filter, qs }) => {
+    buildAndRunFileQuery = async ({ filter, qs, initialSubset }) => {
+        if (initialSubset) {
+            qs.setPages(initialSubset)
+        }
+
         if (typeof filter === "function") {
             await filter(qs)
         } else if (typeof filter === "string") {
-            this.#runStringFilterQuery({filter, qs})
+            this.#runStringFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         } else if (Array.isArray(filter)) {
-            this.#runArrayFilterQuery({filter, qs})
+            this.#runArrayFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         } else if (filter instanceof RegExp) {
-            this.#runStringFilterQuery({filter, qs})
+            this.#runStringFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         } else {
-            await this.#runObjectFilterQuery({filter, qs})
+            await this.#runObjectFilterQuery({ filter, qs, keepCurrentPages: !this.utils.isEmpty(initialSubset) })
         }
 
         this.logger?.logPerf("Dataview js query: filtering")

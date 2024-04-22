@@ -3,9 +3,34 @@ orphans:
   -
     title: "Never Gonna Give You Up"
     url: "https://youtu.be/dQw4w9WgXcQ"
+    voice: yes
+    release: 1987-07-27
+    artist:
+      - "Rick Astley"
+    tags:
+      - 🐐
+      - meme
+    tags_:
+      - banger
+      - feel good
+    misc:
+      - "[[Memes]]"
 ---
 
 Contains every scenario supposed to be handled by this view. It is used for debugging purposes
+
+
+```js-engine
+const path = `_js/_views/jukebox/view.js`
+const { main } = await engine.importJs(path)
+
+main({...this, path}, {
+	filter: {
+		misc: `[[Memes]]`
+	},
+	debug: true,
+})
+```
 
 
 
@@ -16,6 +41,21 @@ Contains every scenario supposed to be handled by this view. It is used for debu
 >
 > main({...this, path})
 > ```
+
+
+> [!NOTE]- <`Array`>
+> ```js-engine
+> const path = `_js/_views/jukebox/view.js`
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, [
+> 	"[[Death by Glamour]]",
+> 	"[[Undertale]]",
+> 	"[[SAVE His Last Hopes and Dreams]]",
+> 	"[[It's Raining Somewhere Else]]",
+> ])
+> ```
+
 
 ## Filter
 
@@ -60,7 +100,7 @@ manual:: [[Falling Apart]]
 >
 > main({...this, path}, {
 > 	filter: {
-> 		from: `"DB/test-python"`,
+> 		from: `"DB/🎼"`,
 > 	}
 > })
 > ```
@@ -245,6 +285,20 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
+- [-] 
+> [!NOTE]- *filter*.`misc`
+> ```js-engine
+> const path = `_js/_views/jukebox/view.js`
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	filter: {
+> 		misc: `[[Memes]]`
+> 	}
+> })
+> ```
+
+
 
 ## Sort
 
@@ -341,7 +395,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 > })
 > ```
 
-- [x] 
+- [!] not good with new orphan system 
 > [!NOTE]- *disable*.`query`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`

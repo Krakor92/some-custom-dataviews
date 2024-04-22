@@ -11,7 +11,6 @@ export const setupView = async ({
     const LOGGER_TYPE = "console"
     const DEBUG_LOG_FILE = "🙈/Log.md"
 
-    const utils = new module.Utils({ app })
     const logger = new module.Logger({
         app,
         dry: !debug,
@@ -19,8 +18,11 @@ export const setupView = async ({
         filepath: DEBUG_LOG_FILE,
     })
 
+    const {getParentWithClass} = module
+
     const vm = new module.ViewManager({
-        app, component, container, logger, utils,
+        utils: {getParentWithClass},
+        app, component, container, logger,
         name: viewName,
         disable,
     })
@@ -30,7 +32,7 @@ export const setupView = async ({
         // If the container is still present in the DOM
         if (vm.container) {
             vm.container.removeEventListener("view-ready", onReady)
-            await render.call(null, {vm, logger, utils})
+            await render.call(null, {vm, logger})
         }
         if (debug) {
             performance.mark(`${viewName}-end`);

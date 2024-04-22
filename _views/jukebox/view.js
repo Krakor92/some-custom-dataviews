@@ -125,11 +125,32 @@ await module.setupView({
     debug,
  })
 
-// It's an empty string when used inside a canvas card
+ /**
+ * It's an empty string when used inside a canvas card
+ * @type {string}
+ */
 const currentFilePath = context.file?.path ?? ''
+
 // #endregion
 
-async function renderView({ vm, logger, utils }) {
+async function renderView({ vm, logger }) {
+
+/** We extract all the utils functions that we'll need later on */
+const {
+    clamp,
+    convertDurationToTimecode,
+    convertTimecodeToDuration,
+    delay,
+    getOS,
+    isEmpty,
+    isObject,
+    linkExists,
+    normalizeArrayOfObjectField,
+    normalizeLinksPath,
+    shuffleArray,
+    uriRegex,
+    valueToDateTime,
+} = module
 
 //#region Css insertion
 
@@ -148,7 +169,8 @@ if (scriptPathNoExt) {
 //#endregion
 
 const fileManager = new module.FileManager({
-    dv, utils, app, currentFilePath,
+    utils: { delay },
+    dv, app, currentFilePath,
     directoryWhereToAddFile: DEFAULT_SCORE_DIRECTORY,
     properties: filter,
     userFields: USER_FIELDS,
@@ -156,7 +178,7 @@ const fileManager = new module.FileManager({
         async (fileManager, fieldsPayload) => {
             const textInClipboard = await navigator.clipboard.readText();
 
-            if (utils.uriRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
+            if (uriRegex.test(textInClipboard)) { //text in clipboard is an "http(s)://anything.any" url
                 fieldsPayload.push({
                     name: URL_FIELD,
                     payload: { value: textInClipboard }
@@ -171,11 +193,12 @@ const fileManager = new module.FileManager({
 const icons = new module.IconManager()
 
 const audioManager = new module.AudioManager({
+    utils: { clamp, convertTimecodeToDuration, getOS },
+    app, logger, icons,
     enableSimultaneousPlaying: ENABLE_SIMULTANEOUS_AUDIO_PLAYING,
     autoplay: !vm.disableSet.has("autoplay"),
     stopAutoplayWhenReachingLastMusic: STOP_AUTOPLAY_WHEN_REACHING_LAST_MUSIC,
     defaultVolume: DEFAULT_VOLUME,
-    logger, utils, icons,
 })
 
 //#region Buttons handling
@@ -202,7 +225,7 @@ if (!vm.disableSet.has("buttons")) {
         })
     }
 
-    const youTubeManager = new module.YouTubeManager({ utils, logger })
+    const youTubeManager = new module.YouTubeManager({ utils: { convertTimecodeToDuration }, logger })
 
     /**
      * Button responsible of launching an anonymous YouTube playlist.
@@ -211,7 +234,7 @@ if (!vm.disableSet.has("buttons")) {
         name: 'playlist',
         icon: icons.listMusicIcon,
         event: () => {
-            let maxLengthAccepted = utils.convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
+            let maxLengthAccepted = convertTimecodeToDuration(MAX_LENGTH_ACCEPTED_TO_BE_PART_OF_PLAYLIST)
             if (isNaN(maxLengthAccepted)) {
                 // Every length is accepted
                 maxLengthAccepted = Number.MAX_SAFE_INTEGER
@@ -253,30 +276,40 @@ customFields.set('audioOnly', async (qs) => {
     logger.log(`%cFilter on audioOnly 🔊`, 'color: #7f6df2; font-size: 13px')
     qs.withExistingField(AUDIO_FILE_FIELD)
     await qs.asyncFilter(async (page) => {
-        if (!utils.isObject(page[AUDIO_FILE_FIELD])) {
+        if (!isObject(page[AUDIO_FILE_FIELD])) {
             // That means it's a http link (or at least it should be one) so we consider it's valid
             return true
         }
 
         // If it's a link then we accept it only if it exists inside the vault
-        return await utils.linkExists(page[AUDIO_FILE_FIELD])
+        return await linkExists(page[AUDIO_FILE_FIELD])
     })
 })
 
-const qs = new module.Query({ dv })
+const qs = new module.Query({ utils: { isObject }, dv, logger })
 
 const orphanage = new module.Orphanage({
-    utils,
+    utils: { normalizeArrayOfObjectField },
     directory: DEFAULT_SCORE_DIRECTORY,
     thumbnailDirectory: DEFAULT_THUMBNAIL_DIRECTORY,
 })
 
 const orphanPages = vm.disableSet.has("orphans")
     ? []
-    : orphanage.raise(dv.page(currentFilePath)?.[ORPHANS_FIELD])
+    : orphanage.raise({
+        data: dv.page(currentFilePath)?.[ORPHANS_FIELD],
+        context: {
+            currentFilePath,
+            disguiseAs: filter?.current,
+        }
+    })
+
+logger.log({ orphanPages })
+
 
 const pageManager = new module.PageManager({
-    dv, logger, utils, orphanage, currentFilePath,
+    utils: { normalizeLinksPath, valueToDateTime, isEmpty, isObject, shuffleArray },
+    dv, logger, orphanage, currentFilePath,
     customFields,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
@@ -286,13 +319,11 @@ const pageManager = new module.PageManager({
 logger?.logPerf("Everything before querying pages")
 
 
-let queriedPages = []
+let pages = []
 if (!vm.disableSet.has("query")) {
-    queriedPages = await pageManager.buildAndRunFileQuery({filter, qs})
-    logger.log({ queriedPages })
+    pages = await pageManager.buildAndRunFileQuery({filter, qs, initialSubset: orphanPages})
+    logger.log({ queriedPages: pages })
 }
-
-const pages = [...queriedPages, ...orphanPages]
 
 if (!pages.length) {
     logger?.warn("No pages queried...")
@@ -324,12 +355,15 @@ const renderTimelineTrack = () => {
  */
 const renderTimecode = (length) => {
     if (typeof length === "number") {
-        length = utils.convertDurationToTimecode(length)
+        length = convertDurationToTimecode(length)
     }
     return `<div class="timecode"><span>${length}</span></div>`
 }
 
-const Renderer = new module.Renderer({utils, icons})
+const Renderer = new module.Renderer({
+    utils: { clamp, uriRegex, isObject, linkExists },
+    icons,
+})
 
 /**
  * @param {object} _
@@ -465,7 +499,7 @@ const gridManager = module.CollectionManager.makeGridManager({
     currentFilePath,
     pages,
     pageToChild,
-    logger, icons, utils,
+    logger, icons,
     numberOfElementsPerBatch: NUMBER_OF_SCORES_PER_BATCH,
     disableSet: vm.disableSet,
     extraLogicOnNewChunk: [

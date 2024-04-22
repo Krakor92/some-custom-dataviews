@@ -42,7 +42,7 @@ A [JS Engine](https://github.com/mProjectsCode/obsidian-js-engine-plugin) view t
 				- [Date Object](#date-object)
 				- [Disable values](#disable-values)
 	- [👀 Some examples](#-some-examples)
-	- [❔ Some questions you might ask](#-some-questions-you-might-ask)
+	- [❓ Some questions you might ask](#-some-questions-you-might-ask)
 	- [🔮 Future](#-future)
 		- [Datacore](#datacore)
 		- [Better settings / Utility plugin](#better-settings--utility-plugin)
@@ -480,24 +480,25 @@ main({...this, path}, {
 
 And here is the list of all the options supported by this view:
 
-| Main option | Sub options   | Type                                                                                             | Default                 | Description                                                                                                                                                                                                                                          | Example                | Status |
-| ----------- | ------------- | ------------------------------------------------------------------------------------------------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------ |
-| **filter**  | manual        | string                                                                                           | ""                      | Defines precisely the musics you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the musics)                                                                                     | "scores"               | ✅      |
-|             | from          | string                                                                                           | `#🎼 AND -"_templates"` | To define a specific dvjs query instead of using the default one                                                                                                                                                                                     |                        | ✅      |
-|             | tags          | string / string[]                                                                                | ""                      | To filter on tags                                                                                                                                                                                                                                    | "#song"                | ✅      |
-|             | in            | string                                                                                           | ""                      | To filter on the `in` property. Only one at a time for now                                                                                                                                                                                           | "[[Arcane (2021)]]"    | ✅      |
-|             | artist        | string                                                                                           | ""                      | To filter on the `artist` property. Only one at a time for now                                                                                                                                                                                       | "[[Joe Hisaishi]]"     | ✅      |
-|             | audioOnly     | boolean                                                                                          | false                   | To retrieve only music files with a non-null `audio` field. If a file has its `audio` property set to a non existing local link, this option will skip it                                                                                            |                        | ✅      |
-|             | release       | [Date Object](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#date-object) | {}                      | To define a time period (either before, after, or an interval)                                                                                                                                                                                       | {before: "2022-12-31"} | ✅      |
-|             | current       | string                                                                                           | ""                      | It expects the name of a field containing a link to the current file you're in. (More info in the text below this array). You can also pass the special `"backlinks"` string to filter on every music files that contains a link to the current file |                        | ✅      |
-|             | star          | boolean                                                                                          | false                   | *Legacy*: To retrieve only musics that have been `Starred` by the user                                                                                                                                                                               |                        | ❌      |
-|             | bookmarks     | string                                                                                           | ""                      | To filter on musics inside a bookmark folder. It doesn't search recursively in nested folder. **Warning**: You can't filter on a folder with a `/` in its name                                                                                       |                        | ✅      |
-| **sort**    | shuffle       | boolean / number                                                                                 | false                   | To have a random sorting of the music. If you give it a number, it will treat it as a seed and randomisation will always return the musics in the same order (as long as the queried subset remains the same)                                        |                        | ✅      |
-|             | recentlyAdded | boolean                                                                                          |                         | Move up to the first place the musics we have recently added (True) or the musics we have added at the very beginning (False)                                                                                                                        |                        |        |
-|             | manual        | string                                                                                           | ""                      | To do a simple manual sort (works the same way as its namesake in **filter**)                                                                                                                                                                        | "scores"               | ✅      |
-| **disable** |               | string                                                                                           |                         | To remove almost all visible features if you don't like them. You must separate the values with space. See the table below for more information on the possible values.                                                                              | "autoplay addscore"    | ✅      |
+| Main option | Sub options   | Type                                                                                             | Default                 | Description                                                                                                                                                                                                                   | Example                | Status |
+| ----------- | ------------- | ------------------------------------------------------------------------------------------------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------ |
+| **filter**  | manual        | string                                                                                           | ""                      | Defines precisely the musics you want to add without relying on tags (the parameter to enter is the name of the field in the current file that lists the musics)                                                              | "scores"               | ✅      |
+|             | from          | string                                                                                           | `#🎼 AND -"_templates"` | To define a specific dvjs query instead of using the default one                                                                                                                                                              |                        | ✅      |
+|             | tags          | string / string[]                                                                                | ""                      | To filter on tags                                                                                                                                                                                                             | "#song"                | ✅      |
+|             | in            | string                                                                                           | ""                      | To filter on the `in` property. Only one at a time for now                                                                                                                                                                    | "[[Arcane (2021)]]"    | ✅      |
+|             | artist        | string                                                                                           | ""                      | To filter on the `artist` property. Only one at a time for now                                                                                                                                                                | "[[Joe Hisaishi]]"     | ✅      |
+|             | audioOnly     | boolean                                                                                          | false                   | To retrieve only music files with a non-null `audio` field. If a file has its `audio` property set to a non existing local link, this option will skip it                                                                     |                        | ✅      |
+|             | release       | [Date Object](https://github.com/Krakor92/some-custom-dataviews/tree/master/jukebox#date-object) | {}                      | To define a time period (either before, after, or an interval)                                                                                                                                                                | {before: "2022-12-31"} | ✅      |
+|             | current       | string                                                                                           | ""                      | It expects the name of a field containing a link to the current file you're in. (More info below). You can also pass the special `"backlinks"` string to filter on every music files that contains a link to the current file |                        | ✅      |
+|             | star          | boolean                                                                                          | false                   | *Legacy*: To retrieve only musics that have been `Starred` by the user                                                                                                                                                        |                        | ❌      |
+|             | bookmarks     | string                                                                                           | ""                      | To filter on musics inside a bookmark folder. It doesn't search recursively in nested folder. **Warning**: You can't filter on a folder with a `/` in its name                                                                |                        | ✅      |
+| **sort**    | shuffle       | boolean / number                                                                                 | false                   | To have a random sorting of the music. If you give it a number, it will treat it as a seed and randomisation will always return the musics in the same order (as long as the queried subset remains the same)                 |                        | ✅      |
+|             | recentlyAdded | boolean                                                                                          |                         | Move up to the first place the musics we have recently added (True) or the musics we have added at the very beginning (False)                                                                                                 |                        |        |
+|             | manual        | string                                                                                           | ""                      | To do a simple manual sort (works the same way as its namesake in **filter**)                                                                                                                                                 | "scores"               | ✅      |
+| **disable** |               | string                                                                                           |                         | To remove almost all visible features if you don't like them. You must separate the values with space. See the table below for more information on the possible values.                                                       | "autoplay addscore"    | ✅      |
+##### The `current` filter
 
-In my opinion, the most important filter is the `current` one. To give you a clearer example of its use: Let's say you have a file named "Hans Zimmer.md".
+In my opinion, one of the most useful filter is the `current` one. To give you a clearer example of its use: Let's say you have a file named "Hans Zimmer.md".
 Apart from that, you have a bunch of music files with the following property: `artist: "[[Hans Zimmer]]"`.
 Now you want to query all of these files inside "Hans Zimmer.md". You might want to do the following:
 
@@ -535,7 +536,12 @@ main({...this, path}, {
 
 It means the following: "Filter on every music files that contains a field named `artist` which contains a link to the current file"
 
-The pros of this method compared to the previous notation is that if at some point you decide to rename your artist file, it won't break the view
+It has several benefits compared to the first one:
+
+- It's less error-prone
+- It won't break the view if you decide to rename the file in which it is located
+- `orphans` defined in the file will inherit the current prop your filtering on and will appear like the other queried musics 
+
 
 ##### The `not` filter property  
 
@@ -558,7 +564,7 @@ main({...this, path}, {
 
 **Limitation**: The `not` property only works for `string` property right now
 
-##### Pass string to filter / sort
+##### Pass a string to filter / sort
 
 For ease of use, you can also pass a string as the `filter` and `sort` property instead of an object or a function:
 
@@ -570,7 +576,7 @@ For ease of use, you can also pass a string as the `filter` and `sort` property 
 |             | filter    | Do nothing (keep the sort of the `filter` instead of doing the default ascending sort on file name) |
 |             | none      | //                                                                                                  |
 
-##### Pass function to filter / sort (Advanced)
+##### Pass a function to filter / sort (Advanced)
 
 Instead of passing an object to `filter` or `sort` properties, you can actually pass a javascript function and do the whole filtering/sorting yourself.
 
@@ -779,7 +785,7 @@ Note 1: I know there should be a lot more music from Sting in this time span but
 Note 2: Albeit `Every Breath You Take` is a song by `The Police`, I've added Sting to the artist property so that it comes up when searching for his songs.
 
 
-## ❔ Some questions you might ask
+## ❓ Some questions you might ask
 
 ***Why didn't you build a plugin instead?***
 
