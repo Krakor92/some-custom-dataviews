@@ -31,24 +31,35 @@
  * Don't instantiate it directly from its constructor. You should use one of the static methods at the bottom instead.
  * 
  * @example
+ * // Define the pageToChild function (it might return several HTML elements)
+ * const pageToChild = async (p) => {...}
+ * 
  * // Initializes the collection manager with all its needed dependencies
  * const gridManager = CollectionManager.makeGridManager({
+ *      obsidian,
  *      container,
  *      component,
  *      currentFilePath,
+ *      pages,
+ *      pageToChild,
  *      logger, icons,
  *      numberOfElementsPerBatch: 20,
  *  })
  * 
- * // Internaly build the HTML representation of every elements thanks to blueprint
- * await gridManager.buildChildrenHTML({pages, pageToChild: async (p) => {...}})
- * 
  * // Creates the HTML element that will hold every children and push it in the DOM
  * gridManager.buildParent()
  * 
- * // Appends a chunk of element inside the DOM as children of the parent
+ * // Internaly build the HTML representation of the next batch thanks to the previously given blueprint
+ * await gridManager.bakeNextHTMLBatch()
+ * 
+ * // Appends that previously baked HTML inside the DOM as children of the parent
  * await gridManager.insertNewChunk()
  * 
+ * //...
+ * 
+ * // Prepare for the next batch and imminent infinite rendering
+ * await gridManager.bakeNextHTMLBatch(),
+ *
  * // Initializes the infinite rendering that happens on scroll
  * gridManager.initInfiniteLoading()
  */
@@ -143,9 +154,8 @@ export class CollectionManager {
     everyElementsHaveBeenInsertedInTheDOM = () => (
         this.bakedChildren.length === 0 &&
         this.bakedBatchIndex > 0 
-        && this.totalNumberOfChildrenInsertedInTheDOM >= this.pages.length
+        && this.bakedBatchIndex * this.numberOfElementsPerBatch >= this.pages.length
     )
-    // everyElementsHaveBeenInsertedInTheDOM = () => (this.batchesFetchedCount * this.numberOfElementsPerBatch >= this.children.length)
 
     /**
      * Susceptible to be overriden by a more specialized Collection instance
@@ -180,7 +190,7 @@ export class CollectionManager {
             this.bakedBatchIndex * this.numberOfElementsPerBatch,
             (this.bakedBatchIndex + 1) * this.numberOfElementsPerBatch);
 
-        const HTMLBatch = [];
+        let HTMLBatch = [];
 
         for (const page of pagesBatch) {
             const child = await this.pageToChild(page)
@@ -192,8 +202,8 @@ export class CollectionManager {
             }
         }
 
+        this.bakedBatchIndex++;
         if (HTMLBatch.length !== 0) {
-            this.bakedBatchIndex++;
             this.bakedChildren.push(HTMLBatch)
         }
 
@@ -203,7 +213,9 @@ export class CollectionManager {
     initInfiniteLoading() {
         if (this.everyElementsHaveBeenInsertedInTheDOM()) return
 
-        const lastChild = this.parent.querySelector(`${this.childTag}:last-of-type`);
+        const lastChild = this.totalNumberOfChildrenInsertedInTheDOM > 0
+            ? this.parent.querySelector(`${this.childTag}:last-of-type`)
+            : this.collection
         this.logger?.log({ lastChild })
         if (lastChild) {
             this.childObserver.observe(lastChild)
@@ -228,7 +240,7 @@ export class CollectionManager {
     async insertNewChunk() {
         // Like a queue, we retrieve the first batch of children that has been baked
         const bakedChildrenChunk = this.bakedChildren.shift()
-        if (bakedChildrenChunk.length === 0) return;
+        if (!bakedChildrenChunk || bakedChildrenChunk.length === 0) return;
 
         const actualChunkToInsert = bakedChildrenChunk.reduce((acc, cur) => {
             if (typeof cur === "string") {
@@ -318,13 +330,10 @@ export class CollectionManager {
                 this.bakeNextHTMLBatch(),
             ])
 
-            this.logger.logPerf("Appending new children at the end of the grid + loading next batch")
+            this.logger.logPerf(`Appending new children at the end of the grid + loading next batch ${this.bakedBatchIndex}`)
 
-            if (this.totalNumberOfChildrenInsertedInTheDOM < this.pages.length) {
-                this.logger?.log(`Estimated batch to load next: ${this.bakedBatchIndex * this.numberOfElementsPerBatch}`)
-                const lastChild = this.parent.querySelector(`${this.childTag}:last-of-type`)
-                this.childObserver.observe(lastChild)
-            }
+            this.logger?.log(`Estimated batch to load next: ${this.bakedBatchIndex * this.numberOfElementsPerBatch}`)
+            this.initInfiniteLoading()
         });
     }
 

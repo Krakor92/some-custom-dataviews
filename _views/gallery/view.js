@@ -38,7 +38,18 @@ const MODULE_PATH = "_js/Krakor.mjs"
 const GLOBAL_DISABLE = ""
 
 // How many pages do you want to render at first and each time you reach the end of the grid
-const NB_FILE_BATCH_PER_PAGE = 20
+const NUMBER_OF_FILE_BATCH_PER_PAGE = 20
+
+// Replace it with a number if you desire your mix to be predictable with a given set of tracks
+const RANDOM_SEED = null
+
+/**
+ * Since we query files using dv api, the "natural" order in which files are indexed and thus retrieved vary upon devices.
+ * Hence, if we want a uniform order across all synced devices when using the random seed, we must do an additional sort to begin with
+ *
+ * Set to false if you don't care about the above
+ */
+const UNIFORM_ORDER_WITH_RANDOM_SEED_ON_ALL_DEVICES = true
 
 /** @type {'auto' | 'top' | 'center' | 'bottom'} */
 const ARTICLE_ALIGN = 'center'
@@ -58,7 +69,6 @@ export async function main(env, {
     sort,
     disable = "",
     debug = false,
-    clear = false,
 } = {}) {
 
 // #region JS Engine setup
@@ -66,22 +76,24 @@ const { app, engine, component, container, context, obsidian } = env.globals
 // We retrieve the dv api object
 const dv = engine.getPlugin('dataview')?.api
 
-
-
 disable = GLOBAL_DISABLE + ' ' + disable
 
 const module = await engine.importJs(MODULE_PATH)
 
 await module.setupView({
-    app, engine, context, component, container, module,
+    app, component, container, module,
     viewName: 'gallery',
     render: renderView,
     disable,
     debug,
 })
 
-// It's an empty string when used inside a canvas card
+ /**
+ * It's an empty string when used inside a canvas card
+ * @type {string}
+ */
 const currentFilePath = context.file?.path ?? ''
+
 // #endregion
 
 async function renderView({ vm, logger }) {
@@ -129,33 +141,52 @@ const orphanage = new module.Orphanage({
 
 const orphanPages = vm.disableSet.has("orphans")
     ? []
-    : orphanage.raise(dv.page(currentFilePath)?.[ORPHANS_FIELD])
+    : orphanage.raise({
+        data: dv.page(currentFilePath)?.[ORPHANS_FIELD],
+        context: {
+            currentFilePath,
+            disguiseAs: filter?.current,
+        }
+    })
 
+logger.log({ orphanPages })
 
 //#region Query the pages based on filters
 
 const pageManager = new module.PageManager({
     utils: { normalizeLinksPath, valueToDateTime, isEmpty, isObject, shuffleArray },
-    dv, logger, currentFilePath,
+    dv, logger, orphanage, currentFilePath,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
+    seed: RANDOM_SEED,
 })
+
+logger?.logPerf("Everything before querying pages")
+
 
 const qs = new module.Query({ utils: { isObject }, dv, logger })
 
-let queriedPages = []
-
+let pages = []
 if (!vm.disableSet.has("query")) {
-    queriedPages = await pageManager.buildAndRunFileQuery({ filter, qs })
-    logger.log({ queriedPages })
+    pages = await pageManager.buildAndRunFileQuery({ filter, qs, initialSubset: orphanPages })
+    logger.log({ queriedPages: pages })
+} else {
+    pages = orphanPages
 }
 
-const pages = [...queriedPages, ...orphanPages]
+if (!pages.length) {
+    logger?.warn("No pages queried...")
+    return
+}
+
 
 //#endregion
 
-await pageManager.sortPages({ pages, sort })
+const extraSortOptions = {
+    standardizeOrder: UNIFORM_ORDER_WITH_RANDOM_SEED_ON_ALL_DEVICES
+}
 
+await pageManager.sortPages({ pages, sort, options: extraSortOptions })
 
 const Renderer = new module.Renderer({
     utils: { clamp, uriRegex, isObject, linkExists },
@@ -238,7 +269,7 @@ const gridManager = module.CollectionManager.makeGridManager({
     pages,
     pageToChild,
     logger, icons,
-    numberOfElementsPerBatch: NB_FILE_BATCH_PER_PAGE,
+    numberOfElementsPerBatch: NUMBER_OF_FILE_BATCH_PER_PAGE,
     disableSet: vm.disableSet,
 })
 

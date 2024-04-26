@@ -27,7 +27,7 @@ export class Orphanage {
 
         // Needed to disguise orphans as real ScoreFile (mock Link to TFile)
         for (const o of orphans) {
-            // If thumbnail includes a '/', that means it's an url
+            // If thumbnail includes a '/', that means it's an url so we don't have to alter it
             if (o[this.thumbnailProp] && !o[this.thumbnailProp].includes("/")) {
                 o[this.thumbnailProp] = {
                     path: `${this.thumbnailDirectory}/${o[this.thumbnailProp].replace(/\[|\]/g, '')}`

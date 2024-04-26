@@ -10,6 +10,9 @@
 
 //#region Settings
 
+// The path where the main module is
+const MODULE_PATH = "_js/Krakor.mjs"
+
 /** The first value is the name of your field, the second value is its type: right now only 'date' and 'link' are available */
 const USER_FIELDS = new Map()
     .set('added', 'date')
@@ -35,9 +38,6 @@ const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
 
 // Only used by the orphan system
 const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
-
-// The path where the main module is
-const MODULE_PATH = "_js/Krakor.mjs"
 
 // You can add any disable values here to globally disable them in every view
 const GLOBAL_DISABLE = ""
@@ -66,8 +66,8 @@ const RANDOM_SEED = null
 
 /**
  * Since we query files using dv api, the "natural" order in which files are indexed and thus retrieved vary upon devices.
- * Hence, if we want a uniform order when using the random seed, we must do an additional sort to begin with so we can have a predictable output
- * 
+ * Hence, if we want a uniform order across all synced devices when using the random seed, we must do an additional sort to begin with
+ *
  * Set to false if you don't care about the above
  */
 const UNIFORM_ORDER_WITH_RANDOM_SEED_ON_ALL_DEVICES = true
@@ -123,7 +123,7 @@ await module.setupView({
     render: renderView,
     disable,
     debug,
- })
+})
 
  /**
  * It's an empty string when used inside a canvas card
@@ -286,8 +286,6 @@ customFields.set('audioOnly', async (qs) => {
     })
 })
 
-const qs = new module.Query({ utils: { isObject }, dv, logger })
-
 const orphanage = new module.Orphanage({
     utils: { normalizeArrayOfObjectField },
     directory: DEFAULT_SCORE_DIRECTORY,
@@ -318,11 +316,14 @@ const pageManager = new module.PageManager({
 
 logger?.logPerf("Everything before querying pages")
 
+const qs = new module.Query({ utils: { isObject }, dv, logger })
 
 let pages = []
 if (!vm.disableSet.has("query")) {
     pages = await pageManager.buildAndRunFileQuery({filter, qs, initialSubset: orphanPages})
     logger.log({ queriedPages: pages })
+} else {
+    pages = orphanPages
 }
 
 if (!pages.length) {
@@ -422,7 +423,7 @@ const pageToChild = async (p) => {
 
     if (p[URL_FIELD]) {
         let url = (FORCE_CLASSIC_YOUTUBE_URL && ytVideo) ? module.YouTubeManager?.buildYouTubeUrlFromId(ytVideo.id) : p[URL_FIELD]
-        
+
         if (ytVideo?.t) {
             url += `&t=${ytVideo.t}`
         }
