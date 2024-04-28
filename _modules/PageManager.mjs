@@ -73,13 +73,10 @@ export class PageManager {
         this.queryDefaultFilterFunctionsMap = this.#buildDefaultQueryFilterFunctionMap()
         this.userFields = userFields ?? new Map()
 
-        /** @type {string[]} */
-        this.dateUserFields = Array.from(this.userFields).reduce((acc, [field, type]) => {
-            if (type === "date") {
-                acc.push(field)
-            }
-            return acc
-        }, [])
+        /**
+         * @type {Map<string, string[]>}
+         */
+        this.invertedUserFields = utils.buildInvertedMap(this.userFields)
 
         // Draft for special sort functions just like filters above
         this.querySortFunctionsMap = new Map()
@@ -239,12 +236,17 @@ export class PageManager {
                 const temporaryQueryService = new qs.constructor({ dv: this.dv, logger: this.logger })
 
                 const results = value.map((v) => {
-                    temporaryQueryService.from(qs._source)
+                    let pages = []
+
+                    temporaryQueryService.setPages(qs._pages)
                     linkFilterFunction(temporaryQueryService, field, v)
-                    return [...temporaryQueryService._pages]
+                    pages = [...pages, ...temporaryQueryService._pages]
+
+                    return pages;
                 })
 
-                const resolvedPages = qs.constructor.innerJoinPages(qs._pages, qs.constructor.joinPages(...results))
+                const outerPages = qs.constructor.joinPages(...results)
+                const resolvedPages = qs.constructor.innerJoinPages(qs._pages, outerPages)
                 qs.setPages(resolvedPages)
             } else {
                 linkFilterFunction(qs, field, value)
@@ -413,7 +415,7 @@ export class PageManager {
         const lowerCaseField = field.toLowerCase()
 
         // try date field
-        const actualField = this.dateUserFields.find(dateField => dateField.toLowerCase() === lowerCaseField)
+        const actualField = this.invertedUserFields.get('date').find(dateField => dateField.toLowerCase() === lowerCaseField)
         if (actualField) {
             this.queryDefaultSortFunctionsMap.get("date")(pages, actualField, sortOrder)
             return true
@@ -445,10 +447,14 @@ export class PageManager {
         }
 
         if (sort?.manual) {
-            const rawSortingPages = this.dv.page(this.currentFilePath)[sort.manual]
+            let rawSortingPages = this.dv.page(this.currentFilePath)[sort.manual]
             if (!rawSortingPages) {
                 console.warn(`${sort.manual} property could not be found in your file`)
                 return pages
+            }
+
+            if (!Array.isArray(rawSortingPages)) {
+                rawSortingPages = [rawSortingPages]
             }
 
             const sortingPages = await this.utils.normalizeLinksPath(rawSortingPages, this.orphanage.directory)

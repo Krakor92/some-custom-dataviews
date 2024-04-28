@@ -13,7 +13,7 @@ The views were originally used inside `dataviewjs` code blocks (hence the name o
 
 Here is an explanation of the top level folders/files:
 
-- `_modules/` contains bunch of js scripts used by these views internally
+- `_modules/` contains bunch of javascript files used by these views internally
 
 - `_views/` contains my collection of views. Each folder inside this folder contains the following files
 	- `README.md` to explain how to use the view
@@ -32,9 +32,9 @@ Here is an explanation of the top level folders/files:
 
 ## Dependencies
 
-All this views depend on the following plugins:
+All these views depend on the following plugins:
 
 - [`JS Engine`](https://github.com/mProjectsCode/obsidian-js-engine-plugin) - for its neat code blocks, which can be reactive when needed. It also has a solid import system, on par with the Modules plugin, and without the inconvenience of having to install yet another plugin just for this purpose.
 
-- [`Dataview`](https://github.com/blacksmithgu/obsidian-dataview) - for its (still) unmatched API
+- [`Dataview`](https://github.com/blacksmithgu/obsidian-dataview) - for its (still) unmatched file querying API
 

@@ -56,6 +56,21 @@ export const scrollToElement = (target) => {
 
 //#region Javascript
 
+/**
+ * @param {Map<any, string|number>} map
+ */
+export const buildInvertedMap = (map) => {
+    const invertedMap = new Map();
+    for (const [key, value] of map) {
+        if (invertedMap.has(value)) {
+            invertedMap.get(value).push(key);
+        } else {
+            invertedMap.set(value, [key]);
+        }
+    }
+    return invertedMap
+}
+
 // Clamp number between two values with the following line:
 export const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
 
@@ -314,11 +329,10 @@ export const getOS = (app) => {
  */
 export const isValidPropertyValue = (value) => {
     if (
-        value === undefined
-        || value === null
+        value == null
         || (typeof value === "object" && Object.entries(value).length === 0)
         || (Array.isArray(value) && value.every(cell => {
-            return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
+            return cell == null || (typeof cell === "string" && cell.trim() === "")
         }))
         || (typeof value === "string" && value.trim() === "")
     ) {
@@ -329,7 +343,7 @@ export const isValidPropertyValue = (value) => {
 }
 
 /**
- * @param {import('./view').Link} link
+ * @param {import('../_views').Link} link
  */
 export const linkExists = async (link) => {
     if (!isObject(link)) return false

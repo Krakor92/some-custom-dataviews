@@ -49,7 +49,7 @@ export class Renderer {
     #resolveVaultImageStyle(thumb) {
         let display = thumb.display
 
-        if (display === undefined) return null
+        if (display == null) return null
 
         const firstPipeId = display.indexOf("|")
         if (firstPipeId !== -1) {

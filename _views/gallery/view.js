@@ -100,6 +100,7 @@ async function renderView({ vm, logger }) {
 
 /** We extract all the utils functions that we'll need later on */
 const {
+    buildInvertedMap,
     clamp,
     convertDurationToTimecode,
     convertTimecodeToDuration,
@@ -154,7 +155,7 @@ logger.log({ orphanPages })
 //#region Query the pages based on filters
 
 const pageManager = new module.PageManager({
-    utils: { normalizeLinksPath, valueToDateTime, isEmpty, isObject, shuffleArray },
+    utils: { normalizeLinksPath, valueToDateTime, isEmpty, isObject, shuffleArray, buildInvertedMap },
     dv, logger, orphanage, currentFilePath,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,

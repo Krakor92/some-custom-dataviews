@@ -1,3 +1,8 @@
+/**
+ * The sole responsability of this class is to take a string representation of a file and to mock it as a real TFile
+ *
+ * With simpler words, it is used to mimic a file (with its properties) using properties of another file
+ */
 export class Orphanage {
     /**
      * @param {Utils} _.utils
@@ -36,7 +41,7 @@ export class Orphanage {
 
             if (context.disguiseAs) {
                 o[context.disguiseAs] = {
-                    path: context.currentFilePath
+                    path: context.fromFileOfPath
                 }
             }
 

@@ -1182,6 +1182,11 @@ export class Masonry {
     }
 }
 
+/**
+ * The sole responsability of this class is to take a string representation of a file and to mock it as a real TFile
+ *
+ * With simpler words, it is used to mimic a file (with its properties) using properties of another file
+ */
 export class Orphanage {
     /**
      * @param {Utils} _.utils
@@ -1220,7 +1225,7 @@ export class Orphanage {
 
             if (context.disguiseAs) {
                 o[context.disguiseAs] = {
-                    path: context.currentFilePath
+                    path: context.fromFileOfPath
                 }
             }
 
@@ -1309,13 +1314,10 @@ export class PageManager {
         this.queryDefaultFilterFunctionsMap = this.#buildDefaultQueryFilterFunctionMap()
         this.userFields = userFields ?? new Map()
 
-        /** @type {string[]} */
-        this.dateUserFields = Array.from(this.userFields).reduce((acc, [field, type]) => {
-            if (type === "date") {
-                acc.push(field)
-            }
-            return acc
-        }, [])
+        /**
+         * @type {Map<string, string[]>}
+         */
+        this.invertedUserFields = utils.buildInvertedMap(this.userFields)
 
         // Draft for special sort functions just like filters above
         this.querySortFunctionsMap = new Map()
@@ -1475,12 +1477,17 @@ export class PageManager {
                 const temporaryQueryService = new qs.constructor({ dv: this.dv, logger: this.logger })
 
                 const results = value.map((v) => {
-                    temporaryQueryService.from(qs._source)
+                    let pages = []
+
+                    temporaryQueryService.setPages(qs._pages)
                     linkFilterFunction(temporaryQueryService, field, v)
-                    return [...temporaryQueryService._pages]
+                    pages = [...pages, ...temporaryQueryService._pages]
+
+                    return pages;
                 })
 
-                const resolvedPages = qs.constructor.innerJoinPages(qs._pages, qs.constructor.joinPages(...results))
+                const outerPages = qs.constructor.joinPages(...results)
+                const resolvedPages = qs.constructor.innerJoinPages(qs._pages, outerPages)
                 qs.setPages(resolvedPages)
             } else {
                 linkFilterFunction(qs, field, value)
@@ -1649,7 +1656,7 @@ export class PageManager {
         const lowerCaseField = field.toLowerCase()
 
         // try date field
-        const actualField = this.dateUserFields.find(dateField => dateField.toLowerCase() === lowerCaseField)
+        const actualField = this.invertedUserFields.get('date').find(dateField => dateField.toLowerCase() === lowerCaseField)
         if (actualField) {
             this.queryDefaultSortFunctionsMap.get("date")(pages, actualField, sortOrder)
             return true
@@ -1681,10 +1688,14 @@ export class PageManager {
         }
 
         if (sort?.manual) {
-            const rawSortingPages = this.dv.page(this.currentFilePath)[sort.manual]
+            let rawSortingPages = this.dv.page(this.currentFilePath)[sort.manual]
             if (!rawSortingPages) {
                 console.warn(`${sort.manual} property could not be found in your file`)
                 return pages
+            }
+
+            if (!Array.isArray(rawSortingPages)) {
+                rawSortingPages = [rawSortingPages]
             }
 
             const sortingPages = await this.utils.normalizeLinksPath(rawSortingPages, this.orphanage.directory)
@@ -1741,7 +1752,6 @@ export class Query {
         this.utils = utils
         this.logger = logger
         this._pages = null
-        this._source = ''
     }
 
     _warningMsg = "You forgot to call from or pages before calling this"
@@ -1764,7 +1774,7 @@ export class Query {
             }
 
             values.forEach(page => {
-                const path = page.file.link.path
+                const path = page.file.link?.path ?? page.file.path
 
                 if (!pagesEncounteredMap.has(path)) {
                     return pagesEncounteredMap.set(path, {
@@ -1808,8 +1818,9 @@ export class Query {
         const result = [];
         const set = new Set();
         for (const page of joinedArray) {
-            if (!set.has(page.file.link.path)) {
-                set.add(page.file.link.path);
+            const pagePath = page.file.link?.path ?? page.file.path
+            if (!set.has(pagePath)) {
+                set.add(pagePath);
                 result.push({ ...page });
             }
         }
@@ -1829,7 +1840,6 @@ export class Query {
     from(source, keepCurrentPages = false) {
         const newPages = this.dv.pages(source)
         this._pages = keepCurrentPages ? [...this._pages, ...newPages] : newPages
-        this._source = source
         return this
     }
 
@@ -1967,7 +1977,7 @@ export class Query {
         this._pages = this._pages.filter((p) => {
             // to support naïve orphans
             if (!p.file.etags) {
-                return p.tags.includes(tag[0] === '#' ? tag.slice(1) : tag)
+                return p.tags?.includes(tag[0] === '#' ? tag.slice(1) : tag)
             }
             return p.file.etags?.includes(tag)
         })
@@ -2608,7 +2618,7 @@ export class Renderer {
     #resolveVaultImageStyle(thumb) {
         let display = thumb.display
 
-        if (display === undefined) return null
+        if (display == null) return null
 
         const firstPipeId = display.indexOf("|")
         if (firstPipeId !== -1) {
@@ -3094,6 +3104,21 @@ export const scrollToElement = (target) => {
 
 //#region Javascript
 
+/**
+ * @param {Map<any, string|number>} map
+ */
+export const buildInvertedMap = (map) => {
+    const invertedMap = new Map();
+    for (const [key, value] of map) {
+        if (invertedMap.has(value)) {
+            invertedMap.get(value).push(key);
+        } else {
+            invertedMap.set(value, [key]);
+        }
+    }
+    return invertedMap
+}
+
 // Clamp number between two values with the following line:
 export const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
 
@@ -3338,33 +3363,6 @@ export const getOS = (app) => {
 }
 
 /**
- * @link https://discordapp.com/channels/686053708261228577/1014259487445622855/1075431299134787697 (just brilliant)
- * @param {object} _
- * @param {*} _.dv
- * @param {string} _.path
- * @param {HTMLElement} _.container
- */
-export const inject = async ({dv, container, obsidian, component, path}) => {
-    const head = dv.page(path);
-
-    console.log({dv})
-    console.log({head})
-
-    const headload = await dv.io.load(head.file.path);
-    const fragment = document.createDocumentFragment();
-    const el = fragment.createEl("p");
-    const mark = createEl("inject-mark");
-
-    await obsidian.MarkdownRenderer.renderMarkdown(headload, el, app.workspace.lastActiveFile.path, component);
-
-    container.replaceChildren(mark);
-    /* replace the surrounding element a frame later */
-    requestAnimationFrame(() => {
-        mark.parentElement.replaceWith(...el.children);
-    });
-}
-
-/**
  * Check if a given value is a valid property value.
  * The function accept everything except:
  * - Empty object
@@ -3379,11 +3377,10 @@ export const inject = async ({dv, container, obsidian, component, path}) => {
  */
 export const isValidPropertyValue = (value) => {
     if (
-        value === undefined
-        || value === null
+        value == null
         || (typeof value === "object" && Object.entries(value).length === 0)
         || (Array.isArray(value) && value.every(cell => {
-            return cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
+            return cell == null || (typeof cell === "string" && cell.trim() === "")
         }))
         || (typeof value === "string" && value.trim() === "")
     ) {
@@ -3394,7 +3391,7 @@ export const isValidPropertyValue = (value) => {
 }
 
 /**
- * @param {import('./view').Link} link
+ * @param {import('./_views').Link} link
  */
 export const linkExists = async (link) => {
     if (!isObject(link)) return false

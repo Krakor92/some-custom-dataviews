@@ -83,7 +83,7 @@ Here are the overarching principles of how this view works:
 > [!CAUTION]
 > Despite all the points raised above, there are a number of warnings to bear in mind. Here they are listed in descending order of inconvenience (in my opinion):
 
-### due to external factors
+### Due to external factors
 
 - The **audio player** user experience on *Android* is not reliable 😞:
 	- Some (if not most) audio files don't load at all (i've opened an [issue on Obsidian Forums](https://forum.obsidian.md/t/bug-audio-files-fail-to-load-randomly-on-android/49684) about it):
@@ -99,7 +99,7 @@ Here are the overarching principles of how this view works:
 > [!TIP]
 > [Opening in a new window](https://help.obsidian.md/User+interface/Pop-out+windows) the page where this view runs can help.
 > As it stands in a completely different window, I imagine it forces Obsidian to ignore it when optimizing ressources for the main workspace
-> 
+>
 > Though, note that pop-out windows tend to disrupt the masonry implementation of this view.
 
 - This view isn't super resilient to **bad or inconsistent metadata**. If you have a property that doesn't have the same type everywhere, it might break this view when filtering on it.
@@ -118,7 +118,7 @@ Here are the overarching principles of how this view works:
 > In such a case, simply close and re-open the file, everything should work like intended
 
 
-### by design
+### By design
 
 - The url links support has been built with **YouTube links** in mind:
 	- You can still add any other web links to your markdown music file (soundcloud, dailymotion, ...) but you will not benefit from the YouTube auto playlist feature while doing so
@@ -270,9 +270,9 @@ As stated earlier, each music file can have a variety of metadata. Right now, th
 
 > [!IMPORTANT]
 > **If you have doubt on where to define each file's metadata, read the following:**
-> 
+>
 >You can define your metadata either in the *yaml frontmatter* or as *dataview inline fields* in your file. This means that both `field: value` (inside frontmatter) and `field:: value` are perfectly valid and understood in the context of this view
-> 
+>
 >Prior to Obsidian 1.4.x, it was necessary to use inline notation for file links, as they were not recognized by Obsidian when placed in the frontmatter.
 >Now that this problem no longer exists, I encourage everyone to **put everything in the frontmatter** and, if necessary, use [Meta Bind](https://github.com/mProjectsCode/obsidian-meta-bind-plugin) to interact with the property inside the body of the file.
 >  
@@ -315,7 +315,7 @@ Here are **some precisions** and special effects to keep in mind while using som
 
 If you are embedding your image in your `thumbnail` property like so: `thumbnail:: ![400](...)` then this view will interpret the 400 inside the square brackets as a 1 in this context so the image will be positioned at the bottom. To bypass this annoyance, you could add a `0.5` on the left like so: `thumbnail:: ![0.5|400](...)`: You'll keep the 400px size for your embed and the thumbnail will be centered accordingly
 
-Note: The exact same method and workaround can be used for the wikilinks syntax (`thumbnail:: ![[my-image.jpg|0.5|400]]`) 
+Note: The exact same method and workaround can be used for the wikilinks syntax (`thumbnail:: ![[my-image.jpg|0.5|400]]`)
 
 The file:/// URI scheme is recognized by this view, this means that you can set an image from outside your vault as a thumbnail since Obsidian accept it.
 	- Both `file:///link/to/thumbnail.jpg` and `[alt](file:///link/to/thumbnail.jpg)` are valid
@@ -359,9 +359,6 @@ orphans:: {"title": "Lacrimosa", "url": "https://youtu.be/k1-TrAvp_xs"}
 
 are identical **in the context of this view**. However, for the sake of durability/future-proofing, I recommend that you write them in the frontmatter format.
 
-You can add any fields you want in the orphan definition, but there is one important thing to keep in mind: **Orphans are only accessible in the file in which they are defined** (This may change in the future)
-
-
 PS: If you prefer the yaml block style in the frontmatter, you can use the following instead of the json based syntax shown above
 
 ~~~
@@ -383,6 +380,39 @@ orphans:
 > The indentation on the left must be made of spaces (your yaml won't be recognized if you use tabs there)
 
 
+***NEW***
+
+This view now (*almost*) treats orphans like normal files. There are three contexts in which orphans can be found:
+
+- File Orphans
+- Source Orphans
+- Inferred Orphans
+
+
+**File orphans** are defined in the file where the code block is written and executed. Originally, this was the only way orphans were treated and made available.
+
+    Disabling: You can specifically disable file orphans with the `fileOrphans` value.
+
+
+**Source orphans** are introduced with the new `source` view parameter. This parameter must be an array of valid dataview sources. Note that it does not consolidate duplicates, so if the sources overlap, the files in question will appear multiple times in the view.
+
+    Disabling: You can specifically disable source orphans with the `sourceOrphans` value.
+
+
+**Inferred orphans** are automatically added when querying a specific file using a filter: `{prop: "[[File]]"}`. The property in question must be defined in the `USER_FIELDS` variable located at the top of `view.js`.
+
+    Disabling: You can specifically disable inferred orphans with the `inferredOrphans` value.
+
+> [!IMPORTANT]
+> Previously, when a view was written in a specific file, all orphans defined in that file appeared in the results regardless of the query. This behavior has changed and cannot be reverted.
+>
+> For example, if you have a file aggregating all rock songs and want to add orphans to it, you must tag each orphan to match your specific query.
+>
+> While this might seem like a step backward, it is necessary for proper querying of source orphans.
+>
+> Since this view cannot easily reconcile orphans with their defining file when using the source parameter, you must be exhaustive and verbose when defining orphan metadata, treating it as if it were a real file.
+
+
 #### User Metadata
 
 Besides these 7 fields, you can also use your own. By default they'll be treated as strings fields but if you wish to, you can specify to the view what their types is.
@@ -391,7 +421,7 @@ Right now, there is only two custom types available: `link` and `date`.
 
 > [!TIP]
 > To tell the view that one of your field is a link or date, you must go to the global options of the `view.js`. You'll see a variable named `USER_FIELDS` with several call to the `.set()` method below.
-> 
+>
 > To specify your own field, simply duplicate one line and change the first string with the name of your field and the second string with its type
 
 
@@ -412,9 +442,9 @@ For more explanation, look inside `view.js` directly
 
 > [!WARNING]
 > From experience, I often have problems with this button.
-> 
+>
 > On mobile, it sometimes doesn't create the playlist on first press. In that case, I usually close the video, come back to this view and press the button again to make it work. It's a bit tedious, but I've gotten used to it.
-> 
+>
 > When I use it on desktop, it works but I have to go to the open tab once for YouTube to trigger its playlist behavior. As above, I can't solve this problem but it's not really a problem since it takes 3 seconds to work around it.
 
 #### The `+` button
@@ -540,10 +570,10 @@ It has several benefits compared to the first one:
 
 - It's less error-prone
 - It won't break the view if you decide to rename the file in which it is located
-- `orphans` defined in the file will inherit the current prop your filtering on and will appear like the other queried musics 
+- `orphans` defined in the file will inherit the current property you are filtering on and will appear like the other queried items. Note that this feature does not apply in the context of source querying
 
 
-##### The `not` filter property  
+##### The `not` filter property
 
 Let's say you have a `voice` property that is a string. It can be any equal to any of the following: yes, no or chorus
 
@@ -582,7 +612,7 @@ Instead of passing an object to `filter` or `sort` properties, you can actually 
 
 - The function passed to `filter` takes a `qs` property as its single parameter. This variable is an instance of the `Query`  class defined in the `Krakor.mjs` file. You'll need to call `qs.from` or specify some pages to filter on with `qs.pages()` first to use the query service correctly. You can take a look at the class to see every methods that are already implemented and call them accordingly to your needs
 
-- The function passed to `sort` takes a file `a` and a file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering 
+- The function passed to `sort` takes a file `a` and a file `b`. You must return an integer at the end of your function just like with a regular sort function in js to determine the ordering
 
 Example:
 

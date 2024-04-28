@@ -13,7 +13,6 @@ export class Query {
         this.utils = utils
         this.logger = logger
         this._pages = null
-        this._source = ''
     }
 
     _warningMsg = "You forgot to call from or pages before calling this"
@@ -36,7 +35,7 @@ export class Query {
             }
 
             values.forEach(page => {
-                const path = page.file.link.path
+                const path = page.file.link?.path ?? page.file.path
 
                 if (!pagesEncounteredMap.has(path)) {
                     return pagesEncounteredMap.set(path, {
@@ -80,8 +79,9 @@ export class Query {
         const result = [];
         const set = new Set();
         for (const page of joinedArray) {
-            if (!set.has(page.file.link.path)) {
-                set.add(page.file.link.path);
+            const pagePath = page.file.link?.path ?? page.file.path
+            if (!set.has(pagePath)) {
+                set.add(pagePath);
                 result.push({ ...page });
             }
         }
@@ -101,7 +101,6 @@ export class Query {
     from(source, keepCurrentPages = false) {
         const newPages = this.dv.pages(source)
         this._pages = keepCurrentPages ? [...this._pages, ...newPages] : newPages
-        this._source = source
         return this
     }
 
@@ -239,7 +238,7 @@ export class Query {
         this._pages = this._pages.filter((p) => {
             // to support naïve orphans
             if (!p.file.etags) {
-                return p.tags.includes(tag[0] === '#' ? tag.slice(1) : tag)
+                return p.tags?.includes(tag[0] === '#' ? tag.slice(1) : tag)
             }
             return p.file.etags?.includes(tag)
         })

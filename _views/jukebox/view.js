@@ -17,9 +17,20 @@ const MODULE_PATH = "_js/Krakor.mjs"
 const USER_FIELDS = new Map()
     .set('added', 'date')
     .set('release', 'date')
+    .set('links', 'link')
     .set('from', 'link')
     .set('in', 'link')
     .set('artist', 'link')
+
+
+/**
+ * It is useful when trying to infer the file type in which an orphan is defined.
+ * It's very naïve and only supports #tag and path for now.
+ */
+const ORPHANS_INFERRANCE_RULES = {
+    artist: ['#🎙', 'DB/👥'],
+    in: ['DB/📺'],
+}
 
 // These are special fields that have special effects in this view. You can rename them to match your own fields if you wish
 const TITLE_FIELD = "title"
@@ -38,6 +49,16 @@ const DEFAULT_SCORE_DIRECTORY = "DB/🎼"
 
 // Only used by the orphan system
 const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
+
+/**
+ * If not empty, each strings in this array will be considered a potential source of orphans.
+ * They must be valid [dataview sources](https://blacksmithgu.github.io/obsidian-dataview/reference/sources)
+ * 
+ * Keep in mind that each string added, means one more call to `dv.pages`, which can be a rather costly operation
+ * 
+ * @type {Array<string>}
+ */
+const DEFAULT_ORPHAN_SOURCES = []
 
 // You can add any disable values here to globally disable them in every view
 const GLOBAL_DISABLE = ""
@@ -104,6 +125,7 @@ const MASONRY_LAYOUT = true
 export async function main(env, {
     filter,
     sort,
+    source: orphanSources = [],
     disable = "",
     debug = false,
 } = {}) {
@@ -137,6 +159,7 @@ async function renderView({ vm, logger }) {
 
 /** We extract all the utils functions that we'll need later on */
 const {
+    buildInvertedMap,
     clamp,
     convertDurationToTimecode,
     convertTimecodeToDuration,
@@ -286,35 +309,158 @@ customFields.set('audioOnly', async (qs) => {
     })
 })
 
+logger?.logPerf("View setup")
+
 const orphanage = new module.Orphanage({
     utils: { normalizeArrayOfObjectField },
     directory: DEFAULT_SCORE_DIRECTORY,
     thumbnailDirectory: DEFAULT_THUMBNAIL_DIRECTORY,
 })
 
-const orphanPages = vm.disableSet.has("orphans")
-    ? []
-    : orphanage.raise({
-        data: dv.page(currentFilePath)?.[ORPHANS_FIELD],
-        context: {
-            currentFilePath,
-            disguiseAs: filter?.current,
+/**
+ * Dirty implementation because I'm too lazy to write a proper one for now
+ *
+ * @param {object} _
+ * @param {object} _.inferredRules
+ * @param {object} _.page
+ * @returns {string}
+ */
+const tryToInferFileType = ({inferredRules, page}) => {
+    for (const field in inferredRules) {
+        const rules = inferredRules[field]
+        for (const rule of rules) {
+            if (typeof rule !== 'string') continue;
+            if (rule[0] === "#") {
+                const tag = rule.slice(1)
+                if (tag === page.tags || page.tags?.includes(tag)) return field
+                continue;
+            }
+            if (page.file.folder === rule) return field
         }
-    })
+    }
+    return null
+}
 
-logger.log({ orphanPages })
+/**
+ * @returns {import('../index').TFile[]}
+ */
+const computeOrphans = () => {
+    let orphanPages = []
 
+    if (!vm.disableSet.has("sourceorphans") && (orphanSources || !isEmpty(DEFAULT_ORPHAN_SOURCES))) {
+        const orphanSourcesSet = [...new Set([...orphanSources, ...DEFAULT_ORPHAN_SOURCES])]
+
+        let queriedOrphans = []
+
+        for (const source of orphanSourcesSet) {
+            // if (source[0] === '[') {
+            //     // naïve way of telling it is a filelink
+            //     const orphansFromSource = dv.page(source)?.[ORPHANS_FIELD]
+            //     if (orphansFromSource) {
+            //         queriedOrphans = [...queriedOrphans, ...orphansFromSource]
+            //     }
+            // } else {
+            // We expect it is a valid dataview source
+            const orphansFromSource = [...dv.pages(source).values].reduce((acc, cur) => {
+                if (Array.isArray(cur[ORPHANS_FIELD])) {
+                    const fileInferredType = tryToInferFileType({
+                        inferredRules: ORPHANS_INFERRANCE_RULES,
+                        page: cur,
+                    })
+
+                    const currentOrphans = orphanage.raise({
+                        data: cur[ORPHANS_FIELD],
+                        context: {
+                            fromFileOfPath: cur.file.path,
+                            disguiseAs: fileInferredType ?? "links",
+                        }
+                    })
+                    return [...acc, ...currentOrphans]
+                }
+                return acc;
+            }, [])
+            queriedOrphans = [...queriedOrphans, ...orphansFromSource]
+            // }
+        }
+
+        logger.log({ queriedOrphans })
+
+        orphanPages = [...orphanPages, ...queriedOrphans]
+
+        logger?.logPerf("Searching for orphans in sources")
+    }
+
+    if (!vm.disableSet.has("fileorphans")) {
+        const currentFileOrphans = orphanage.raise({
+            data: dv.page(currentFilePath)?.[ORPHANS_FIELD],
+            context: {
+                fromFileOfPath: currentFilePath,
+                disguiseAs: filter?.current,
+            }
+        })
+
+        logger.log({ currentFileOrphans })
+
+        orphanPages = [...orphanPages, ...currentFileOrphans]
+
+        logger?.logPerf("Handling current file orphans")
+    }
+
+    if (!vm.disableSet.has("inferredorphans")) {
+        const computeInferredOrphans = ({field, value}) => {
+            if (typeof value !== 'string') return []
+
+            const inLink = dv.parse(value) // transform [[value]] into a link
+            if (!isObject(inLink)) return []
+
+            const page = dv.page(inLink.path)
+            if (!page) return []
+
+            return orphanage.raise({
+                data: page[ORPHANS_FIELD],
+                context: {
+                    fromFileOfPath: page.file.path,
+                    disguiseAs: field,
+                }
+            })
+        }
+
+        for (const field in filter) {
+            if (USER_FIELDS.get(field) !== "link") continue
+
+            let inferredOrphans = []
+
+            if (Array.isArray(filter[field])) {
+                inferredOrphans = filter[field].reduce((acc, cur) => {
+                    return [...acc, ...computeInferredOrphans({ field, value: cur })]
+                }, [])
+            } else {
+                inferredOrphans = computeInferredOrphans({ field, value: filter[field] })
+            }
+
+            logger.log({ inferredOrphans })
+
+            orphanPages = [...orphanPages, ...inferredOrphans]
+
+            logger?.logPerf("Handling inferred orphans")
+        }
+    }
+
+    return orphanPages
+}
+
+const orphanPages = !vm.disableSet.has("orphans") 
+    ? computeOrphans()
+    : []
 
 const pageManager = new module.PageManager({
-    utils: { normalizeLinksPath, valueToDateTime, isEmpty, isObject, shuffleArray },
+    utils: { normalizeLinksPath, valueToDateTime, isEmpty, isObject, shuffleArray, buildInvertedMap },
     dv, logger, orphanage, currentFilePath,
     customFields,
     userFields: USER_FIELDS,
     defaultFrom: DEFAULT_FROM,
     seed: RANDOM_SEED,
 })
-
-logger?.logPerf("Everything before querying pages")
 
 const qs = new module.Query({ utils: { isObject }, dv, logger })
 

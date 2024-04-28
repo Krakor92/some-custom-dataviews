@@ -17,24 +17,10 @@ orphans:
       - "[[Memes]]"
 ---
 
-Contains every scenario supposed to be handled by this view. It is used for debugging purposes
+> Contains all the scenarios that are supposed to be managed by this view (now or in the future). I use it for debugging purposes and to make sure I don't introduce regression on new commits.
 
 
-```js-engine
-const path = `_js/_views/jukebox/view.js`
-const { main } = await engine.importJs(path)
-
-main({...this, path}, {
-	filter: {
-		misc: `[[Memes]]`
-	},
-	debug: true,
-})
-```
-
-
-
-> [!NOTE]- All - Every music in the vault sorted alphabetically (no extra settings)
+> [!NOTE]- All - Every music in the vault sorted alphabetically (vanilla/no settings)
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
 > const { main } = await engine.importJs(path)
@@ -43,6 +29,7 @@ main({...this, path}, {
 > ```
 
 
+- [-] 
 > [!NOTE]- <`Array`>
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -61,7 +48,7 @@ main({...this, path}, {
 
 ### Special fields
 
-- [-]  It doesn't work yet
+- [-] 
 > [!NOTE]- *filter*.<`Array`>
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -223,13 +210,13 @@ manual:: [[Falling Apart]]
 > main({...this, path}, {
 > 	filter: {
 > 		in: /Chrono/,
-> 	}
+> 	},
 > })
 > ```
 
 #### date
 
-- [x] 
+- [x] 80s musics only
 > [!NOTE]- *filter*.`release`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -298,7 +285,22 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
+### Lookups
 
+- [-]  Music from Japanese artist only
+> [!NOTE]- *filter*.`artist`.`country` 
+> ```js-engine
+> const path = `_js/_views/jukebox/view.js`
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	filter: {
+> 		artist: {
+> 			country: `🇯🇵`
+> 		},
+> 	},
+> })
+> ```
 
 ## Sort
 
@@ -395,7 +397,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 > })
 > ```
 
-- [!] not good with new orphan system 
+- [x] 
 > [!NOTE]- *disable*.`query`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -403,6 +405,17 @@ scores:: [[Mangrove Cove (Underwater)]]
 >
 > main({...this, path}, {
 > 	disable: "query"
+> })
+> ```
+
+- [x] 
+> [!NOTE]- *disable*.`orphans`
+> ```js-engine
+> const path = `_js/_views/jukebox/view.js`
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	disable: "orphans"
 > })
 > ```
 
