@@ -1,0 +1,10 @@
+{
+	"nodes":[
+		{"id":"47e3729f6a598732","type":"file","file":"_js/_views/jukebox/view.md","x":-508,"y":-318,"width":837,"height":1381},
+		{"id":"c8deb66fbf26a3ac","type":"text","text":" # CARD","x":745,"y":-407,"width":141,"height":50},
+		{"id":"e73f4bf89d10c369","type":"text","text":"## Callout\n\n> [!info]- 🎧\n> ```js-engine\n> const path = `_js/_views/jukebox/view.js`\n> const { main } = await engine.importJs(path)\n>\n> main({...this, path})\n> ```\n\n> [!info]- Embed\n> ![[view]]\n## Embed\n![[view]]\n\n","x":401,"y":-317,"width":861,"height":811},
+		{"id":"8d99ca60b14ececf","type":"text","text":"\n```js-engine\nconst path = `_js/_views/jukebox/view.js`\nconst { main } = await engine.importJs(path)\nmain({...this, path}, {\n\tdebug: true\n})\n```\n","x":397,"y":518,"width":865,"height":535},
+		{"id":"b5cd70e51a483a59","type":"text","text":" # FILE","x":-156,"y":-407,"width":114,"height":55}
+	],
+	"edges":[]
+}

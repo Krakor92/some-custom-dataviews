@@ -61,7 +61,7 @@
  * await gridManager.bakeNextHTMLBatch(),
  *
  * // Initializes the infinite rendering that happens on scroll
- * gridManager.initInfiniteLoading()
+ * gridManager.setupInfiniteLoading()
  */
 export class CollectionManager {
     /**
@@ -123,7 +123,6 @@ export class CollectionManager {
          */
         this.bakedChildren = []
         this.bakedBatchIndex = 0
-        this.totalNumberOfChildrenInsertedInTheDOM = 0
 
         /** @type {*} dataview pages (https://blacksmithgu.github.io/obsidian-dataview/api/data-array/#raw-interface) */
         this.pages = pages
@@ -133,7 +132,6 @@ export class CollectionManager {
          */
         this.pageToChild = pageToChild
 
-        // this.batchesFetchedCount = 0
         this.numberOfElementsPerBatch = numberOfElementsPerBatch
 
         /** @type {Array<function(CollectionManager): Promise<void>>} */
@@ -142,10 +140,10 @@ export class CollectionManager {
         const intersectionOptions = {
             root: null, // relative to the viewport
             rootMargin: '200px', // 200px below the viewport
-            threshold: 0,
+            threshold: 0, // as soon as target is visible, invoke the callback
         }
 
-        this.childObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this), intersectionOptions);
+        this.lastChildObserver = new IntersectionObserver(this.handleLastChildIntersection.bind(this), intersectionOptions);
     }
 
     /**
@@ -153,7 +151,7 @@ export class CollectionManager {
      */
     everyElementsHaveBeenInsertedInTheDOM = () => (
         this.bakedChildren.length === 0 &&
-        this.bakedBatchIndex > 0 
+        this.bakedBatchIndex > 0
         && this.bakedBatchIndex * this.numberOfElementsPerBatch >= this.pages.length
     )
 
@@ -173,12 +171,11 @@ export class CollectionManager {
     cleanTheOvens() {
         this.bakedChildren = []
         this.bakedBatchIndex = 0
-        this.totalNumberOfChildrenInsertedInTheDOM = 0
     }
 
     /**
-     * It bakes a new batch of HTML children every time it is called
-     * so they can be rendered in a lazy way by the `insertNewChunk` method.
+     * It bakes a new sliced batch of HTML children every time it is called
+     * so they can be rendered in a lazy way by a method of the `insertChunk` family.
      * 
      * A new batch is saved inside `this.bakedChildren` array on each call
      * 
@@ -210,39 +207,73 @@ export class CollectionManager {
         return HTMLBatch
     }
 
-    initInfiniteLoading() {
+    setupInfiniteLoading() {
         if (this.everyElementsHaveBeenInsertedInTheDOM()) return
 
-        const lastChild = this.totalNumberOfChildrenInsertedInTheDOM > 0
-            ? this.parent.querySelector(`${this.childTag}:last-of-type`)
-            : this.collection
-        this.logger?.log({ lastChild })
-        if (lastChild) {
-            this.childObserver.observe(lastChild)
+        /**
+         * I have no idea why but it looks like calling `this.parent.querySelector(`${this.childTag}:last-of-type`)`
+         * fails when the VirtualizedGrid removes elements from the parent...
+         * 
+         * It's super weird but calling `this.parent.querySelectorAll(`${this.childTag}`)` instead does the trick
+         */
+        const elements = this.parent.querySelectorAll(`${this.childTag}`)
+        const anchorElement = elements?.[elements.length - 1] ?? this.collection
+
+        if (anchorElement) {
+            this.lastChildObserver.observe(anchorElement)
         }
     }
 
-    #handleImageFallback(img) {
+    /**
+     * @param {Event} event
+     */
+    #handleImageFallback(event) {
+        event.target.onerror = null;
+        const threeDigitColor = (Math.floor(Math.random() * 999)).toString()
+        event.target.outerHTML = this.icons.customObsidianIcon(`#${threeDigitColor.padStart(3, 0)}`);
+    }
+
+    /**
+     * @param {HTMLImageElement} img 
+     */
+    #manageImageEvents(img) {
         if (!img) return
 
-        img.onerror = () => {
-            this.logger?.log({ img })
-            img.onerror = null;
-            const threeDigitColor = (Math.floor(Math.random() * 999)).toString()
-            img.outerHTML = this.icons.customObsidianIcon(`#${threeDigitColor.padStart(3, 0)}`);
-        }
+        img.onerror = this.#handleImageFallback.bind(this)
     }
 
     /**
      * It might be difficult to understand what's going on but it could be reduced to a 20 lines long function max
      * if `MarkdownRenderer.renderMarkdown` had a consistent behavior no matter what tags were passed to it
+     * 
+     * So to circumvent that, this function render the stuborns child (mostly filelinks) in a separate container.
+     * Later, it moves these rendered chunks of HTML into the actual DOM where we need to place them.
+     * 
+     * More like `appendFirstlyBakedChunk`
      */
-    async insertNewChunk() {
+    async insertNewChunk(position = "beforeend") {
         // Like a queue, we retrieve the first batch of children that has been baked
         const bakedChildrenChunk = this.bakedChildren.shift()
-        if (!bakedChildrenChunk || bakedChildrenChunk.length === 0) return;
 
-        const actualChunkToInsert = bakedChildrenChunk.reduce((acc, cur) => {
+        await this.insertChunk(bakedChildrenChunk, position)
+    }
+
+    /**
+     * 
+     * @param {*} chunk 
+     * @param {'beforeend' | 'beforebegin'} position 
+     * @returns 
+     */
+    async insertChunk(chunk, position = "beforeend") {
+        // We need to expose this for the virtualisation mechanism to work correctly
+        this.lastInsertedChunk = chunk
+
+        console.log({ chunk })
+
+        if (!chunk || chunk.length === 0) return;
+
+        /** @type {string} */
+        const actualChunkToInsert = chunk.reduce((acc, cur) => {
             if (typeof cur === "string") {
                 return acc + cur
             }
@@ -253,14 +284,14 @@ export class CollectionManager {
         // Needed for metadata-menu to trigger and render extra buttons
         const extraChunkDOM = this.container.createEl('div')
         let extraChunkHTML = ''
-        for (let i = 0; i < bakedChildrenChunk.length; i++) {
-            if (!bakedChildrenChunk[i]?.extra) {
+        for (let i = 0; i < chunk.length; i++) {
+            if (!chunk[i]?.extra) {
                 extraChunkHTML += `<div></div>`
                 continue;
             }
 
             extraChunkHTML += `<div>`
-            for (const [selector, html] of Object.entries(bakedChildrenChunk[i].extra)) {
+            for (const [selector, html] of Object.entries(chunk[i].extra)) {
                 extraChunkHTML += `<div data-selector="${selector}">`
                 extraChunkHTML += html
                 extraChunkHTML += `</div>`
@@ -275,15 +306,32 @@ export class CollectionManager {
             return console.error("Something went wrong, the collection parent element doesn't exist in the DOM")
         }
 
-        this.parent.insertAdjacentHTML('beforeend', actualChunkToInsert)
+        const numberOfChildrenBeforeInsertion = this.parent.querySelectorAll(this.childTag).length
+        if (!numberOfChildrenBeforeInsertion) {
+            this.parent.insertAdjacentHTML(position, actualChunkToInsert)
+        } else {
+            if (position === 'beforeend') {
+                this.parent.querySelectorAll(this.childTag)[numberOfChildrenBeforeInsertion - 1].insertAdjacentHTML('afterend', actualChunkToInsert)
+            } else {
+                this.parent.querySelector(this.childTag).insertAdjacentHTML('beforebegin', actualChunkToInsert)
+            }
+        }
+
+        /**
+         * If we're appending (beforeend), we take a snapshot of the total number of children in the DOM before insertion so we know where to iterate
+         * We need to do this because other classes might interact with the DOM at any given time
+         */
+        const childIndexBaseOffset = position === 'beforeend'
+            ? numberOfChildrenBeforeInsertion
+            : 0
 
         // 2nd part with the extraChunkDOM
-        for (let i = 0; i < bakedChildrenChunk.length; i++) {
+        for (let i = 0; i < chunk.length; i++) {
             const extra = extraChunkDOM.children[i]
             if (!extra) continue
 
-            const currentChild = this.parent.children[i + this.totalNumberOfChildrenInsertedInTheDOM]
-            // That means we've reach the end of the infinite loading
+            const currentChild = this.parent.querySelectorAll(this.childTag)[i + childIndexBaseOffset]
+            // That means we've reached the end of the infinite loading
             if (!currentChild) break
 
             for (const extraChild of extra.children) {
@@ -296,44 +344,43 @@ export class CollectionManager {
 
             // Fallback for images that don't load
             for (const imgNode of currentChild.querySelectorAll("img")) {
-                this.#handleImageFallback(imgNode)
+                // this.#handleImageLoading(imgNode)
+                this.#manageImageEvents(imgNode)
+                // this.#handleImageEvents(imgNode)
             }
         }
         extraChunkDOM.remove()
         // ---
-
-        this.totalNumberOfChildrenInsertedInTheDOM += bakedChildrenChunk.length
-        this.logger?.log({ totalNumberOfChildrenInsertedInTheDOM: this.totalNumberOfChildrenInsertedInTheDOM })
-        // this.batchesFetchedCount++
-
-        // this.logger?.log({ batchesFetchedCount: this.batchesFetchedCount })
 
         for (const fn of this.extraLogicOnNewChunk) {
             await fn(this)
         }
     }
 
+    /**
+     * @param {IntersectionObserverEntry[]} entries 
+     */
     handleLastChildIntersection(entries) {
-        entries.map(async (entry) => {
+        entries.forEach(async (entry) => {
             if (!entry.isIntersecting) return
 
-            this.logger.log(entry)
+            // this.logger.log(entry)
             this.logger.reset()
 
-            this.childObserver.unobserve(entry.target);
+            this.lastChildObserver.unobserve(entry.target);
 
             /**
-             * We can do both in parallel because the cooking is for the next rendering batch
+             * We can do both in parallel because the cooking is for the next rendering batch.
+             * Note that we do not bake another batch if there is already more than one batch in the ovens.
              */
             await Promise.all([
                 this.insertNewChunk(),
-                this.bakeNextHTMLBatch(),
+                this.bakedChildren.length <= 1 ? this.bakeNextHTMLBatch(): Promise.resolve(),
             ])
 
-            this.logger.logPerf(`Appending new children at the end of the grid + loading next batch ${this.bakedBatchIndex}`)
+            this.logger.logPerf(`Appending new children at the end of the grid + loading next batch (${this.bakedBatchIndex})`)
 
-            this.logger?.log(`Estimated batch to load next: ${this.bakedBatchIndex * this.numberOfElementsPerBatch}`)
-            this.initInfiniteLoading()
+            this.setupInfiniteLoading()
         });
     }
 
@@ -370,7 +417,7 @@ export class CollectionManager {
         const tableManager = new CollectionManager({
             ...dependencies,
             buildParent,
-            childTag: 'tr',
+            childTag: 'tr.item',
         })
 
         Object.defineProperty(tableManager, "parent", {
@@ -390,7 +437,7 @@ export class CollectionManager {
         return new CollectionManager({
             ...dependencies,
             buildParent,
-            childTag: 'article',
+            childTag: 'article.item',
         })
     }
 }

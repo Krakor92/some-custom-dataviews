@@ -76,6 +76,7 @@ const { app, engine, component, container, context, obsidian } = env.globals
 // We retrieve the dv api object
 const dv = engine.getPlugin('dataview')?.api
 
+if (Array.isArray(disable)) disable = disable.join(' ')
 disable = GLOBAL_DISABLE + ' ' + disable
 
 const module = await engine.importJs(MODULE_PATH)
@@ -297,7 +298,7 @@ if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 //#endregion
 
 await gridManager.bakeNextHTMLBatch(),
-gridManager.initInfiniteLoading()
+gridManager.setupInfiniteLoading()
 
 logger.viewPerf()
 }}

@@ -21,11 +21,16 @@ Here is an explanation of the top level folders/files:
 	- `view.css` to style the view
 	- `view.md` that contains some test cases
 
-- `Krakor.mjs` is used by all my views. It simply aggregates the content of every files from the `_modules` folder so you just have to copy one file in your vault instead of the whole folder.
+- [`Krakor.mjs`](/Krakor.mjs) is used by all my views. It simply aggregates the content of every files from the `_modules` folder so you just have to copy one file in your vault instead of the whole folder.
 
-- `Krakor.css` contains shared styles for all my views. Like any other Obsidian css snippet, you need to place it in the `.obsidian/snippets` folder in your vault and activate it in your settings. It is not necessary for these views to work, but it corrects certain appearance problems common to all of them.
+- [`Krakor.css`](/Krakor.css) contains shared styles for all my views. Like any other Obsidian css snippet, you need to place it in the `.obsidian/snippets` folder in your vault and activate it in your settings. It is not necessary for these views to work, but it corrects certain appearance problems common to all of them.
 
 ## Views
+
+> [!IMPORTANT]
+> Before trying any of these views, make sure you're using the latest version of Obsidian with the most recent installer version too.
+>
+> Just so you know, I'm not using the insider builds so if a view doesn't work for any reasons in these, I won't be able to fix it.
 
 - 🎧 [`Jukebox`](/_views/jukebox)
 - 📁 [`Gallery`](/_views/gallery)
@@ -36,5 +41,5 @@ All these views depend on the following plugins:
 
 - [`JS Engine`](https://github.com/mProjectsCode/obsidian-js-engine-plugin) - for its neat code blocks, which can be reactive when needed. It also has a solid import system, on par with the Modules plugin, and without the inconvenience of having to install yet another plugin just for this purpose.
 
-- [`Dataview`](https://github.com/blacksmithgu/obsidian-dataview) - for its (still) unmatched file querying API
+- [`Dataview`](https://github.com/blacksmithgu/obsidian-dataview) - for its (still) unmatched file querying API.
 

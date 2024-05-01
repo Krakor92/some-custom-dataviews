@@ -11,6 +11,31 @@ export const uriRegex = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-
 //#region HTML
 
 /**
+ * Used by the function below
+ */
+const dummyDiv = document.createElement('div');
+
+/**
+ * Create a document fragment from an HTML string.
+ * @param {string} strHTML - The HTML string to create the document fragment from.
+ * @returns {DocumentFragment} The document fragment containing the parsed HTML.
+ */
+export const createFragmentFromString = (strHTML) => {
+    const fragment = document.createDocumentFragment();
+
+    /**
+     * This div is needed for the actual HTML string to be parsed
+     */
+    dummyDiv.innerHTML = strHTML;
+
+    while (dummyDiv.firstChild) {
+        fragment.appendChild(dummyDiv.firstChild);
+    }
+
+    return fragment;
+};
+
+/**
  *
  * @param {HTMLElement} element
  * @param {string} className
@@ -73,6 +98,19 @@ export const buildInvertedMap = (map) => {
 
 // Clamp number between two values with the following line:
 export const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
+
+export const closestTo = (low, high, value) => {
+    const diffToLow = Math.abs(value - low);
+    const diffToHigh = Math.abs(value - high);
+
+    if (diffToLow < diffToHigh) {
+        return low;
+    } else if (diffToHigh < diffToLow) {
+        return high;
+    } else {
+        return value; // When the value is equidistant to both low and high
+    }
+}
 
 export const delay = async (time) =>
     new Promise((resolve) => setTimeout(resolve, time))

@@ -30,6 +30,26 @@ This snippet is supposed to be used with views from this repository: https://git
     cursor: default;
 }
 
+.custom-view {
+    &.debug {
+        .item[data-batch-part][data-batch$="0"] { background-color: rgba(255, 0, 0, 0.25); }
+        .item[data-batch-part][data-batch$="1"] { background-color: rgba(255, 165, 0, 0.25); }
+        .item[data-batch-part][data-batch$="2"] { background-color: rgba(255, 255, 0, 0.50); }
+        .item[data-batch-part][data-batch$="3"] { background-color: rgba(0, 128, 0, 0.25); }
+        .item[data-batch-part][data-batch$="4"] { background-color: rgba(0, 0, 255, 0.25); }
+        .item[data-batch-part][data-batch$="5"] { background-color: rgba(75, 0, 130, 0.25); }
+        .item[data-batch-part][data-batch$="6"] { background-color: rgba(238, 130, 238, 0.25); }
+        .item[data-batch-part][data-batch$="7"] { background-color: rgba(165, 42, 42, 0.25); }
+        .item[data-batch-part][data-batch$="8"] { background-color: rgba(128, 128, 128, 0.25); }
+        .item[data-batch-part][data-batch$="9"] { background-color: rgba(0, 0, 0); }
+
+        /** for debug purposes */
+        .stub {
+            background-color: #ccf;
+        }
+    }
+}
+
 /* JS-engine: remove stats button */
 .js-engine-execution-render-child:hover .js-engine-execution-stats-button,
 .js-engine-execution-stats-button:hover,

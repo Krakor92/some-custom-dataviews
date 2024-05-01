@@ -21,20 +21,20 @@ export class Logger {
 
         /** @private */
         this.methods = new Map()
-
-        this.methods.set("console", {
+        .set("console", {
             log: (...vargs) => console.log.apply(this, vargs),
             info: (...vargs) => console.info.apply(this, vargs),
             warn: (...vargs) => console.warn.apply(this, vargs),
             error: (...vargs) => console.error.apply(this, vargs),
+            table: (...vargs) => console.table.apply(this, vargs),
             clear: () => console.clear(),
         })
-
-        this.methods.set("file", {
+        .set("file", {
             log: (...vargs) => this.#fileLoggingMethod("", ...vargs),
             info: (...vargs) => this.#fileLoggingMethod("info", ...vargs),
             warn: (...vargs) => this.#fileLoggingMethod("warning", ...vargs),
             error: (...vargs) => this.#fileLoggingMethod("error", ...vargs),
+            table: (...vargs) => this.#fileLoggingMethod("", ...vargs),
             clear: () => this.clearNote(this.filepath),
         })
     }
@@ -52,7 +52,7 @@ export class Logger {
         for (let i = 0; i < vargs.length; i++) {
             if (i === 0 && calloutType) continue
 
-            this.appendTextToNote(this.filepath, vargs[i])
+            this.appendToNote(this.filepath, vargs[i])
         }
     }
 
@@ -71,6 +71,7 @@ export class Logger {
     info(...vargs) { this.#method("info", ...vargs) }
     warn(...vargs) { this.#method("warn", ...vargs) }
     error(...vargs) { this.#method("error", ...vargs) }
+    table(...vargs) { this.#method("table", ...vargs) }
     clear() { this.#method("clear") }
 
 
@@ -121,6 +122,11 @@ export class Logger {
         this.startTime = number
     }
 
+    /**
+     * @param {string} text 
+     * @param {number} calloutLevel 
+     * @returns {string}
+     */
     #handleCalloutLevel(text, calloutLevel) {
         if (calloutLevel < 1) {
             return text
@@ -135,31 +141,82 @@ export class Logger {
     }
 
     /**
+     * Given as-is by GPT-4o
+     */
+    #markdownTable(data) {
+        if (typeof data !== 'object' || data === null) {
+            return '';
+        }
+
+        const rows = [];
+        const headers = new Set();
+
+        function formatValue(value) {
+            if (Array.isArray(value)) {
+                return `Array(${value.length})`;
+            } else if (typeof value === 'function') {
+                const funcString = value.toString();
+                const params = funcString.slice(funcString.indexOf('('), funcString.indexOf(')') + 1);
+                return `${params} => {...}`;
+            } else if (typeof value === 'object' && value !== null) {
+                return value; // Return object to be further processed
+            }
+            return value;
+        }
+
+        function processItem(key, value, parentKey = '') {
+            const item = { '(index)': parentKey ? `${parentKey}.${key}` : key };
+            const formattedValue = formatValue(value);
+
+            if (typeof formattedValue === 'object' && formattedValue !== null) {
+                Object.keys(formattedValue).forEach(subKey => {
+                    item[subKey] = formatValue(formattedValue[subKey]);
+                    headers.add(subKey);
+                });
+            } else {
+                item['(value)'] = formattedValue;
+                headers.add('(value)');
+            }
+
+            headers.add('(index)');
+            rows.push(item);
+        }
+
+        Object.keys(data).forEach(key => {
+            processItem(key, data[key]);
+        });
+
+        const headerList = ['(index)', ...Array.from(headers).filter(header => header !== '(index)')];
+        let markdown = `\n| ${headerList.join(' | ')} |\n`;
+        markdown += `| ${headerList.map(() => '---').join(' | ')} |\n`;
+
+        rows.forEach(row => {
+            const rowData = headerList.map(header => row[header] !== undefined ? row[header] : '');
+            markdown += `| ${rowData.join(' | ')} |\n`;
+        });
+
+        return markdown;
+    }
+
+    /**
      * Only works on Markdown file
      * It creates the note if it doesn't exist though the folders in the path must exists
-     * TODO: Create the folders in the path if they doesn't exist
+     * TODO: Create the folders in the path if they don't exist
      * @param {string} path - The function automatically adds '.md' at the end if it isn't already there
-     * @param {string} text - The text to append at the end of the note
+     * @param {*} text - The text to append at the end of the note
      */
-    appendTextToNote = async (path, text, calloutLevel = 0) => {
-        if (this.dry) return
-
-        // TODO: Make a JSON.stringify to callout with nested callouts to render deep objects. Move that logic into a CalloutManager class?
-        if (typeof text !== "string") return
-
-        // if (typeof text !== "string") {
-        //     text = JSON.stringify(text, (key, value) => {
-        //         if (key === "file") {
-        //             return undefined
-        //         }
-        //         return value;
-        //     });
-        // }
+    appendToNote = async (path, text, calloutLevel = 0) => {
+        if (this.dry || !path || !text) return
 
         if (!path.endsWith('.md')) {
             path += '.md'
         }
 
+        if (typeof text === 'object') {
+            text = this.#markdownTable(text)
+        } else if (typeof text !== 'string') {
+            text = text.toString()
+        }
         text = this.#handleCalloutLevel(text, calloutLevel)
 
         let file = this.app.metadataCache.getFirstLinkpathDest(path, "")
@@ -192,7 +249,7 @@ export class Logger {
         text = this.#handleCalloutLevel(`${calloutHead} ${text}`, level + 1)
         text += solo ? '\n\n' : ''
 
-        await this.appendTextToNote(path, text, level)
+        await this.appendToNote(path, text, level)
     }
 
 

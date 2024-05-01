@@ -4,6 +4,9 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 */
 
 :root {
+	/**
+	 * Try to not make it too small or this view's virtual grid won't be as effective
+	 */
 	--jukebox-cards-min-width: 140px;
 	/* --jukebox-cards-min-width: 160px; */
 	--jukebox-cards-max-width: 1fr;
@@ -40,9 +43,6 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 }
 
 .jukebox {
-
-position: relative;
-cursor: default;
 
 span {
 	display: contents;
@@ -139,29 +139,32 @@ button {
 	flex: 0;
 }
 
-&.no-voice article.voice {
-	display: none;
-}
-
 /* #endregion */
 
 
 .grid {
+	position: relative;
 	display: grid;
 	grid-template-columns: var(--jukebox-cards-columns);
-	gap: 0.75rem;
+	/**
+	 * Note that even empty elements like stubs are affected by this gap
+	 * so it should be taken under consideration when applying margin to the rest of the layout
+	 */
+	column-gap: 0.75rem;
+	row-gap: 0.5rem;
 }
 
-/*#region .article*/
-.theme-light & article {
+
+/*#region .item*/
+.theme-light & .item {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-light);
 }
 
-.theme-light & article:hover {
+.theme-light & .item:hover {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover-light);
 }
 
-article {
+.item {
 	z-index: 0;
 	/* needed for mobile ?*/
 	position: relative;
@@ -176,7 +179,7 @@ article {
 	max-width: var(--jukebox-cards-max-width);
 }
 
-article:hover {
+.item:hover {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover);
 	box-shadow:
 		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
@@ -186,7 +189,7 @@ article:hover {
 	transition: box-shadow 0.15s linear;
 }
 
-article.add-file {
+.item.add-file {
 	height: var(--jukebox-cards-add-file-height);
 	cursor: pointer;
 	padding: 0;
@@ -195,12 +198,12 @@ article.add-file {
 	color: var(--jukebox-background-modifier-border);
 }
 
-article.add-file:hover {
+.item.add-file:hover {
 	color: var(--jukebox-background-modifier-border-hover);
 }
 
-&.no-border article,
-&.no-border article:hover {
+&.no-border .item,
+&.no-border .item:hover {
 	border: 0;
 	box-shadow: none;
 }

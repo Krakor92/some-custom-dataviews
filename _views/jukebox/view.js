@@ -53,9 +53,9 @@ const DEFAULT_THUMBNAIL_DIRECTORY = "_assets/🖼/Thumbnails"
 /**
  * If not empty, each strings in this array will be considered a potential source of orphans.
  * They must be valid [dataview sources](https://blacksmithgu.github.io/obsidian-dataview/reference/sources)
- * 
+ *
  * Keep in mind that each string added, means one more call to `dv.pages`, which can be a rather costly operation
- * 
+ *
  * @type {Array<string>}
  */
 const DEFAULT_ORPHAN_SOURCES = []
@@ -63,8 +63,15 @@ const DEFAULT_ORPHAN_SOURCES = []
 // You can add any disable values here to globally disable them in every view
 const GLOBAL_DISABLE = ""
 
-// How many pages do you want to render at first and each time you reach the end of the grid
-const NUMBER_OF_SCORES_PER_BATCH = 20
+/**
+ * How many pages do you want to render at first and each time you reach the bottom of the grid
+ *
+ * This value have big impact on the performance of this view.
+ * It's also crucial to the smooth operation of the grid virtualisation.
+ *
+ * Try to not set it too high nor too low.
+ */
+const NUMBER_OF_SCORES_PER_BATCH = 16
 
 // It only works in the context of the page, if you have another page opened with another audio file playing
 // then it won't stop it if you play one in the current page
@@ -111,6 +118,15 @@ const DISPLAY_SERVICE_ICONS = false
 const ARTICLE_ALIGN = 'center'
 
 /**
+ * Trim the surplus and replace it with `[…]`.
+ * This constant was added to reduce the probability of having an abnormaly tall card compared to its siblings
+ * which might disturb the virtualisation mechanism described below.
+ *
+ * Set it to `0` if you don't want any trimming.
+ */
+const MAX_FILENAME_LENGTH = 64
+
+/**
  * Note the following:
  * - This layout require the article align variable specified above to be equal to 'center'
  * - The computing involved in order to make the Masonry layout work add some lag to the rendering phase compared to a naive grid implementation
@@ -119,6 +135,24 @@ const ARTICLE_ALIGN = 'center'
  * - Sometimes it might fail to format correctly on article appending
  */
 const MASONRY_LAYOUT = true
+
+/**
+ * This feature is super experimental and works on the following assumptions:
+ * - The interface size and the grid's width must stay constant throughout the rendering of this view
+ * - You're waiting for every images to load completely before scrolling too deep in the view
+ * - You avoid scrolling past this view using hotkeys like `Ctrl+PgUp`/`Ctrl+PgDn`
+ *
+ * Also note that the virtualizatin of a batch, or in simpler terms, the removal of a batch of articles from the DOM
+ * is really likely to trigger a reflow of the current visible article which might be misleading when using the Masonry layout
+ */
+const VIRTUALIZED_LAYOUT = true
+
+/**
+ * The number of pages necessary to trigger the virtualisation
+ * If we render less than this number of articles,
+ * it's not necessary to trigger it because the DOM shouldn't be too large
+ */
+const PAGE_THRESHOLD_TO_START_VIRTUALIZATION = NUMBER_OF_SCORES_PER_BATCH * 3
 
 //#endregion
 
@@ -135,6 +169,7 @@ const { app, engine, component, container, context, obsidian } = env.globals
 // We retrieve the dv api object
 const dv = engine.getPlugin('dataview')?.api
 
+if (Array.isArray(disable)) disable = disable.join(' ')
 disable = GLOBAL_DISABLE + ' ' + disable
 
 const module = await engine.importJs(MODULE_PATH)
@@ -161,8 +196,11 @@ async function renderView({ vm, logger }) {
 const {
     buildInvertedMap,
     clamp,
+    closestTo,
     convertDurationToTimecode,
     convertTimecodeToDuration,
+    createFragmentFromString,
+    debounce,
     delay,
     getOS,
     isEmpty,
@@ -531,9 +569,13 @@ const buildExtraChildrenHTML = (p) => {
     const extra = {}
 
     if (p[TITLE_FIELD]) {
-        extra[".file-link"] = Renderer.renderInternalFileAnchor({ path: p.file.path, name: p[TITLE_FIELD] })
+        extra[".file-link"] = Renderer.renderInternalFileAnchor({
+            path: p.file.path,
+            name: p[TITLE_FIELD],
+            lengthLimit: MAX_FILENAME_LENGTH
+        })
     } else {
-        extra[".file-link"] = Renderer.renderInternalFileAnchor(p.file)
+        extra[".file-link"] = Renderer.renderInternalFileAnchor({...p.file, lengthLimit: MAX_FILENAME_LENGTH})
     }
 
     return extra
@@ -625,12 +667,13 @@ const pageToChild = async (p) => {
         },
     })
 
-    const article = `<article ${articleStyle}>
-        ${thumbTag ?? ""}
-        ${fileTag}
-        ${urlTag ?? ""}
-        ${serviceTag}
-    </article>`
+    const article = `\
+<article class="item" ${articleStyle}>
+    ${thumbTag ?? ""}
+    ${fileTag}
+    ${urlTag ?? ""}
+    ${serviceTag}
+</article>`
 
     return {
         html: article,
@@ -638,6 +681,7 @@ const pageToChild = async (p) => {
     }
 }
 
+let addScoreCellHasBeenInserted = false
 
 const gridManager = module.CollectionManager.makeGridManager({
     obsidian,
@@ -654,14 +698,18 @@ const gridManager = module.CollectionManager.makeGridManager({
             audioManager.manageMp3Scores(gm)
         },
         (gm) => {
-            if (!gm.everyElementsHaveBeenInsertedInTheDOM()) return
-
-            gm.logger?.log(`Grid has finished rendering and has now ${gm.totalNumberOfChildrenInsertedInTheDOM} elements in the DOM`)
-            if (gm.disableSet.has("addscore") || gm.disableSet.has("addscorecell")) return;
+            if (!gm.everyElementsHaveBeenInsertedInTheDOM()
+                || gm.disableSet.has("addscore")
+                || gm.disableSet.has("addscorecell")
+                || addScoreCellHasBeenInserted
+            ) {
+                return
+            }
 
             const addScoreCellDOM = gm.container.createEl("article", { cls: "add-file" })
             addScoreCellDOM.innerHTML = gm.icons.filePlusIcon(24)
-            gm.parent.appendChild(addScoreCellDOM);
+            gm.parent.appendChild(addScoreCellDOM)
+            addScoreCellHasBeenInserted = true
 
             addScoreCellDOM.onclick = fileManager.handleAddFile.bind(fileManager)
         }
@@ -669,14 +717,24 @@ const gridManager = module.CollectionManager.makeGridManager({
 })
 
 gridManager.buildParent()
+vm.root.appendChild(gridManager.parent);
+
+if (VIRTUALIZED_LAYOUT &&
+    !vm.disableSet.has('virtualisation')
+    && pages.length >= PAGE_THRESHOLD_TO_START_VIRTUALIZATION) {
+
+    const virtualizedGridManager = new module.VirtualizedGrid({
+        manager: gridManager,
+        utils: { isEmpty, closestTo, createFragmentFromString, debounce },
+        logger,
+    })
+}
 
 await gridManager.bakeNextHTMLBatch()
-await gridManager.insertNewChunk(),
-
+await gridManager.insertNewChunk()
 
 logger?.logPerf("Baking and inserting first cells in the DOM")
 
-vm.root.appendChild(gridManager.parent);
 //#endregion
 
 //#region Masonry layout
@@ -684,7 +742,7 @@ if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
 
     const masonryManager = new module.Masonry(gridManager.parent)
 
-    const resizeObserver = new ResizeObserver(() => {
+    const gridResizeObserver = new ResizeObserver(() => {
         masonryManager.resizeAllGridItems()
     });
 
@@ -694,17 +752,41 @@ if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
      * The garbage collector should disconnect it once the grid has been removed from the DOM
      * But when does it get removed by Obsidian ¯\_(ツ)_/¯
      */
-    resizeObserver.observe(masonryManager.grid)
+    gridResizeObserver.observe(masonryManager.grid)
+
+    /**
+     * This workaround is only there because sometimes, when the view sits in a full popout window,
+     * the insertion of element alone won't trigger the resize observer above
+     * for a reason I don't understand so we have to give it a hand.
+     *
+     * There is no need to add this overhead on mobile since extra windows aren't available
+     */
+    if (!app.isMobile) {
+        const gridMutationObserver = new MutationObserver((mutationRecord) => {
+            for (const mutation of mutationRecord) {
+                if (mutation.type !== 'childList') return
+
+                const addedNodes = mutation.addedNodes;
+                if (!addedNodes.length) return
+
+                masonryManager.resizeAllGridItems()
+            }
+        });
+        gridMutationObserver.observe(masonryManager.grid, {
+            childList: true,
+        });
+    }
 }
 //#endregion
 
 // Prepare for next batch
 await gridManager.bakeNextHTMLBatch(),
-gridManager.initInfiniteLoading()
+gridManager.setupInfiniteLoading()
 
 logger.viewPerf()
 }}
 
+// #region Meta-Bind's extras
 
 const IGNORED_PROPS = [
     'alias',
@@ -759,7 +841,7 @@ export const buildViewParams = (dependencies, params = {}) => {
     return {
         filter,
         sort,
-        // debug: true,
+        debug: true,
     }
 }
 
@@ -797,3 +879,5 @@ export const buildSettingsCallout = (engine) => {
 
     return markdownBuilder;
 }
+
+// #endregion

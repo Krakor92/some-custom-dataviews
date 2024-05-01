@@ -14,7 +14,7 @@ export class ViewManager {
      * @param {HTMLDivElement} _.container - The container to which the view will be appended
      * @param {string} _.name - The name of the view (must match with css class associated with it)
      */
-    constructor({ disable = "", app, component, container, utils, logger, name } = {}) {
+    constructor({ disable = "", app, component, container, utils, logger, name, debug = false } = {}) {
         this.app = app
         this.component = component
         this.container = container
@@ -26,12 +26,15 @@ export class ViewManager {
         this.tid = (new Date()).getTime();
         /** @type {HTMLDivElement} */
         this.host = container.createEl("div", {
-            cls: this.#computeClassName(),
+            cls: this.#computeClassName(debug),
             attr: {
                 id: this.#computeId(),
                 style: 'position:relative;-webkit-user-select:none!important'
             }
         })
+
+        this.context = this.whereami()
+
         this.managedToHideEditButton = this.#hideEditButton()
 
         this.observer = new IntersectionObserver(this.handleViewIntersection.bind(this))
@@ -108,6 +111,8 @@ export class ViewManager {
     }
 
     init() {
+        if (this.disableSet.has("livepreview") && this.context.livepreview) return
+
         this.observer.observe(this.container)
     }
 
@@ -132,7 +137,10 @@ export class ViewManager {
             return this.logger?.log("We've found a leaf, and it looks like this view is in a popover 🎈")
         }
 
-        return this.logger?.log("That's weird 😕, we haven't found a leaf")
+        /**
+         * We're probably inside a shadow DOM (like inside a Canvas card)
+         */
+        return this.logger?.log("Weird, we haven't found a leaf 😕")
     }
 
     /**
@@ -206,14 +214,23 @@ export class ViewManager {
         return embedContent?.classList.contains("markdown-embed-content")
     }
 
+    #amiInLivePreview() {
+        return this.host.closest("[contenteditable]") != null
+    }
+
     /**
-     * Used to know where this view is located
+     * Used to know where this view is located and its context.
+     * `this.host` must have been initialized before calling this method
+     * 
+     * @warning
+     * These are all super naïve methods I've written looking at the devtools, so they might likely break in the future
      */
     whereami() {
         return {
             popover : this.#amiInPopover(),
             callout : this.#amiInCallout(),
             embed : this.#amiInEmbed(),
+            livepreview : this.#amiInLivePreview(),
         }
     }
 
@@ -229,10 +246,13 @@ export class ViewManager {
     }
 
     /** @param {Set<string>} set */
-    #computeClassName = () => {
+    #computeClassName = (debug) => {
         let className = "custom-view " + this.name
         if (this.disableSet.has("border")) {
             className += " no-border"
+        }
+        if (debug) {
+            className += " debug"
         }
 
         return className

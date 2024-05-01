@@ -25,6 +25,7 @@ export const setupView = async ({
         app, component, container, logger,
         name: viewName,
         disable,
+        debug,
     })
 
     const onReady = async () => {

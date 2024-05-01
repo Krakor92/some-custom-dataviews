@@ -29,7 +29,7 @@ orphans:
 > ```
 
 
-- [-] 
+- [-]
 > [!NOTE]- <`Array`>
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -48,7 +48,7 @@ orphans:
 
 ### Special fields
 
-- [-] 
+- [-]
 > [!NOTE]- *filter*.<`Array`>
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -64,7 +64,7 @@ orphans:
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`manual`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -77,9 +77,9 @@ orphans:
 > })
 > ```
  
-manual:: [[Falling Apart]] 
+manual:: [[Falling Apart]]
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`from`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -92,7 +92,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`tags`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -131,7 +131,7 @@ manual:: [[Falling Apart]]
 > ```
 
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`bookmarks`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -144,7 +144,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`audioOnly`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -158,9 +158,9 @@ manual:: [[Falling Apart]]
 > ```
 
 ### User fields
-#### link
+#### Link
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`artist`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -174,7 +174,7 @@ manual:: [[Falling Apart]]
 > ```
 
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`in`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -188,7 +188,7 @@ manual:: [[Falling Apart]]
 > ```
 
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`in` - Regex mode (string)
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -201,7 +201,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`in` - Regex mode
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -214,7 +214,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-#### date
+#### Date
 
 - [x] 80s musics only
 > [!NOTE]- *filter*.`release`
@@ -232,9 +232,9 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-#### string
+#### String
 
-- [-] 
+- [-]
 > [!NOTE]- *filter*.`url` - Regex mode
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -247,7 +247,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *filter*.`voice`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -272,7 +272,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [-] 
+- [-]
 > [!NOTE]- *filter*.`misc`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -288,7 +288,7 @@ manual:: [[Falling Apart]]
 ### Lookups
 
 - [-]  Music from Japanese artist only
-> [!NOTE]- *filter*.`artist`.`country` 
+> [!NOTE]- *filter*.`artist`.`country`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
 > const { main } = await engine.importJs(path)
@@ -304,7 +304,7 @@ manual:: [[Falling Apart]]
 
 ## Sort
 
-- [x] 
+- [x]
 > [!NOTE]- Sort - 🎲 Random/Shuffle
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -348,7 +348,7 @@ manual:: [[Falling Apart]]
 > })
 > ```
 
-- [-] 
+- [-]
 > [!NOTE]- Sort - 🫳 Manual
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -375,7 +375,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 
 ## Disable
 
-- [x] 
+- [x]
 > [!NOTE]- *disable*.`buttons`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -386,7 +386,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *disable*.`filelink`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -397,7 +397,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *disable*.`query`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -408,7 +408,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *disable*.`orphans`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -419,7 +419,7 @@ scores:: [[Mangrove Cove (Underwater)]]
 > })
 > ```
 
-- [x] 
+- [x]
 > [!NOTE]- *disable*.`masonry`
 > ```js-engine
 > const path = `_js/_views/jukebox/view.js`
@@ -430,4 +430,34 @@ scores:: [[Mangrove Cove (Underwater)]]
 > })
 > ```
 
+- [x]
+> [!NOTE]- *disable*.`livepreview`
+> ```js-engine
+> const path = `_js/_views/jukebox/view.js`
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	disable: "livepreview"
+> })
+> ```
+
+- [x]
+> [!NOTE]- *disable*.`virtualisation`
+> ```js-engine
+> const path = `_js/_views/jukebox/view.js`
+> const { main } = await engine.importJs(path)
+>
+> main({...this, path}, {
+> 	debug: true,
+> 	disable: "virtualisation",
+> })
+> ```
+
 ## _
+
+```js-engine
+const path = `_js/_views/jukebox/view.js`
+const { main } = await engine.importJs(path)
+
+main({...this, path})
+```

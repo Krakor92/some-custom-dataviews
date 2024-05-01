@@ -144,18 +144,17 @@ export class Renderer {
         if (!link) return ""
 
         const style = this.#resolveVaultImageStyle(link)
+        const src = window.app.vault.adapter.getResourcePath(link.path)
 
-        return `<img src="${window.app.vault.adapter.getResourcePath(
-            link.path
-        )}" ${this.imgBaseAttributes} ${style ?? ""}>`
+        return `<img src="${src}" ${this.imgBaseAttributes} ${style ?? ""}>`
     }
 
     #renderImageFromVaultPath(path) {
         if (!path) return ""
 
-        return `<img src="${window.app.vault.adapter.getResourcePath(
-            path
-        )}" ${this.imgBaseAttributes}>`
+        const src = window.app.vault.adapter.getResourcePath(path)
+
+        return `<img src="${src}" ${this.imgBaseAttributes}>`
     }
 
     //#endregion
@@ -227,15 +226,24 @@ ${this.#computeAnchorServicePartFromUrl(url)}`
         name,
         ariaLabel = true,
         mdmIcon = true,
+        lengthLimit = 0
     } = {}) {
         // look at https://github.com/mdelobelle/metadatamenu/issues/247 for explanation on mdmIcon
+
+        let trimmedName;
+
+        if (lengthLimit > 0 && name.length > lengthLimit) {
+            trimmedName = name.substring(0, lengthLimit)
+            trimmedName += "[…]"
+        }
+
         return `<a
             class="internal-link ${mdmIcon ? "" : "metadata-menu-button-hidden"}"
             ${ariaLabel ? `aria-label="${path}"` : ""}
             data-href="${path}"
             href="${path}"
         >
-            ${name}
+            ${trimmedName ?? name}
         </a>`
     }
 

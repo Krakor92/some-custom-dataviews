@@ -1,7 +1,7 @@
 
 # Obsidian Jukebox
 
-A [JS Engine](https://github.com/mProjectsCode/obsidian-js-engine-plugin) view that displays a customisable grid of all your markdown musics files from your vault using [Dataview](https://github.com/blacksmithgu/obsidian-dataview)'s powerful API
+A [JS Engine](https://github.com/mProjectsCode/obsidian-js-engine-plugin) view that displays a grid of all your markdown musics files from your vault using [Dataview](https://github.com/blacksmithgu/obsidian-dataview)'s powerful API
 
 ![](https://user-images.githubusercontent.com/24924824/232079357-dc71dc66-14d1-476e-b8f4-549618b60df0.png)
 
@@ -11,9 +11,9 @@ A [JS Engine](https://github.com/mProjectsCode/obsidian-js-engine-plugin) view t
 - [Obsidian Jukebox](#obsidian-jukebox)
 	- [Table of Contents](#table-of-contents)
 	- [🎼 What to expect from this view](#-what-to-expect-from-this-view)
-	- [🚩 Some known caveats](#-some-known-caveats)
-		- [due to external factors](#due-to-external-factors)
-		- [by design](#by-design)
+	- [🚩 Some known caveats and disclaimers](#-some-known-caveats-and-disclaimers)
+		- [Due to external factors](#due-to-external-factors)
+		- [By design](#by-design)
 	- [🎯 Motivations](#-motivations)
 	- [📜 Story](#-story)
 	- [🎧 How to use it](#-how-to-use-it)
@@ -36,9 +36,10 @@ A [JS Engine](https://github.com/mProjectsCode/obsidian-js-engine-plugin) view t
 		- [⚙️ View options / settings](#️-view-options--settings)
 			- [Global](#global)
 			- [Local](#local)
+				- [The `current` filter](#the-current-filter)
 				- [The `not` filter property](#the-not-filter-property)
-				- [Pass string to filter / sort](#pass-string-to-filter--sort)
-				- [Pass function to filter / sort (Advanced)](#pass-function-to-filter--sort-advanced)
+				- [Pass a string to filter / sort](#pass-a-string-to-filter--sort)
+				- [Pass a function to filter / sort (Advanced)](#pass-a-function-to-filter--sort-advanced)
 				- [Date Object](#date-object)
 				- [Disable values](#disable-values)
 	- [👀 Some examples](#-some-examples)
@@ -78,7 +79,7 @@ Here are the overarching principles of how this view works:
 - The initial setup to make this view work can be a bit daunting, especially if you're not familiar at all with the Obsidian ecosystem or javascript syntax but I've tried my best to explain every step with enough amount of details so that anyone could follow
 
 
-## 🚩 Some known caveats
+## 🚩 Some known caveats and disclaimers
 
 > [!CAUTION]
 > Despite all the points raised above, there are a number of warnings to bear in mind. Here they are listed in descending order of inconvenience (in my opinion):
@@ -104,10 +105,12 @@ Here are the overarching principles of how this view works:
 
 - This view isn't super resilient to **bad or inconsistent metadata**. If you have a property that doesn't have the same type everywhere, it might break this view when filtering on it.
 
-- If you have scrolled far enough inside a page and a lot of musics have been rendered (> 200) and you decide to **switch to another tab**, then you may experience a screen freeze for few seconds when switching back to this tab (This phenomenon was only really experienced on my Android phone)
+- If you have scrolled far enough inside a page and a lot of musics have been rendered (around a hundred elements) and you decide to **switch to another tab**, then you may experience a screen freeze for few seconds when switching back to this tab
 
 > [!TIP]
 > Using [stack tabs](https://help.obsidian.md/User+interface/Tabs#Stack+tab+groups) can help as it keeps the view in memory
+>
+> Keeping the custom virtualization mechanism active should also help circumvent this issue
 
 
 - [It's an already known phenomenon](https://forum.obsidian.md/t/audio-stops-while-scrolling/7966) but **scrolling too far deep** in the file where this view sit (or up depending on where the code block is positioned) will pause the music if it's played by an audio player inside a card. It's because of Obsidian's infinite scrolling strategy. Basically, the output of this view is removed from the DOM when you've scrolled too far from it
@@ -117,8 +120,18 @@ Here are the overarching principles of how this view works:
 > [!TIP]
 > In such a case, simply close and re-open the file, everything should work like intended
 
+- Odd behaviors occur when this view is used inside an **[Obsidian Kanban](https://github.com/mgmeyers/obsidian-kanban)**.
+	- The virtualisation only happens in one direction (It triggers when cards reach the top of the list/window but not the bottom)
+	- When scrolling, the whole view disappear at some point. I've troubleshot it and the hiding is happening in Kanban territory so I can't do much to prevent it
+
+> [!TIP]
+> When the hiding issue occurs, try closing and reopening the list where the card is located, that should force it to be re-rendered
 
 ### By design
+
+- This view has been built to be used within Obsidian and nothing else. I have no plan to make it work in published sites for example
+
+- This view isn't tailored for the dynamic modification of what is rendered. i.e. if you wish to modify the data directly in the view without the help of another plugin (such as the file icons in Metadata Menu), I suggest you use a plugin that focuses on that instead, such as [Projects](https://github.com/marcusolsson/obsidian-projects)
 
 - The url links support has been built with **YouTube links** in mind:
 	- You can still add any other web links to your markdown music file (soundcloud, dailymotion, ...) but you will not benefit from the YouTube auto playlist feature while doing so
@@ -127,6 +140,17 @@ Here are the overarching principles of how this view works:
 
 - **Timelines** are mostly a gimmick:
 	- What I mean is that they're useful to know at a glance the progress of the music, but the timecode does not update and it can be difficult to change its position, especially on mobile
+
+- As far as possible, avoid changing the width of the grid while using this view. The reason it that there is a naïve implementation of a Pinterest-like virtualization mechanism running in the background that theoretically allow you to scroll and render hundreds/thousands of items while keeping relatively good performance.
+  It relies on the assumption that the page where this view resides keep the same width throughout all its life span. If at some point you change it, it will break the sweat optimization offered by the virtualization. In such a case, this view teleports you to the beginning (as in Pinterest) to avoid suffering abysmal performance, as it reflows all the elements in the DOM and calculate their relative positions to each other following the appropriate layout.
+
+> [!CAUTION]
+> The above "last resort" scenario won't work if you change the font size or the zoom level of the app (or if you switch to a completely different theme), since this view has no possibility to adapt/react to that unfortunately.
+>
+> If you've done so while having this view open, I'd strongly suggest closing/reopening the page or reloading the said view or else you might experience unexpected (rendering) behaviour.
+
+> [!TIP]
+> If you don't like this mechanism for any reasons, you can always disable it globally or at view level. Personally, I don't enable it on my `mp3 only` page because it unloads each audio when its respective cell gets virtualized.
 
 
 ## 🎯 Motivations
@@ -526,6 +550,7 @@ And here is the list of all the options supported by this view:
 |             | recentlyAdded | boolean                                                                                          |                         | Move up to the first place the musics we have recently added (True) or the musics we have added at the very beginning (False)                                                                                                 |                        |        |
 |             | manual        | string                                                                                           | ""                      | To do a simple manual sort (works the same way as its namesake in **filter**)                                                                                                                                                 | "scores"               | ✅      |
 | **disable** |               | string                                                                                           |                         | To remove almost all visible features if you don't like them. You must separate the values with space. See the table below for more information on the possible values.                                                       | "autoplay addscore"    | ✅      |
+
 ##### The `current` filter
 
 In my opinion, one of the most useful filter is the `current` one. To give you a clearer example of its use: Let's say you have a file named "Hans Zimmer.md".
@@ -827,18 +852,29 @@ However, I think that at some point it would probably have been better for me to
 
 Though at the moment, I'm a bit torn about doing this.
 On the one hand, I know it would allow the BRAT plugin to work transparently with this view and increase the likelihood of someone using it, but it would mean rewriting most of it...
-On the other hand, it would add yet another plugin to the vault and I personally prefer to have as few plugins as possible because the more you have, the more it tends to slow down the opening of your vault. Also we're talking about a simple view that displays a grid in your vault, I find it overkill to build a plugin for that
+On the other hand, it would add yet another plugin to the vault and I personally prefer to have as few plugins as possible because the more you have, the more it tends to slow down the opening of your vault. Also we're talking about a simple view that displays a grid in your vault, I find it overkill to build a plugin for that.
 
-Inside me, I'm hoping that someone build a kind of store / BRAT-like but for js views.
+Inside me, I'm hoping that someone build a kind of store / BRAT-like but for js views to have the best of both world.
 
 
 ***Why isn't it reactive like a dataview(js) code block?***
 
 Dataview has a feature called `Automatic View Refresh` in its settings. The default value is 2500ms. It's this setting that permit each code blocks to keep up to date with your vault data. In addition, each time you modify and save a file, it triggers a certain dataview event, which may result in a new rendering of each open view.
 
-Js-Engine doesn't have any of that because it is unopinionated. It do have reactive capabilities but they aren't enabled by default. I could theoretically make it reactive to any changes in your vault but the performance would be abysmal.
+Js-Engine doesn't have any of that because it is unopinionated (which is a very good thing in my opinion). It do have reactive capabilities but they aren't enabled by default. I could theoretically make it reactive to any changes in your vault but it would very likely result in horrendous performance.
 
-Why is this? Well, every time one of your files is saved by Obsidian, each open view would need to redo their query (which is usually the longest part to compute compared to the rest) and re-render everything if the result has changed. It's very inefficient but I have no choice (afaik) because the event (`dataview:metadata-change` in this case) sent by Dataview to tell me that a change has occurred doesn't contain much information apart from which file has been impacted. I don't have access to the diff and certainly don't want to track it for each view.
+Why is this? Well, every time one of your files is saved by Obsidian, each open view would need to redo their query (which is usually the longest part to compute inside this view compared to the rest) and re-render everything if the result has changed. It's very inefficient but I have no choice (as far as I know) because the event (`dataview:metadata-change` in this case) sent by Dataview to tell me that a change has occurred doesn't contain much information apart from which file has been impacted. I don't have access to the diff and certainly don't want to track it for each view so I can't optimize the things previously mentioned.
+
+
+***Why do I often see a jump of my content while scrolling?***
+
+This is due to the background virtualization behavior coupled with the specific masonry implementation in place here.
+
+For a reason I don't quite understand, the part responsible of forcing the masonry layout often tend to have difficulties applying a constant vertical gap between each cells. The virtualization mechanism in the background, however, is able to compute the correct gap and apply it properly when the items leave the viewport. The shift you can see and the potential reflow of items that follows it is the consequence of that divergence.
+
+Unfortunately, there isn't much I can do to fix that since I don't plan to switch to another masonry implementation for now.
+
+*You can always disable the virtualisation in the settings if that really annoys you.*
 
 
 ***Why doesn't it support playing YouTube links directly in the view?***

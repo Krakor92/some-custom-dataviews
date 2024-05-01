@@ -41,7 +41,7 @@ export async function bindViewToProperties(env, {
         // adjust the timeout if needed
         setTimeout(() => {
             scrollToElement(container)
-        }, 0)
+        }, 4.7)
     }
 
     const previousTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
