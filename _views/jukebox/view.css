@@ -156,15 +156,18 @@ button {
 
 
 /*#region .item*/
-.theme-light & .item {
+.theme-light & .item,
+.theme-light & article.add-file {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-light);
 }
 
-.theme-light & .item:hover {
+.theme-light & .item:hover,
+.theme-light & article.add-file:hover {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover-light);
 }
 
-.item {
+.item,
+article.add-file {
 	z-index: 0;
 	/* needed for mobile ?*/
 	position: relative;
@@ -179,7 +182,8 @@ button {
 	max-width: var(--jukebox-cards-max-width);
 }
 
-.item:hover {
+.item:hover,
+article.add-file:hover {
 	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover);
 	box-shadow:
 		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
@@ -189,7 +193,8 @@ button {
 	transition: box-shadow 0.15s linear;
 }
 
-.item.add-file {
+article.add-file {
+	display: flex;
 	height: var(--jukebox-cards-add-file-height);
 	cursor: pointer;
 	padding: 0;
@@ -198,12 +203,14 @@ button {
 	color: var(--jukebox-background-modifier-border);
 }
 
-.item.add-file:hover {
+article.add-file:hover {
 	color: var(--jukebox-background-modifier-border-hover);
 }
 
 &.no-border .item,
-&.no-border .item:hover {
+&.no-border .item:hover,
+&.no-border article.add-file,
+&.no-border article.add-file:hover {
 	border: 0;
 	box-shadow: none;
 }
