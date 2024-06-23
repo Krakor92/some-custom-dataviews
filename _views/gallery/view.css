@@ -84,16 +84,16 @@ img {
 	grid-row-gap: 0.75rem;
 }
 
-/*#region .article*/
-.theme-light & article {
+/*#region .item*/
+.theme-light & .item {
 	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-light);
 }
 
-.theme-light & article:hover {
+.theme-light & .item:hover {
 	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-hover-light);
 }
 
-article {
+.item {
 	z-index: 0;
 	/* needed for mobile ?*/
 	position: relative;
@@ -108,7 +108,7 @@ article {
 	max-width: var(--gallery-cards-max-width);
 }
 
-article:hover {
+.item:hover {
 	border: var(--gallery-cards-border-width) solid var(--gallery-background-modifier-border-hover);
 	box-shadow:
 		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
@@ -116,19 +116,6 @@ article:hover {
 		0 4px 6px 0px rgba(0, 0, 0, 0.1),
 		0 1px 3px 1px rgba(0, 0, 0, 0.05);
 	transition: box-shadow 0.15s linear;
-}
-
-article.add-file {
-	min-height: var(--gallery-cards-image-height);
-	cursor: pointer;
-	padding: 0;
-	justify-content: center;
-	align-items: center;
-	color: var(--gallery-background-modifier-border);
-}
-
-article.add-file:hover {
-	color: var(--gallery-background-modifier-border-hover);
 }
 
 /*#endregion*/

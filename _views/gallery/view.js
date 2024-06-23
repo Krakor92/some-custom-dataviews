@@ -55,12 +55,42 @@ const UNIFORM_ORDER_WITH_RANDOM_SEED_ON_ALL_DEVICES = true
 const ARTICLE_ALIGN = 'center'
 
 /**
+ * Trim the surplus and replace it with `[…]`.
+ * This constant was added to reduce the probability of having an abnormaly tall card compared to its siblings
+ * which might disturb the virtualisation mechanism described below.
+ *
+ * Set it to `0` if you don't want any trimming.
+ */
+const MAX_FILENAME_LENGTH = 64
+
+/**
  * Note the following:
  * - This layout require the article align variable specified above to be equal to 'center'
- * - The computing involved in order to make the Masonry layout work add some lag to the rendering phase
- * - It messes with the card order. It's perfect if you have a random sort order but otherwise, you might want to disable masonry for your view
+ * - The computing involved in order to make the Masonry layout work add some lag to the rendering phase compared to a naive grid implementation
+ * - It messes with the card order so it's no problem if you're using a random sort order
+ *   otherwise, you might want to disable masonry for your view using the `disable: "masonry"` property
+ * - Sometimes it might fail to format correctly on article appending
  */
 const MASONRY_LAYOUT = true
+
+/**
+ * This feature is super experimental and works on the following assumptions:
+ * - The interface size and the grid's width must stay constant throughout the rendering of this view
+ * - You're waiting for every images to load completely before scrolling too deep in the view
+ * - You avoid scrolling past this view using hotkeys like `Ctrl+PgUp`/`Ctrl+PgDn`
+ *
+ * Also note that the virtualizatin of a batch, or in simpler terms, the removal of a batch of articles from the DOM
+ * is really likely to trigger a reflow of the current visible article which might be misleading when using the Masonry layout
+ */
+const VIRTUALIZED_LAYOUT = true
+
+/**
+ * The number of pages necessary to trigger the virtualisation
+ * If we render less than this number of articles,
+ * it's not necessary to trigger it because the DOM shouldn't be too large
+ */
+const PAGE_THRESHOLD_TO_START_VIRTUALIZATION = NUMBER_OF_FILE_BATCH_PER_PAGE * 3
+
 
 //#endregion
 
@@ -103,8 +133,11 @@ async function renderView({ vm, logger }) {
 const {
     buildInvertedMap,
     clamp,
+    closestTo,
     convertDurationToTimecode,
     convertTimecodeToDuration,
+    createFragmentFromString,
+    debounce,
     delay,
     getOS,
     isEmpty,
@@ -116,6 +149,7 @@ const {
     uriRegex,
     valueToDateTime,
 } = module
+
 
 //#region Css insertion
 
@@ -214,9 +248,13 @@ const buildExtraChildrenHTML = (p) => {
     const extra = {}
 
     if (p[TITLE_FIELD]) {
-        extra[".file-link"] = Renderer.renderInternalFileAnchor({ path: p.file.path, name: p[TITLE_FIELD] })
+        extra[".file-link"] = Renderer.renderInternalFileAnchor({
+            path: p.file.path,
+            name: p[TITLE_FIELD],
+            lengthLimit: MAX_FILENAME_LENGTH
+        })
     } else {
-        extra[".file-link"] = Renderer.renderInternalFileAnchor(p.file)
+        extra[".file-link"] = Renderer.renderInternalFileAnchor({...p.file, lengthLimit: MAX_FILENAME_LENGTH})
     }
 
     return extra
@@ -251,11 +289,11 @@ ${Renderer.renderInternalFileAnchor({ path: p.file.path, name: imgTag, ariaLabel
         }
     })
 
-    const article = `<article class="internal-link" ${articleStyle}>
-${thumbTag ?? ""}
-${fileTag}
-</article>
-`
+    const article = `\
+<article class="item internal-link" ${articleStyle}>
+    ${thumbTag ?? ""}
+    ${fileTag}
+</article>`
 
     return {
         html: article,
@@ -276,24 +314,54 @@ const gridManager = module.CollectionManager.makeGridManager({
 })
 
 gridManager.buildParent()
+vm.root.appendChild(gridManager.parent);
+
+if (VIRTUALIZED_LAYOUT &&
+    !vm.disableSet.has('virtualisation')
+    && pages.length >= PAGE_THRESHOLD_TO_START_VIRTUALIZATION
+    && vm.inWhichFiletypeAmi() !== 'canvas') {
+
+    const virtualizedGridManager = new module.VirtualizedGrid({
+        root: vm.content,
+        manager: gridManager,
+        utils: { isEmpty, closestTo, createFragmentFromString, debounce },
+        logger,
+    })
+}
 
 await gridManager.bakeNextHTMLBatch()
 await gridManager.insertNewChunk(),
 
 logger?.logPerf("Baking and inserting first cells in the DOM")
 
-vm.root.appendChild(gridManager.parent);
 //#endregion
 
 //#region Masonry layout
 if (MASONRY_LAYOUT && !vm.disableSet.has('masonry')) {
+
     const masonryManager = new module.Masonry(gridManager.parent)
 
-    const resizeObserver = new ResizeObserver(() => {
+    const gridResizeObserver = new ResizeObserver(() => {
         masonryManager.resizeAllGridItems()
     });
 
-    resizeObserver.observe(masonryManager.grid)
+    gridResizeObserver.observe(masonryManager.grid)
+
+    if (!app.isMobile) {
+        const gridMutationObserver = new MutationObserver((mutationRecord) => {
+            for (const mutation of mutationRecord) {
+                if (mutation.type !== 'childList') return
+
+                const addedNodes = mutation.addedNodes;
+                if (!addedNodes.length) return
+
+                masonryManager.resizeAllGridItems()
+            }
+        });
+        gridMutationObserver.observe(masonryManager.grid, {
+            childList: true,
+        });
+    }
 }
 //#endregion
 
