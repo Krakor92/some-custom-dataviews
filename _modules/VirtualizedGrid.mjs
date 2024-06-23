@@ -112,7 +112,7 @@
  */
 export class VirtualizedGrid {
 
-    constructor({manager, utils, logger}) {
+    constructor({manager, utils, logger, root = null}) {
         if (!manager) throw new Error("Can't create a Virtualized layout without a valid manager of the said layout")
 
         this.manager = manager
@@ -152,7 +152,9 @@ export class VirtualizedGrid {
             })
         }, 300)
 
-        this.#initObservers()
+        this.root = root
+
+        this.#initObservers(root)
     }
 
     /**
@@ -212,16 +214,17 @@ export class VirtualizedGrid {
         this.logger?.reset()
 
         const { boundingClientRect, target, rootBounds } = entry || {}
-        if (context === 'virtualisation' && 0 < boundingClientRect.y && boundingClientRect.y < rootBounds.height) {
-            // The item is leaving the viewport from the side so we don't virtualize anything
-            return null;
-        }
-
         if (!rootBounds) {
             console.warn("The intersection is no longer relevant...")
             return null;
         }
-        const fromTop = this.utils.closestTo(0, rootBounds.height, boundingClientRect.y) === 0
+
+        if (context === 'virtualisation' && rootBounds.top < boundingClientRect.top && boundingClientRect.top < rootBounds.bottom) {
+            // The item is leaving the viewport from the side so we don't virtualize anything
+            return null;
+        }
+
+        const fromTop = this.utils.closestTo(rootBounds.top, rootBounds.bottom, boundingClientRect.top) === rootBounds.top
         const batchId = parseInt(target.dataset.batch, 10)
         const batchPart = target.dataset.batchPart
 
@@ -636,7 +639,6 @@ export class VirtualizedGrid {
 
         if (this.virtualizedCollection.gridWidth !== currentEntryWidth) {
             this.logger?.warn(`The grid width changed from ${this.virtualizedCollection.gridWidth} to ${currentEntryWidth}. Farewell sweet optimization!`)
-            console.log({ lastEntryWidth: this.virtualizedCollection.gridWidth, newEntryWidth: currentEntryWidth })
             this.virtualizedCollection.gridWidth = currentEntryWidth
             this.debouncedResize()
         }
@@ -648,9 +650,10 @@ export class VirtualizedGrid {
      * - MutationObserver (for when items are added/removed from the DOM)
      * - ResizeObserver (for when the grid get resized or is hidden by Obsidian)
      */
-    #initObservers() {
+    #initObservers(root = null) {
+        console.log({root})
         const intersectionOptions = {
-            root: null, // relative to the viewport
+            root, // if `null`, it is relative to the viewport
             threshold: 0, // how much of the target must be visible. Here it means as soon/long as there is one pixel visible
         }
 
@@ -898,14 +901,6 @@ ${currentStyle ?? ''}`
         }
 
         const newStubsHeight = Array.from(this.stubs, (stub) => (stub.getBoundingClientRect().height))
-
-        // this.#reallyPrepareVirtualisationOfItemsFromMonitoredBatch__masonry({
-        //     serializer,
-        //     bakedItems: monitoredBatch.bakedItems,
-        //     newStubsHeight,
-        //     columnIds,
-        //     items,
-        // })
 
         this.#reallyPrepareVirtualisationOfItemsFromMonitoredBatch__steady({
             serializer,

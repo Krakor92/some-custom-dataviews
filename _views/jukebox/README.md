@@ -121,7 +121,6 @@ Here are the overarching principles of how this view works:
 > In such a case, simply close and re-open the file, everything should work like intended
 
 - Odd behaviors occur when this view is used inside an **[Obsidian Kanban](https://github.com/mgmeyers/obsidian-kanban)**.
-	- The virtualisation only happens in one direction (It triggers when cards reach the top of the list/window but not the bottom)
 	- When scrolling, the whole view disappear at some point. I've troubleshot it and the hiding is happening in Kanban territory so I can't do much to prevent it
 
 > [!TIP]
@@ -142,15 +141,17 @@ Here are the overarching principles of how this view works:
 	- What I mean is that they're useful to know at a glance the progress of the music, but the timecode does not update and it can be difficult to change its position, especially on mobile
 
 - As far as possible, avoid changing the width of the grid while using this view. The reason it that there is a naïve implementation of a Pinterest-like virtualization mechanism running in the background that theoretically allow you to scroll and render hundreds/thousands of items while keeping relatively good performance.
-  It relies on the assumption that the page where this view resides keep the same width throughout all its life span. If at some point you change it, it will break the sweat optimization offered by the virtualization. In such a case, this view teleports you to the beginning (as in Pinterest) to avoid suffering abysmal performance, as it reflows all the elements in the DOM and calculate their relative positions to each other following the appropriate layout.
+  It relies on the assumption that the page where this view resides keep the same width throughout all its life span. If at some point you change it, it will break the sweat optimization offered by the virtualization. In such a case, this view teleport you to the beginning (as in Pinterest) to avoid suffering abysmal performance, as it reflows all the elements in the DOM and calculate their relative positions to each other following the appropriate layout.
 
 > [!CAUTION]
 > The above "last resort" scenario won't work if you change the font size or the zoom level of the app (or if you switch to a completely different theme), since this view has no possibility to adapt/react to that unfortunately.
->
-> If you've done so while having this view open, I'd strongly suggest closing/reopening the page or reloading the said view or else you might experience unexpected (rendering) behaviour.
 
-> [!TIP]
-> If you don't like this mechanism for any reasons, you can always disable it globally or at view level. Personally, I don't enable it on my `mp3 only` page because it unloads each audio when its respective cell gets virtualized.
+> [!IMPORTANT]
+> This **infinite scrolling mechanism** is an experimental feature and has been found to be very buggy in some situations.
+> For example, it is automatically disabled inside Canvas files because it simply can't work reliably with the zoom support in place in these files.
+> Unexpected behavior also occurs when used inside Kanban files or any other plugin-type files that alter the layout. Sometimes, reloading the file resolves the issue, but not always.
+>
+> If you encounter problems or simply don't like this feature, you can disable it globally or at the view level. Personally, I don't enable it on my `mp3 only` page because it unloads each audio file when its respective cell gets virtualized.
 
 
 ## 🎯 Motivations

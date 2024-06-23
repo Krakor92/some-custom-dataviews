@@ -721,9 +721,11 @@ vm.root.appendChild(gridManager.parent);
 
 if (VIRTUALIZED_LAYOUT &&
     !vm.disableSet.has('virtualisation')
-    && pages.length >= PAGE_THRESHOLD_TO_START_VIRTUALIZATION) {
+    && pages.length >= PAGE_THRESHOLD_TO_START_VIRTUALIZATION
+    && vm.inWhichFiletypeAmi() !== 'canvas') {
 
     const virtualizedGridManager = new module.VirtualizedGrid({
+        root: vm.content,
         manager: gridManager,
         utils: { isEmpty, closestTo, createFragmentFromString, debounce },
         logger,

@@ -11,6 +11,7 @@ kanban-plugin: board
 
 ## Header Embed
 
+- [ ] > [!TIP] Press the top arrow to fold the list and re-opens it right after to "solve" the hidden issue
 - [ ] ![[view#_]]
 
 
@@ -19,7 +20,7 @@ kanban-plugin: board
 - [ ] ```js-engine
 	const path = `_js/_views/jukebox/view.js`
 	const { main } = await engine.importJs(path)
-
+	
 	main({...this, path}, {
 	  debug: true,
 	})

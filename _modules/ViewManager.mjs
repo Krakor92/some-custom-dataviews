@@ -33,16 +33,17 @@ export class ViewManager {
             }
         })
 
-        this.context = this.whereami()
+        //this.utils.getParentWithClass(this.host.parentNode, "view-content")
 
         this.managedToHideEditButton = this.#hideEditButton()
 
         this.observer = new IntersectionObserver(this.handleViewIntersection.bind(this))
 
-        this.leaf = null
-
         this.#embedObserverWorkaround()
-        this.#resolveCurrentLeaf()
+        this.leaf = this.#resolveCurrentLeaf()
+        this.content = this.#resolveCurrentContent()
+
+        this.context = this.whereami()
 
         /**
          * Here are the three ways this view can be unloaded
@@ -54,7 +55,7 @@ export class ViewManager {
             this.#cleanView()
         })
 
-        // 2. When another script explictly send this `view-unload` event to the container tag
+        // 2. When another script explicitly send the `view-unload` event to the container tag
         this.container.addEventListener("view-unload", this.#cleanView.bind(this))
 
         // 3. When the leaf which contains this view is removed from the DOM
@@ -127,20 +128,52 @@ export class ViewManager {
     #resolveCurrentLeaf() {
         let leaf = this.utils.getParentWithClass(this.host.parentNode, "workspace-leaf")
         if (leaf) {
-            this.leaf = leaf
-            return this.logger?.log("We've found a leaf, and it looks like this view is in a classic tab 🗨️")
+            this.logger?.log("We've found a leaf, and it looks like this view is in a classic tab 🗨️")
+            return leaf
         }
 
         leaf = this.utils.getParentWithClass(this.host.parentNode, "popover")
         if (leaf) {
-            this.leaf = leaf
-            return this.logger?.log("We've found a leaf, and it looks like this view is in a popover 🎈")
+            this.logger?.log("We've found a leaf, and it looks like this view is in a popover 🎈")
+            return leaf
         }
 
         /**
          * We're probably inside a shadow DOM (like inside a Canvas card)
          */
-        return this.logger?.log("Weird, we haven't found a leaf 😕")
+        this.logger?.log("Weird, we haven't found a leaf 😕")
+        return null
+    }
+
+    /**
+     * The goal of this function is the opposite of `resolveCurrentLeaf`.
+     * It's supposed to find the closest DOM element that encapsulate this view
+     * to provide a complete virtualisation process no matter which file were in.
+     */
+    #resolveCurrentContent() {
+        let content = this.utils.getParentWithClass(this.host.parentNode, "markdown-embed-content")
+        if (content) {
+            this.logger?.log("We're in a specific type of file")
+            return content
+        }
+
+        content = this.utils.getParentWithClass(this.host.parentNode, "kanban-plugin")
+        if (content) {
+            this.logger?.log("We're in a Kanban card")
+            if (content.firstChild?.classList?.contains("kanban-plugin__horizontal")) {
+                content = this.utils.getParentWithClass(this.host.parentNode, "kanban-plugin__lane-items")
+            }
+            return content
+        }
+
+        content = this.utils.getParentWithClass(this.host.parentNode, "view-content")
+        if (content) {
+            this.logger?.log("We're in a classic file")
+            return content
+        }
+
+        this.logger?.log("Weird, we haven't found a content node")
+        return null
     }
 
     /**
@@ -239,6 +272,16 @@ export class ViewManager {
         if (!syncPlugin) return ""
 
         return syncPlugin.instance.getDefaultDeviceName()
+    }
+
+    inWhichFiletypeAmi() {
+        if (this.utils.getParentWithClass(this.host.parentNode, "canvas-node-content")) {
+            return 'canvas'
+        }
+        if (this.utils.getParentWithClass(this.host.parentNode, "kanban-plugin")) {
+            return 'kanban'
+        }
+        return 'normal'
     }
 
     #computeId = () => {

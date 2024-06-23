@@ -3670,16 +3670,17 @@ export class ViewManager {
             }
         })
 
-        this.context = this.whereami()
+        //this.utils.getParentWithClass(this.host.parentNode, "view-content")
 
         this.managedToHideEditButton = this.#hideEditButton()
 
         this.observer = new IntersectionObserver(this.handleViewIntersection.bind(this))
 
-        this.leaf = null
-
         this.#embedObserverWorkaround()
-        this.#resolveCurrentLeaf()
+        this.leaf = this.#resolveCurrentLeaf()
+        this.content = this.#resolveCurrentContent()
+
+        this.context = this.whereami()
 
         /**
          * Here are the three ways this view can be unloaded
@@ -3691,7 +3692,7 @@ export class ViewManager {
             this.#cleanView()
         })
 
-        // 2. When another script explictly send this `view-unload` event to the container tag
+        // 2. When another script explicitly send the `view-unload` event to the container tag
         this.container.addEventListener("view-unload", this.#cleanView.bind(this))
 
         // 3. When the leaf which contains this view is removed from the DOM
@@ -3764,20 +3765,52 @@ export class ViewManager {
     #resolveCurrentLeaf() {
         let leaf = this.utils.getParentWithClass(this.host.parentNode, "workspace-leaf")
         if (leaf) {
-            this.leaf = leaf
-            return this.logger?.log("We've found a leaf, and it looks like this view is in a classic tab 🗨️")
+            this.logger?.log("We've found a leaf, and it looks like this view is in a classic tab 🗨️")
+            return leaf
         }
 
         leaf = this.utils.getParentWithClass(this.host.parentNode, "popover")
         if (leaf) {
-            this.leaf = leaf
-            return this.logger?.log("We've found a leaf, and it looks like this view is in a popover 🎈")
+            this.logger?.log("We've found a leaf, and it looks like this view is in a popover 🎈")
+            return leaf
         }
 
         /**
          * We're probably inside a shadow DOM (like inside a Canvas card)
          */
-        return this.logger?.log("Weird, we haven't found a leaf 😕")
+        this.logger?.log("Weird, we haven't found a leaf 😕")
+        return null
+    }
+
+    /**
+     * The goal of this function is the opposite of `resolveCurrentLeaf`.
+     * It's supposed to find the closest DOM element that encapsulate this view
+     * to provide a complete virtualisation process no matter which file were in.
+     */
+    #resolveCurrentContent() {
+        let content = this.utils.getParentWithClass(this.host.parentNode, "markdown-embed-content")
+        if (content) {
+            this.logger?.log("We're in a specific type of file")
+            return content
+        }
+
+        content = this.utils.getParentWithClass(this.host.parentNode, "kanban-plugin")
+        if (content) {
+            this.logger?.log("We're in a Kanban card")
+            if (content.firstChild?.classList?.contains("kanban-plugin__horizontal")) {
+                content = this.utils.getParentWithClass(this.host.parentNode, "kanban-plugin__lane-items")
+            }
+            return content
+        }
+
+        content = this.utils.getParentWithClass(this.host.parentNode, "view-content")
+        if (content) {
+            this.logger?.log("We're in a classic file")
+            return content
+        }
+
+        this.logger?.log("Weird, we haven't found a content node")
+        return null
     }
 
     /**
@@ -3876,6 +3909,16 @@ export class ViewManager {
         if (!syncPlugin) return ""
 
         return syncPlugin.instance.getDefaultDeviceName()
+    }
+
+    inWhichFiletypeAmi() {
+        if (this.utils.getParentWithClass(this.host.parentNode, "canvas-node-content")) {
+            return 'canvas'
+        }
+        if (this.utils.getParentWithClass(this.host.parentNode, "kanban-plugin")) {
+            return 'kanban'
+        }
+        return 'normal'
     }
 
     #computeId = () => {
@@ -4092,7 +4135,7 @@ export class ViewManager {
  */
 export class VirtualizedGrid {
 
-    constructor({manager, utils, logger}) {
+    constructor({manager, utils, logger, root = null}) {
         if (!manager) throw new Error("Can't create a Virtualized layout without a valid manager of the said layout")
 
         this.manager = manager
@@ -4132,7 +4175,9 @@ export class VirtualizedGrid {
             })
         }, 300)
 
-        this.#initObservers()
+        this.root = root
+
+        this.#initObservers(root)
     }
 
     /**
@@ -4192,16 +4237,17 @@ export class VirtualizedGrid {
         this.logger?.reset()
 
         const { boundingClientRect, target, rootBounds } = entry || {}
-        if (context === 'virtualisation' && 0 < boundingClientRect.y && boundingClientRect.y < rootBounds.height) {
-            // The item is leaving the viewport from the side so we don't virtualize anything
-            return null;
-        }
-
         if (!rootBounds) {
             console.warn("The intersection is no longer relevant...")
             return null;
         }
-        const fromTop = this.utils.closestTo(0, rootBounds.height, boundingClientRect.y) === 0
+
+        if (context === 'virtualisation' && rootBounds.top < boundingClientRect.top && boundingClientRect.top < rootBounds.bottom) {
+            // The item is leaving the viewport from the side so we don't virtualize anything
+            return null;
+        }
+
+        const fromTop = this.utils.closestTo(rootBounds.top, rootBounds.bottom, boundingClientRect.top) === rootBounds.top
         const batchId = parseInt(target.dataset.batch, 10)
         const batchPart = target.dataset.batchPart
 
@@ -4616,7 +4662,6 @@ export class VirtualizedGrid {
 
         if (this.virtualizedCollection.gridWidth !== currentEntryWidth) {
             this.logger?.warn(`The grid width changed from ${this.virtualizedCollection.gridWidth} to ${currentEntryWidth}. Farewell sweet optimization!`)
-            console.log({ lastEntryWidth: this.virtualizedCollection.gridWidth, newEntryWidth: currentEntryWidth })
             this.virtualizedCollection.gridWidth = currentEntryWidth
             this.debouncedResize()
         }
@@ -4628,9 +4673,10 @@ export class VirtualizedGrid {
      * - MutationObserver (for when items are added/removed from the DOM)
      * - ResizeObserver (for when the grid get resized or is hidden by Obsidian)
      */
-    #initObservers() {
+    #initObservers(root = null) {
+        console.log({root})
         const intersectionOptions = {
-            root: null, // relative to the viewport
+            root, // if `null`, it is relative to the viewport
             threshold: 0, // how much of the target must be visible. Here it means as soon/long as there is one pixel visible
         }
 
@@ -4878,14 +4924,6 @@ ${currentStyle ?? ''}`
         }
 
         const newStubsHeight = Array.from(this.stubs, (stub) => (stub.getBoundingClientRect().height))
-
-        // this.#reallyPrepareVirtualisationOfItemsFromMonitoredBatch__masonry({
-        //     serializer,
-        //     bakedItems: monitoredBatch.bakedItems,
-        //     newStubsHeight,
-        //     columnIds,
-        //     items,
-        // })
 
         this.#reallyPrepareVirtualisationOfItemsFromMonitoredBatch__steady({
             serializer,
