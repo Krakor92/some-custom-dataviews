@@ -1,0 +1,8 @@
+export { AudioManager } from './AudioManager'
+export { CollectionManager } from './CollectionManager'
+export { FileManager } from './FileManager'
+export { IconManager } from './IconManager'
+export { Orphanage } from './Orphanage'
+export { PageManager } from './PageManager'
+export { ViewManager } from './ViewManager'
+export { YouTubeManager } from './YouTubeManager'

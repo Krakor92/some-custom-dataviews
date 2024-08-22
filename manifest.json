@@ -1,0 +1,9 @@
+{
+	"id": "kviews",
+	"name": "Kviews",
+	"version": "0.0.1",
+	"minAppVersion": "1.6.7",
+	"description": "Some custom views built to be used with other plugins like JS-Engine or Datacore",
+	"author": "Krakor",
+	"isDesktopOnly": false
+}
