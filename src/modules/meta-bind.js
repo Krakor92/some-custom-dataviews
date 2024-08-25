@@ -1,7 +1,7 @@
 import {
-	debounce,
-	isEqual,
-	scrollToElement,
+  debounce,
+  isEqual,
+  scrollToElement,
 } from '@/modules/utils'
 
 /**
@@ -23,56 +23,56 @@ import {
  * @todo Watch every properties if `propertiesToWatch` is empty
  */
 export async function bindViewToProperties(env, {
-	main,
-	buildViewParams,
-	propertiesToWatch,
-	debounceWait = 50,
+  main,
+  buildViewParams,
+  propertiesToWatch,
+  debounceWait = 50,
 }) {
-	// JS-Engine specific setup
-	const { app, engine, component, container, context, obsidian } = env.globals
+  // JS-Engine specific setup
+  const { app, engine, component, container, context, obsidian } = env.globals
 
-	const mb = engine.getPlugin('obsidian-meta-bind-plugin').api;
+  const mb = engine.getPlugin('obsidian-meta-bind-plugin').api;
 
-	const bindTargets = propertiesToWatch.map(property => mb.parseBindTarget(property, context.file.path));
+  const bindTargets = propertiesToWatch.map(property => mb.parseBindTarget(property, context.file.path));
 
-	function render(props) {
-		// we force the unload of the view to remove the content created in the previous render
-		container.dispatchEvent(new CustomEvent('view-unload'))
+  function render(props) {
+    // we force the unload of the view to remove the content created in the previous render
+    container.dispatchEvent(new CustomEvent('view-unload'))
 
-		main(env, props)
+    main(env, props)
 
-		// adjust the timeout if needed
-		setTimeout(() => {
-			scrollToElement(container)
-		}, 4.7)
-	}
+    // adjust the timeout if needed
+    setTimeout(() => {
+      scrollToElement(container)
+    }, 4.7)
+  }
 
-	const previousTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
-	let previousViewParams = buildViewParams(previousTargettedFrontmatter)
+  const previousTargettedFrontmatter = Object.fromEntries(propertiesToWatch.map(property => [property, context.metadata.frontmatter[property]]))
+  let previousViewParams = buildViewParams(previousTargettedFrontmatter)
 
-	// we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
-	const reactive = engine.reactive(render, previousViewParams);
+  // we create a reactive component from the render function and the initial value will be the value of the frontmatter to begin with
+  const reactive = engine.reactive(render, previousViewParams);
 
-	const debouncedRefresh = debounce((data) => {
-		const currentTargettedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
-			properties[property] = data[i]
-			return properties
-		}, {})
+  const debouncedRefresh = debounce((data) => {
+    const currentTargettedFrontmatter = propertiesToWatch.reduce((properties, property, i) => {
+      properties[property] = data[i]
+      return properties
+    }, {})
 
-		const newViewParams = buildViewParams(currentTargettedFrontmatter)
+    const newViewParams = buildViewParams(currentTargettedFrontmatter)
 
-		const viewParamsHaventChanged = isEqual(previousViewParams, newViewParams)
-		if (viewParamsHaventChanged) return; //no-op
+    const viewParamsHaventChanged = isEqual(previousViewParams, newViewParams)
+    if (viewParamsHaventChanged) return; //no-op
 
-		previousViewParams = newViewParams
+    previousViewParams = newViewParams
 
-		// it has been confirmed that the new frontmatter should be used for the next render
-		reactive.refresh(newViewParams)
-	}, debounceWait)
+    // it has been confirmed that the new frontmatter should be used for the next render
+    reactive.refresh(newViewParams)
+  }, debounceWait)
 
-	const reactives = mb.reactiveMetadata(bindTargets, component, (...targets) => {
-		debouncedRefresh(targets)
-	})
+  const reactives = mb.reactiveMetadata(bindTargets, component, (...targets) => {
+    debouncedRefresh(targets)
+  })
 
-	return reactive;
+  return reactive;
 }

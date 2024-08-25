@@ -21,18 +21,18 @@ const dummyDiv = document.createElement('div');
  * @returns {DocumentFragment} The document fragment containing the parsed HTML.
  */
 export const createFragmentFromString = (strHTML) => {
-	const fragment = document.createDocumentFragment();
+  const fragment = document.createDocumentFragment();
 
-	/**
-	 * This div is needed for the actual HTML string to be parsed
-	 */
-	dummyDiv.innerHTML = strHTML;
+  /**
+   * This div is needed for the actual HTML string to be parsed
+   */
+  dummyDiv.innerHTML = strHTML;
 
-	while (dummyDiv.firstChild) {
-		fragment.appendChild(dummyDiv.firstChild);
-	}
+  while (dummyDiv.firstChild) {
+    fragment.appendChild(dummyDiv.firstChild);
+  }
 
-	return fragment;
+  return fragment;
 };
 
 /**
@@ -41,40 +41,40 @@ export const createFragmentFromString = (strHTML) => {
  * @param {string} className
  */
 export const getParentWithClass = (element, className) => {
-	// Traverse up the DOM tree until the root (body or html) is reached
-	while (element && element !== document.body && element !== document.documentElement) {
-		element = element.parentElement;
-		if (element?.classList.contains(className)) {
-			return element;
-		}
-	}
-	return null;
+  // Traverse up the DOM tree until the root (body or html) is reached
+  while (element && element !== document.body && element !== document.documentElement) {
+    element = element.parentElement;
+    if (element?.classList.contains(className)) {
+      return element;
+    }
+  }
+  return null;
 }
 
 export const scrollToElement = (target) => {
-	let element;
+  let element;
 
-	// Check if the provided parameter is a string (selector)
-	if (typeof target === 'string') {
-		// If it's a string, use document.querySelector() to get the element
-		element = document.querySelector(target);
+  // Check if the provided parameter is a string (selector)
+  if (typeof target === 'string') {
+    // If it's a string, use document.querySelector() to get the element
+    element = document.querySelector(target);
 
-		// Check if the selector returned a valid element
-		if (!element) {
-			console.error("Element not found for selector:", target);
-			return;
-		}
-	} else if (target instanceof Element) {
-		// If it's already a DOM element, use it directly
-		element = target;
-	} else {
-		// Invalid parameter
-		console.error("Invalid element or selector provided.");
-		return;
-	}
+    // Check if the selector returned a valid element
+    if (!element) {
+      console.error("Element not found for selector:", target);
+      return;
+    }
+  } else if (target instanceof Element) {
+    // If it's already a DOM element, use it directly
+    element = target;
+  } else {
+    // Invalid parameter
+    console.error("Invalid element or selector provided.");
+    return;
+  }
 
-	// Scroll the element into view
-	element.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Scroll the element into view
+  element.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 //#endregion
@@ -85,42 +85,42 @@ export const scrollToElement = (target) => {
  * @param {Map<any, string|number>} map
  */
 export const buildInvertedMap = (map) => {
-	const invertedMap = new Map();
-	for (const [key, value] of map) {
-		if (invertedMap.has(value)) {
-			invertedMap.get(value).push(key);
-		} else {
-			invertedMap.set(value, [key]);
-		}
-	}
-	return invertedMap
+  const invertedMap = new Map();
+  for (const [key, value] of map) {
+    if (invertedMap.has(value)) {
+      invertedMap.get(value).push(key);
+    } else {
+      invertedMap.set(value, [key]);
+    }
+  }
+  return invertedMap
 }
 
 // Clamp number between two values with the following line:
 export const clamp = (num, min, max) => Math.min(Math.max(num, min), max)
 
 export const closestTo = (low, high, value) => {
-	const diffToLow = Math.abs(value - low);
-	const diffToHigh = Math.abs(value - high);
+  const diffToLow = Math.abs(value - low);
+  const diffToHigh = Math.abs(value - high);
 
-	if (diffToLow < diffToHigh) {
-		return low;
-	} else if (diffToHigh < diffToLow) {
-		return high;
-	} else {
-		return value; // When the value is equidistant to both low and high
-	}
+  if (diffToLow < diffToHigh) {
+    return low;
+  } else if (diffToHigh < diffToLow) {
+    return high;
+  } else {
+    return value; // When the value is equidistant to both low and high
+  }
 }
 
 export const delay = async (time) =>
-	new Promise((resolve) => setTimeout(resolve, time))
+  new Promise((resolve) => setTimeout(resolve, time))
 
 export const isObject = (o) => {
-	return (
-		o !== null &&
-		typeof o === "object" &&
-		Array.isArray(o) === false
-	)
+  return (
+    o !== null &&
+    typeof o === "object" &&
+    Array.isArray(o) === false
+  )
 }
 
 /**
@@ -128,10 +128,10 @@ export const isObject = (o) => {
  * @param {number} seed
  */
 const seededRNG = (seed) => {
-	return () => {
-		seed = (seed * 1664525 + 1013904223) % 4294967296;
-		return seed / 4294967296;
-	};
+  return () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
 }
 
 /**
@@ -141,14 +141,14 @@ const seededRNG = (seed) => {
  * @param {number} seed
  */
 export const shuffleArray = (a, seed) => {
-	const rng = (typeof seed === 'number') ? seededRNG(seed) : Math.random;
-	let j, x, i;
-	for (i = a.length - 1; i > 0; i--) {
-		j = Math.floor(rng() * (i + 1));
-		x = a[i];
-		a[i] = a[j];
-		a[j] = x;
-	}
+  const rng = (typeof seed === 'number') ? seededRNG(seed) : Math.random;
+  let j, x, i;
+  for (i = a.length - 1; i > 0; i--) {
+    j = Math.floor(rng() * (i + 1));
+    x = a[i];
+    a[i] = a[j];
+    a[j] = x;
+  }
 }
 
 /**
@@ -156,27 +156,27 @@ export const shuffleArray = (a, seed) => {
  * @returns {number} The timecode converted to seconds, can be NaN if it's not a valid timecode
 */
 export const convertTimecodeToDuration = (timecode) => {
-	const timeArray = timecode?.split(':');
-	if (!timeArray || timeArray.length < 2 || timeArray.length > 3) { // It only supports 00:00 or 00:00:00
-		return NaN;
-	}
+  const timeArray = timecode?.split(':');
+  if (!timeArray || timeArray.length < 2 || timeArray.length > 3) { // It only supports 00:00 or 00:00:00
+    return NaN;
+  }
 
-	let i = 0
-	let total = 0
-	if (timeArray.length === 3) {
-		const hours = parseInt(timeArray[i++], 10)
-		if (isNaN(hours)) return NaN
-		total += hours * 3600
-	}
+  let i = 0
+  let total = 0
+  if (timeArray.length === 3) {
+    const hours = parseInt(timeArray[i++], 10)
+    if (isNaN(hours)) return NaN
+    total += hours * 3600
+  }
 
-	const minutes = parseInt(timeArray[i++], 10)
-	if (isNaN(minutes)) return NaN
-	total += minutes * 60
+  const minutes = parseInt(timeArray[i++], 10)
+  if (isNaN(minutes)) return NaN
+  total += minutes * 60
 
-	const seconds = parseInt(timeArray[i], 10)
-	if (isNaN(seconds)) return NaN
+  const seconds = parseInt(timeArray[i], 10)
+  if (isNaN(seconds)) return NaN
 
-	return total + seconds
+  return total + seconds
 }
 
 /**
@@ -184,15 +184,15 @@ export const convertTimecodeToDuration = (timecode) => {
  * @returns {number} The duration converted to a timecode of the format `00:00:00` or `00:00`
 */
 export const convertDurationToTimecode = (duration) => {
-	const hours = Math.floor(duration / 3600);
-	const minutes = Math.floor((duration % 3600) / 60);
-	const seconds = Math.floor(duration % 60);
+  const hours = Math.floor(duration / 3600);
+  const minutes = Math.floor((duration % 3600) / 60);
+  const seconds = Math.floor(duration % 60);
 
-	const hoursString = hours.toString().padStart(1, '0');
-	const minutesString = minutes.toString().padStart(1, '0');
-	const secondsString = seconds.toString().padStart(2, '0');
+  const hoursString = hours.toString().padStart(1, '0');
+  const minutesString = minutes.toString().padStart(1, '0');
+  const secondsString = seconds.toString().padStart(2, '0');
 
-	return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
+  return hours > 0 ? `${hoursString}:${minutesString}:${secondsString}` : `${minutesString}:${secondsString}`;
 }
 
 /**
@@ -200,25 +200,25 @@ export const convertDurationToTimecode = (duration) => {
  * @returns {RegExp} a new regex based on the given one but with the global flag enabled
  */
 export const globalizeRegex = (regex) => {
-	let regexStr = regex.source // Get the string representation of the regex
+  let regexStr = regex.source // Get the string representation of the regex
 
-	if (regexStr.startsWith('^')) {
-		regexStr = regexStr.slice(1)
-	}
+  if (regexStr.startsWith('^')) {
+    regexStr = regexStr.slice(1)
+  }
 
-	if (regexStr.endsWith('$')) {
-		regexStr = regexStr.slice(0, -1)
-	}
-	return new RegExp(regexStr, 'g')
+  if (regexStr.endsWith('$')) {
+    regexStr = regexStr.slice(0, -1)
+  }
+  return new RegExp(regexStr, 'g')
 }
 
 /* from: https://stackoverflow.com/a/75988895 */
 export const debounce = (callback, wait = 300) => {
-	let timeoutId = null;
-	return (...args) => {
-		window.clearTimeout(timeoutId);
-		timeoutId = setTimeout(() => { callback(...args); }, wait);
-	};
+  let timeoutId = null;
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => { callback(...args); }, wait);
+  };
 }
 
 /**
@@ -230,130 +230,130 @@ export const debounce = (callback, wait = 300) => {
  * @returns {T}
  */
 export const deepClone = (obj) => {
-	if (obj === null || typeof obj !== 'object') {
-		return obj; // Return primitives and null as is
-	}
+  if (obj === null || typeof obj !== 'object') {
+    return obj; // Return primitives and null as is
+  }
 
-	if (Array.isArray(obj)) {
-		const newArray = [];
-		for (let i = 0; i < obj.length; i++) {
-			newArray[i] = deepClone(obj[i]);
-		}
-		return newArray; // Clone arrays
-	}
+  if (Array.isArray(obj)) {
+    const newArray = [];
+    for (let i = 0; i < obj.length; i++) {
+      newArray[i] = deepClone(obj[i]);
+    }
+    return newArray; // Clone arrays
+  }
 
-	// At this point we're dealing with an object
-	// We can duplicate it making sure we keep its prototype intact
-	const newObj = Object.create(Object.getPrototypeOf(obj));
-	for (const key in obj) {
-		// We make sure to ignore properties from the prototype chain
-		if (obj.hasOwnProperty(key)) {
-			newObj[key] = deepClone(obj[key]);
-		}
-	}
-	return newObj; // Clone objects
+  // At this point we're dealing with an object
+  // We can duplicate it making sure we keep its prototype intact
+  const newObj = Object.create(Object.getPrototypeOf(obj));
+  for (const key in obj) {
+    // We make sure to ignore properties from the prototype chain
+    if (obj.hasOwnProperty(key)) {
+      newObj[key] = deepClone(obj[key]);
+    }
+  }
+  return newObj; // Clone objects
 }
 
 /**
  * An empty check written by ChatGPT
  */
 export function isEmpty(value) {
-	if (value == null) {
-		// Check for null or undefined
-		return true;
-	} else if (Array.isArray(value)) {
-		// Check for empty array
-		return value.length === 0;
-	} else if (typeof value === 'object') {
-		// Check for empty object
-		if (Object.prototype.toString.call(value) === '[object Object]') {
-			return Object.keys(value).length === 0;
-		}
-		// Check for other types of objects
-		for (let key in value) {
-			if (value.hasOwnProperty(key)) {
-				return false;
-			}
-		}
-		return true; // If no enumerable properties found
-	} else if (typeof value === 'string') {
-		// Check for empty string
-		return value.trim() === '';
-	} else if (typeof value === 'number' && isNaN(value)) {
-		// Check for NaN
-		return true;
-	}
+  if (value == null) {
+    // Check for null or undefined
+    return true;
+  } else if (Array.isArray(value)) {
+    // Check for empty array
+    return value.length === 0;
+  } else if (typeof value === 'object') {
+    // Check for empty object
+    if (Object.prototype.toString.call(value) === '[object Object]') {
+      return Object.keys(value).length === 0;
+    }
+    // Check for other types of objects
+    for (let key in value) {
+      if (value.hasOwnProperty(key)) {
+        return false;
+      }
+    }
+    return true; // If no enumerable properties found
+  } else if (typeof value === 'string') {
+    // Check for empty string
+    return value.trim() === '';
+  } else if (typeof value === 'number' && isNaN(value)) {
+    // Check for NaN
+    return true;
+  }
 
-	return false; // For other types, consider them non-empty
+  return false; // For other types, consider them non-empty
 }
 /**
  * A naïve deep equality check written by ChatGPT
  * Only handles scalar values, arrays and objects
  */
 export const isEqual = (a, b) => {
-	// Handle primitives and null
-	if (a === b) {
-		return true;
-	}
+  // Handle primitives and null
+  if (a === b) {
+    return true;
+  }
 
-	// Handle arrays
-	if (Array.isArray(a) && Array.isArray(b)) {
-		if (a.length !== b.length) {
-			return false;
-		}
-		for (let i = 0; i < a.length; i++) {
-			if (!isEqual(a[i], b[i])) {
-				return false;
-			}
-		}
-		return true;
-	}
+  // Handle arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+      if (!isEqual(a[i], b[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
 
-	// Handle objects
-	if (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null) {
-		// The two objects do not share the same prototype, they are not equal
-		if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
-			return false
-		}
+  // Handle objects
+  if (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null) {
+    // The two objects do not share the same prototype, they are not equal
+    if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
+      return false
+    }
 
-		const keysA = Object.keys(a);
-		const keysB = Object.keys(b);
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
 
-		if (keysA.length !== keysB.length) {
-			return false;
-		}
+    if (keysA.length !== keysB.length) {
+      return false;
+    }
 
-		for (const key of keysA) {
-			if (!keysB.includes(key) || !isEqual(a[key], b[key])) {
-				return false;
-			}
-		}
+    for (const key of keysA) {
+      if (!keysB.includes(key) || !isEqual(a[key], b[key])) {
+        return false;
+      }
+    }
 
-		return true;
-	}
+    return true;
+  }
 
-	// If types are different, they are not equal
-	return false;
+  // If types are different, they are not equal
+  return false;
 }
 
-//	#endregion
+// #endregion
 
 //#region Obsidian
 
 export const getOS = (app) => {
-	const { isMobile } = app
+  const { isMobile } = app
 
-	// I would like to use `navigator.userAgentData.platform` since `navigator.platform` is deprecated but it doesn't work on mobile
-	// TODO: see if I can use appVersion instead -> https://liamca.in/Obsidian/API+FAQ/OS/check+the+current+OS
-	const { platform } = navigator
+  // I would like to use `navigator.userAgentData.platform` since `navigator.platform` is deprecated but it doesn't work on mobile
+  // TODO: see if I can use appVersion instead -> https://liamca.in/Obsidian/API+FAQ/OS/check+the+current+OS
+  const { platform } = navigator
 
-	if (platform.indexOf("Win") !== -1) return "Windows"
-	// if (platform.indexOf("Mac") !== -1) return "MacOS";
-	if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux"
-	if (platform.indexOf("Linux") !== -1 && isMobile) return "Android"
-	if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS"
+  if (platform.indexOf("Win") !== -1) return "Windows"
+  // if (platform.indexOf("Mac") !== -1) return "MacOS";
+  if (platform.indexOf("Linux") !== -1 && !isMobile) return "Linux"
+  if (platform.indexOf("Linux") !== -1 && isMobile) return "Android"
+  if (platform.indexOf("Mac") !== -1 && isMobile) return "iPadOS"
 
-	return "Unknown OS"
+  return "Unknown OS"
 }
 
 /**
@@ -370,26 +370,26 @@ export const getOS = (app) => {
  * @returns {boolean} - True if the value is valid, false otherwise
  */
 export const isValidPropertyValue = (value) => {
-	if (
-		value == null
-		|| (typeof value === "object" && Object.entries(value).length === 0)
-		|| (Array.isArray(value) && value.every(cell => {
-			return cell == null || (typeof cell === "string" && cell.trim() === "")
-		}))
-		|| (typeof value === "string" && value.trim() === "")
-	) {
-		return false
-	}
+  if (
+    value == null
+    || (typeof value === "object" && Object.entries(value).length === 0)
+    || (Array.isArray(value) && value.every(cell => {
+      return cell == null || (typeof cell === "string" && cell.trim() === "")
+    }))
+    || (typeof value === "string" && value.trim() === "")
+  ) {
+    return false
+  }
 
-	return true
+  return true
 }
 
 /**
  * @param {import('../_views').Link} link
  */
 export const linkExists = async (link) => {
-	if (!isObject(link)) return false
-	return await window.app.vault.adapter.exists(link.path)
+  if (!isObject(link)) return false
+  return await window.app.vault.adapter.exists(link.path)
 }
 
 /**
@@ -398,28 +398,28 @@ export const linkExists = async (link) => {
  * @returns {Array}
  */
 export const normalizeArrayOfObjectField = (field) => {
-	if (!field) return []
+  if (!field) return []
 
-	// Single object in yaml frontmatter
-	if (isObject(field)) return [deepClone(field)]
+  // Single object in yaml frontmatter
+  if (isObject(field)) return [deepClone(field)]
 
-	try {
-		// Single string as inline field
-		if (!Array.isArray(field)) return [JSON.parse(field)]
+  try {
+    // Single string as inline field
+    if (!Array.isArray(field)) return [JSON.parse(field)]
 
-		return field.reduce((a, c) => {
-			if (Array.isArray(c)) {
-				return [...a, ...normalizeArrayOfObjectField(c)]
-			}
+    return field.reduce((a, c) => {
+      if (Array.isArray(c)) {
+        return [...a, ...normalizeArrayOfObjectField(c)]
+      }
 
-			if (isObject(c)) return [...a, deepClone(c)]
+      if (isObject(c)) return [...a, deepClone(c)]
 
-			return [...a, JSON.parse(c)]
-		}, [])
-	} catch (e) {
-		console.error(e)
-		return []
-	}
+      return [...a, JSON.parse(c)]
+    }, [])
+  } catch (e) {
+    console.error(e)
+    return []
+  }
 }
 
 /**
@@ -429,31 +429,31 @@ export const normalizeArrayOfObjectField = (field) => {
  * @returns {Promise<Array<import('../_views').Link|string>>}
  */
 export const normalizeLinksPath = async (links, baseDir) => {
-	return await Promise.all(
-		links.map(async (l) => {
-			// l is a string
-			if (!l.path) {
-				return { path: `${baseDir}/${l}.md` }
-			}
+  return await Promise.all(
+    links.map(async (l) => {
+      // l is a string
+      if (!l.path) {
+        return { path: `${baseDir}/${l}.md` }
+      }
 
-			// l is an empty link
-			if (!(await linkExists(l))) {
-				return { ...l, path: `${baseDir}/${l.path}.md` }
-			}
+      // l is an empty link
+      if (!(await linkExists(l))) {
+        return { ...l, path: `${baseDir}/${l.path}.md` }
+      }
 
-			return l
-		})
-	)
+      return l
+    })
+  )
 }
 
 /**
  * @param {HTMLElement} tag
  */
 export const removeTagChildDVSpan = (tag) => {
-	const span = tag.querySelector("span")
-	if (!span) return
+  const span = tag.querySelector("span")
+  if (!span) return
 
-	span.outerHTML = span.innerHTML
+  span.outerHTML = span.innerHTML
 }
 
 /**
@@ -461,11 +461,11 @@ export const removeTagChildDVSpan = (tag) => {
  * @param {object|number} value
  */
 export const valueToDateTime = ({ value, dv }) => {
-	if (typeof value === "number") {
-		// that means its just a year
-		return dv.luxon.DateTime.fromObject({ year: value })
-	}
-	return dv.date(value)
+  if (typeof value === "number") {
+    // that means its just a year
+    return dv.luxon.DateTime.fromObject({ year: value })
+  }
+  return dv.date(value)
 }
 
 const wikilinkPattern = /!?\[\[(.*?)\]\]/g;
@@ -476,12 +476,12 @@ const wikilinkPattern = /!?\[\[(.*?)\]\]/g;
  * @returns {TFile} with the cache too
  */
 export const parse = (wikilink, { app, obsidian }) => {
-	const cleaned = wikilink.replace(wikilinkPattern, "$1");
-	const linkpath = obsidian.getLinkpath(cleaned)
-	const file = app.metadataCache.getFirstLinkpathDest(linkpath, "")
-	const cache = app.metadataCache.getFileCache(file)
+  const cleaned = wikilink.replace(wikilinkPattern, "$1");
+  const linkpath = obsidian.getLinkpath(cleaned)
+  const file = app.metadataCache.getFirstLinkpathDest(linkpath, "")
+  const cache = app.metadataCache.getFileCache(file)
 
-	return { ...file, cache }
+  return { ...file, cache }
 }
 
 //#endregion
