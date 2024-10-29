@@ -1,20 +1,27 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "inlineSourceMap": true,
-    "inlineSources": true,
     "module": "ESNext",
-    "target": "ES6",
+    "target": "ESNext",
     "allowJs": true,
+    "checkJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
     "isolatedModules": true,
+    "strict": true,
     "strictNullChecks": true,
-    "lib": ["DOM", "ES5", "ES6", "ES7"],
+    "lib": ["DOM", "ESNext"],
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "noImplicitReturns": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "sourceMap": true,
+    "types": ["obsidian-typings"]
   },
-  "include": ["**/*.ts", "**/*.js"]
+  "include": ["**/*.ts", "**/*.js", "**/*.svelte*"]
 }

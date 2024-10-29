@@ -1,14 +1,8 @@
-import {
-  App,
-  Editor,
-  Modal,
-  Notice,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-} from "obsidian";
-
+import type { App } from "obsidian";
+import { Plugin, PluginSettingTab, Setting } from "obsidian";
 import { main as jukebox } from "@/views/jukebox";
+import { main as POC } from "@/views/proof-of-concept";
+import { main as sandbox } from "@/views/sandbox";
 
 // Remember to rename these classes and interfaces!
 
@@ -23,27 +17,31 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 export default class MyPlugin extends Plugin {
   settings: MyPluginSettings;
   jukebox: any;
+  sandbox: any;
 
-  async onload() {
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  async onload(): Promise<void> {
     await this.loadSettings();
 
     // This adds a settings tab so the user can configure various aspects of the plugin
     this.addSettingTab(new SampleSettingTab(this.app, this));
 
     this.jukebox = jukebox;
+    this.sandbox = sandbox;
+    this.POC = POC;
 
     console.log("Kviews is loaded");
   }
 
-  onunload() {
+  onunload(): void {
     console.log("Kviews is unloaded");
   }
 
-  async loadSettings() {
+  async loadSettings(): Promise<void> {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
 
-  async saveSettings() {
+  async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
   }
 }

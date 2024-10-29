@@ -2,57 +2,79 @@
 
 /* Remove the box-shadow around the view in live preview */
 .cm-preview-code-block:has(.custom-view):hover {
-    box-shadow: none !important;
+  box-shadow: none !important;
 }
 
 /* Better callouts */
 .callout:has(.custom-view) {
-    mix-blend-mode: normal;
+  mix-blend-mode: normal;
 }
 
 /* #region no box-shadow clipping */
-.markdown-source-view.mod-cm6 .cm-content>[contenteditable=false]:has(.custom-view) {
-    contain: none !important;
+.markdown-source-view.mod-cm6
+  .cm-content
+  > [contenteditable="false"]:has(.custom-view) {
+  contain: none !important;
 }
 
 .cm-preview-code-block:has(.custom-view),
 .block-language-dataviewjs:has(.custom-view),
 .custom-view {
-    overflow: visible !important;
+  overflow: visible !important;
 }
 
 /* #endregion */
 
 .custom-view {
-    position: relative;
-    cursor: default;
+  position: relative;
+  cursor: default;
 }
 
 .custom-view {
-    &.debug {
-        .item[data-batch-part][data-batch$="0"] { background-color: rgba(255, 0, 0, 0.25); }
-        .item[data-batch-part][data-batch$="1"] { background-color: rgba(255, 165, 0, 0.25); }
-        .item[data-batch-part][data-batch$="2"] { background-color: rgba(255, 255, 0, 0.50); }
-        .item[data-batch-part][data-batch$="3"] { background-color: rgba(0, 128, 0, 0.25); }
-        .item[data-batch-part][data-batch$="4"] { background-color: rgba(0, 0, 255, 0.25); }
-        .item[data-batch-part][data-batch$="5"] { background-color: rgba(75, 0, 130, 0.25); }
-        .item[data-batch-part][data-batch$="6"] { background-color: rgba(238, 130, 238, 0.25); }
-        .item[data-batch-part][data-batch$="7"] { background-color: rgba(165, 42, 42, 0.25); }
-        .item[data-batch-part][data-batch$="8"] { background-color: rgba(128, 128, 128, 0.25); }
-        .item[data-batch-part][data-batch$="9"] { background-color: rgba(0, 0, 0); }
-
-        /** for debug purposes */
-        .stub {
-            background-color: #ccf;
-        }
+  &.debug {
+    .item[data-batch-part][data-batch$="0"] {
+      background-color: rgba(255, 0, 0, 0.25);
     }
+    .item[data-batch-part][data-batch$="1"] {
+      background-color: rgba(255, 165, 0, 0.25);
+    }
+    .item[data-batch-part][data-batch$="2"] {
+      background-color: rgba(255, 255, 0, 0.5);
+    }
+    .item[data-batch-part][data-batch$="3"] {
+      background-color: rgba(0, 128, 0, 0.25);
+    }
+    .item[data-batch-part][data-batch$="4"] {
+      background-color: rgba(0, 0, 255, 0.25);
+    }
+    .item[data-batch-part][data-batch$="5"] {
+      background-color: rgba(75, 0, 130, 0.25);
+    }
+    .item[data-batch-part][data-batch$="6"] {
+      background-color: rgba(238, 130, 238, 0.25);
+    }
+    .item[data-batch-part][data-batch$="7"] {
+      background-color: rgba(165, 42, 42, 0.25);
+    }
+    .item[data-batch-part][data-batch$="8"] {
+      background-color: rgba(128, 128, 128, 0.25);
+    }
+    .item[data-batch-part][data-batch$="9"] {
+      background-color: rgba(0, 0, 0);
+    }
+
+    /** for debug purposes */
+    .stub {
+      background-color: #ccf;
+    }
+  }
 }
 
 /* JS-engine: remove stats button */
 .js-engine-execution-render-child:hover .js-engine-execution-stats-button,
 .js-engine-execution-stats-button:hover,
 .js-engine-execution-stats-button {
-    display: none;
+  display: none;
 }
 
 /* #endregion */
@@ -65,428 +87,436 @@ And the buttons rules from there https://github.com/702573N/Obsidian-Tasks-Calen
 */
 
 :root {
-	/**
-	 * Try to not make it too small or this view's virtual grid won't be as effective
-	 */
-	--jukebox-cards-min-width: 140px;
-	/* --jukebox-cards-min-width: 160px; */
-	--jukebox-cards-max-width: 1fr;
-	--jukebox-cards-mobile-width: 120px;
-	--jukebox-cards-image-height: 200px;
-	--jukebox-cards-add-file-height: 140px;
+  /**
+   * Try to not make it too small or this view's virtual grid won't be as effective
+   */
+  --jukebox-cards-min-width: 140px;
+  /* --jukebox-cards-min-width: 160px; */
+  --jukebox-cards-max-width: 1fr;
+  --jukebox-cards-mobile-width: 120px;
+  --jukebox-cards-image-height: 200px;
+  --jukebox-cards-add-file-height: 140px;
 
-	--jukebox-cards-link-inline-padding: 1.2em;
-	--jukebox-cards-link-weight: inherit;
+  --jukebox-cards-link-inline-padding: 1.2em;
+  --jukebox-cards-link-weight: inherit;
 
-	--jukebox-cards-image-fit: cover;
-	--jukebox-cards-background: transparent;
-	--jukebox-cards-border-width: 1px;
-	--jukebox-cards-border-radius: 6px;
-	--jukebox-cards-columns: repeat(auto-fit, minmax(var(--jukebox-cards-min-width), var(--jukebox-cards-max-width)));
+  --jukebox-cards-image-fit: cover;
+  --jukebox-cards-background: transparent;
+  --jukebox-cards-border-width: 1px;
+  --jukebox-cards-border-radius: 6px;
+  --jukebox-cards-columns: repeat(
+    auto-fit,
+    minmax(var(--jukebox-cards-min-width), var(--jukebox-cards-max-width))
+  );
 
-	--jukebox-audio-player-shade: inherit;
+  --jukebox-audio-player-shade: inherit;
 
-	--jukebox-thumbnail-emphased-bluriness: 1px;
-	--jukebox-thumbnail-emphased-brigthness-offset: 0.2;
+  --jukebox-thumbnail-emphased-bluriness: 1px;
+  --jukebox-thumbnail-emphased-brigthness-offset: 0.2;
 
-	--jukebox-background-modifier-border: hsl(0, 0%, 20%);
-	--jukebox-background-modifier-border-hover: hsl(0, 0%, 25%);
-	--jukebox-background-modifier-border-light: hsl(0, 0%, 80%);
-	--jukebox-background-modifier-border-hover-light: hsl(0, 0%, 85%);
+  --jukebox-background-modifier-border: hsl(0, 0%, 20%);
+  --jukebox-background-modifier-border-hover: hsl(0, 0%, 25%);
+  --jukebox-background-modifier-border-light: hsl(0, 0%, 80%);
+  --jukebox-background-modifier-border-hover-light: hsl(0, 0%, 85%);
 }
 
-@media (max-width:400pt) {
-	:root {
-		--jukebox-cards-min-width: var(--jukebox-cards-mobile-width);
-	}
+@media (max-width: 400pt) {
+  :root {
+    --jukebox-cards-min-width: var(--jukebox-cards-mobile-width);
+  }
 }
 
 @keyframes fadeInAnimation {
-	0% {
-		opacity: 0;
-	}
+  0% {
+    opacity: 0;
+  }
 
-	100% {
-		opacity: 1;
-	}
+  100% {
+    opacity: 1;
+  }
 }
 
 .jukebox {
+  span {
+    display: contents;
+  }
 
-span {
-	display: contents;
-}
+  /* #region thumbnail */
+  .thumb-stack {
+    display: grid;
 
-/* #region thumbnail */
-.thumb-stack {
-	display: grid;
+    /* Hide Sanctum's img overflowing */
+    overflow: hidden;
 
-	/* Hide Sanctum's img overflowing */
-	overflow: hidden;
+    /* When the thumbnail is wrapped in <a> */
+    a {
+      display: flex;
+      grid-column: 1;
+      grid-row: 1;
+      /* transition: transform .5s ease; */
+    }
 
-	/* When the thumbnail is wrapped in <a> */
-	a {
-		display: flex;
-		grid-column: 1;
-		grid-row: 1;
-		/* transition: transform .5s ease; */
-	}
+    img {
+      object-fit: var(--jukebox-cards-image-fit);
+      width: 100%;
+      max-height: var(--jukebox-cards-image-height);
+      border-radius: var(--jukebox-cards-border-radius);
+      margin: 0;
+      pointer-events: none;
+      z-index: -1;
+      grid-column: 1;
+      grid-row: 1;
+      align-self: center;
+      justify-self: center;
+    }
 
-	img {
-		object-fit: var(--jukebox-cards-image-fit);
-		width: 100%;
-		max-height: var(--jukebox-cards-image-height);
-		border-radius: var(--jukebox-cards-border-radius);
-		margin: 0;
-		pointer-events: none;
-		z-index: -1;
-		grid-column: 1;
-		grid-row: 1;
-		align-self: center;
-		justify-self: center;
-	}
+    &:has(.player-button[data-state="playing"]) {
+      .theme-light & img {
+        filter: brightness(
+            calc(1 + var(--jukebox-thumbnail-emphased-brigthness-offset))
+          )
+          blur(var(--jukebox-thumbnail-emphased-bluriness));
+      }
+      .theme-dark & img {
+        filter: brightness(
+            calc(1 - var(--jukebox-thumbnail-emphased-brigthness-offset))
+          )
+          blur(var(--jukebox-thumbnail-emphased-bluriness));
+      }
+    }
+  }
 
-	&:has(.player-button[data-state="playing"]) {
-		.theme-light & img {
-			filter: brightness(calc(1 + var(--jukebox-thumbnail-emphased-brigthness-offset))) blur(var(--jukebox-thumbnail-emphased-bluriness))
-		}
-		.theme-dark & img {
-			filter: brightness(calc(1 - var(--jukebox-thumbnail-emphased-brigthness-offset))) blur(var(--jukebox-thumbnail-emphased-bluriness))
-		}
-	}
-}
+  img {
+    /* animation: fadeInAnimation ease 0.4s;
+    animation-iteration-count: 1;
+    animation-fill-mode: forwards; */
+  }
 
-img {
-	animation: fadeInAnimation ease 0.4s;
-	animation-iteration-count: 1;
-	animation-fill-mode: forwards;
-}
+  /* #endregion */
 
+  /* #region .buttons */
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
 
-/* #endregion */
+    width: 100%;
+    height: 30px;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+  }
 
+  button.active,
+  &.playlist button.playlist,
+  &.no-voice button.no-voice {
+    background: var(--background-modifier-active-hover);
+  }
 
-/* #region .buttons */
-.buttons {
-	display: flex;
-	justify-content: flex-end;
+  body:not(.is-mobile) & button:not(.active):hover {
+    background: var(--background-modifier-hover);
+  }
 
-	width: 100%;
-	height: 30px;
-	display: flex;
-	flex-wrap: nowrap;
-	flex-direction: row;
-	margin-bottom: 0.75rem;
-	gap: 0.5rem
-}
+  button.active svg,
+  &.playlist button.playlist svg,
+  &.no-voice button.no-voice svg {
+    stroke: var(--icon-color-active) !important;
+  }
 
-button.active,
-&.playlist button.playlist,
-&.no-voice button.no-voice {
-	background: var(--background-modifier-active-hover);
-}
+  button {
+    background-color: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 5px;
+    color: var(--icon-color);
+    height: 30px;
+    box-shadow: none;
+    border: 1px solid var(--nav-item-background-active);
+    font-weight: normal;
+    font-size: 14px;
+    background: var(--background-secondary);
+    padding: 4px 6px;
+    outline: none;
+    user-select: none;
+    white-space: nowrap;
+    flex: 0;
+  }
 
-body:not(.is-mobile) & button:not(.active):hover {
-	background: var(--background-modifier-hover);
-}
+  /* #endregion */
 
-button.active svg,
-&.playlist button.playlist svg,
-&.no-voice button.no-voice svg {
-	stroke: var(--icon-color-active) !important;
-}
+  .grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--jukebox-cards-columns);
+    /**
+     * Note that even empty elements like stubs are affected by this gap
+     * so it should be taken under consideration when applying margin to the rest of the layout
+     */
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+  }
 
-button {
-	background-color: transparent;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	border-radius: 5px;
-	color: var(--icon-color);
-	height: 30px;
-	box-shadow: none;
-	border: 1px solid var(--nav-item-background-active);
-	font-weight: normal;
-	font-size: 14px;
-	background: var(--background-secondary);
-	padding: 4px 6px;
-	outline: none;
-	user-select: none;
-	white-space: nowrap;
-	flex: 0;
-}
+  /* #region .item */
+  .theme-light & .item,
+  .theme-light & article.add-file {
+    border: var(--jukebox-cards-border-width) solid
+      var(--jukebox-background-modifier-border-light);
+  }
 
-/* #endregion */
+  .theme-light & .item:hover,
+  .theme-light & article.add-file:hover {
+    border: var(--jukebox-cards-border-width) solid
+      var(--jukebox-background-modifier-border-hover-light);
+  }
 
+  .item,
+  article.add-file {
+    z-index: 0;
+    /* needed for mobile ?*/
+    position: relative;
+    background-color: var(--jukebox-cards-background);
+    border: var(--jukebox-cards-border-width) solid
+      var(--jukebox-background-modifier-border);
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    border-radius: var(--jukebox-cards-border-radius);
+    overflow: hidden;
+    transition: box-shadow 0.15s linear;
+    max-width: var(--jukebox-cards-max-width);
+  }
 
-.grid {
-	position: relative;
-	display: grid;
-	grid-template-columns: var(--jukebox-cards-columns);
-	/**
-	 * Note that even empty elements like stubs are affected by this gap
-	 * so it should be taken under consideration when applying margin to the rest of the layout
-	 */
-	column-gap: 0.75rem;
-	row-gap: 0.5rem;
-}
+  .item:hover,
+  article.add-file:hover {
+    border: var(--jukebox-cards-border-width) solid
+      var(--jukebox-background-modifier-border-hover);
+    box-shadow:
+    /* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
+    /* 0 1px 3px 1px rgba(0, 0, 0, 0.025); */ 0
+        4px 6px 0px rgba(0, 0, 0, 0.07),
+      0 1px 3px 1px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.15s linear;
+  }
 
+  article.add-file {
+    display: flex;
+    height: var(--jukebox-cards-add-file-height);
+    cursor: pointer;
+    padding: 0;
+    justify-content: center;
+    align-items: center;
+    color: var(--jukebox-background-modifier-border);
+  }
 
-/* #region .item */
-.theme-light & .item,
-.theme-light & article.add-file {
-	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-light);
-}
+  article.add-file:hover {
+    color: var(--jukebox-background-modifier-border-hover);
+  }
 
-.theme-light & .item:hover,
-.theme-light & article.add-file:hover {
-	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover-light);
-}
+  &.no-border .item,
+  &.no-border .item:hover,
+  &.no-border article.add-file,
+  &.no-border article.add-file:hover {
+    border: 0;
+    box-shadow: none;
+  }
 
-.item,
-article.add-file {
-	z-index: 0;
-	/* needed for mobile ?*/
-	position: relative;
-	background-color: var(--jukebox-cards-background);
-	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border);
-	display: flex;
-	flex-direction: column;
-	margin: 0;
-	border-radius: var(--jukebox-cards-border-radius);
-	overflow: hidden;
-	transition: box-shadow 0.15s linear;
-	max-width: var(--jukebox-cards-max-width);
-}
+  /*#endregion*/
 
-.item:hover,
-article.add-file:hover {
-	border: var(--jukebox-cards-border-width) solid var(--jukebox-background-modifier-border-hover);
-	box-shadow:
-		/* 0 4px 6px 0px rgba(0, 0, 0, 0.05), */
-		/* 0 1px 3px 1px rgba(0, 0, 0, 0.025); */
-		0 4px 6px 0px rgba(0, 0, 0, 0.07),
-		0 1px 3px 1px rgba(0, 0, 0, 0.04);
-	transition: box-shadow 0.15s linear;
-}
+  /* #region .audio-player */
+  /* build from: https://blog.shahednasser.com/how-to-style-an-audio-element/ */
+  .audio-player {
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
 
-article.add-file {
-	display: flex;
-	height: var(--jukebox-cards-add-file-height);
-	cursor: pointer;
-	padding: 0;
-	justify-content: center;
-	align-items: center;
-	color: var(--jukebox-background-modifier-border);
-}
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-article.add-file:hover {
-	color: var(--jukebox-background-modifier-border-hover);
-}
+    pointer-events: none;
+    aspect-ratio: 1/1;
+    height: auto;
+    width: auto;
 
-&.no-border .item,
-&.no-border .item:hover,
-&.no-border article.add-file,
-&.no-border article.add-file:hover {
-	border: 0;
-	box-shadow: none;
-}
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    justify-self: center;
 
-/*#endregion*/
+    &:has(.player-button:focus) {
+      opacity: 1;
 
-/* #region .audio-player */
-/* build from: https://blog.shahednasser.com/how-to-style-an-audio-element/ */
-.audio-player {
-	opacity: 0.8;
-	transition: opacity 0.3s ease;
+      svg {
+        color: var(--color-base-100);
+      }
+    }
 
-	z-index: 100;
-	display: flex;
-	justify-content: center;
-	align-items: center;
+    &:active svg {
+      color: var(--color-base-100);
+    }
+  }
 
-	pointer-events: none;
-	aspect-ratio: 1/1;
-	height: auto;
-	width: auto;
+  @media (hover: hover) {
+    .audio-player:hover {
+      opacity: 1;
+    }
+  }
 
-	grid-column: 1;
-	grid-row: 1;
-	align-self: center;
-	justify-self: center;
+  .player-button {
+    color: var(--color-accent);
+    background-color: transparent;
+    border: 0;
+    box-shadow: none;
+    cursor: pointer;
+    pointer-events: auto;
+    padding: 0;
+    filter: drop-shadow(
+      1px 1.5px var(--jukebox-audio-player-shade, var(--color-base-20))
+    );
+  }
 
-	&:has(.player-button:focus) {
-		opacity: 1;
+  /* To get rid of the hideous semi-transparent white rectangle when hovering over it */
+  body:not(.is-mobile) & .player-button:not(.active):hover {
+    background: none;
+  }
 
-		svg {
-			color: var(--color-base-100);
-		}
-	}
+  .player-button svg {
+    width: 48px;
+    height: 48px;
+  }
 
-	&:active svg {
-		color: var(--color-base-100);
-	}
-}
+  /* #endregion */
 
-@media (hover: hover) {
-	.audio-player:hover {
-		opacity: 1;
-	}
-}
+  /* #region .timeline */
+  .timeline {
+    /* Strange behaviour, all inputs don't respond equally to this ?_? some are smaller than others */
+    z-index: 20;
+    height: 2px;
+    width: auto;
+    border-radius: 5px;
+    background-size: 0% 100%;
+    background-image: linear-gradient(var(--color-accent), var(--color-accent));
+    background-repeat: no-repeat;
 
-.player-button {
-	color: var(--color-accent);
-	background-color: transparent;
-	border: 0;
-	box-shadow: none;
-	cursor: pointer;
-	pointer-events: auto;
-	padding: 0;
-	filter: drop-shadow(1px 1.5px var(--jukebox-audio-player-shade, var(--color-base-20))); 
-}
+    /* Handle conflicting themes */
+    background-color: var(--slider-track-background);
+    margin: 0;
+  }
 
-/* To get rid of the hideous semi-transparent white rectangle when hovering over it */
-body:not(.is-mobile) & .player-button:not(.active):hover {
-	background: none;
-}
+  .timeline::before,
+  .timeline::after {
+    display: none;
+  }
 
-.player-button svg {
-	width: 48px;
-	height: 48px;
-}
+  .timeline::-webkit-slider-thumb {
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    border-color: transparent;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.1s;
+    background-color: var(--color-accent);
+  }
 
-/* #endregion */
+  .timeline::-webkit-slider-thumb:hover {
+    background-color: var(--color-accent);
+  }
 
-/* #region .timeline */
-.timeline {
-	/* Strange behaviour, all inputs don't respond equally to this ?_? some are smaller than others */
-	z-index: 20;
-	height: 2px;
-	width: auto;
-	border-radius: 5px;
-	background-size: 0% 100%;
-	background-image: linear-gradient(var(--color-accent), var(--color-accent));
-	background-repeat: no-repeat;
+  .timeline:hover::-webkit-slider-thumb {
+    opacity: 1;
+  }
 
-	/* Handle conflicting themes */
-	background-color: var(--slider-track-background);
-	margin: 0;
-}
+  .timeline::-webkit-slider-runnable-track {
+    box-shadow: none;
+    border: none;
+    background: transparent;
+  }
 
-.timeline::before,
-.timeline::after {
-	display: none
-}
+  /* #endregion */
 
-.timeline::-webkit-slider-thumb {
-	width: 1em;
-	height: 1em;
-	border-radius: 50%;
-	border-color: transparent;
-	cursor: pointer;
-	opacity: 0;
-	transition: all .1s;
-	background-color: var(--color-accent);
-}
+  /* #region links */
+  span.file-link {
+    display: inline-block;
+    padding: calc(var(--jukebox-cards-link-inline-padding) / 2) 0;
+    border-bottom: none;
+    font-size: var(--table-text-size);
+    line-height: normal;
+    width: calc(100% - var(--jukebox-cards-link-inline-padding));
+    margin: auto;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+    display: flex;
+    justify-content: space-between;
+    & > a {
+      font-weight: var(--jukebox-cards-link-weight);
+    }
+  }
 
-.timeline::-webkit-slider-thumb:hover {
-	background-color: var(--color-accent);
-}
+  /* For better integration of the Metadata Menu icons */
+  .fileclass-icon {
+    align-self: center;
+  }
 
-.timeline:hover::-webkit-slider-thumb {
-	opacity: 1;
-}
+  span.url-link a {
+    position: absolute;
+    top: 4px;
+    right: 6px;
 
-.timeline::-webkit-slider-runnable-track {
-	box-shadow: none;
-	border: none;
-	background: transparent;
-}
+    /* To remove the [object HTMLImageElement] text */
+    font-size: 0;
+  }
 
-/* #endregion */
+  a {
+    /* To remove the icon added by default next to external-link */
+    background-image: none;
+    padding: 0;
+  }
 
-/* #region links */
-span.file-link {
-	display: inline-block;
-	padding: calc(var(--jukebox-cards-link-inline-padding)/2) 0;
-	border-bottom: none;
-	font-size: var(--table-text-size);
-	line-height: normal;
-	width: calc(100% - var(--jukebox-cards-link-inline-padding));
-	margin: auto;
-	overflow-wrap: anywhere;
-	max-width: 100%;
-	display: flex;
-	justify-content: space-between;
-	& > a {
-		font-weight: var(--jukebox-cards-link-weight);
-	}
-}
+  /* ONLY for ITS - External Link Icons users */
+  a::before,
+  a::after {
+    display: none;
+  }
 
-/* For better integration of the Metadata Menu icons */
-.fileclass-icon {
-	align-self: center;
-}
+  /* ONLY for Link Favicons users */
+  img.link-favicon {
+    display: none !important;
+  }
+  /* #endregion */
 
-span.url-link a {
-	position: absolute;
-	top: 4px;
-	right: 6px;
+  /* #region .timecode */
+  .timecode {
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-	/* To remove the [object HTMLImageElement] text */
-	font-size: 0;
-}
+    z-index: 10;
+    grid-column: 1;
+    grid-row: 1;
+    align-self: flex-end;
+    justify-self: end;
 
-a {
-	/* To remove the icon added by default next to external-link */
-	background-image: none;
-	padding: 0;
+    border-radius: 5px;
+    padding: 0 4px;
+    margin: 2px;
 
-}
+    /* To add a little space when the thumbnail image is disabled */
+    margin-top: 28px;
 
-/* ONLY for ITS - External Link Icons users */
-a::before,
-a::after {
-	display: none
-}
+    span {
+      color: #eff1f5;
+      display: inline-block;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+  }
 
-/* ONLY for Link Favicons users */
-img.link-favicon {
-	display: none !important;
-}
-/* #endregion */
-
-/* #region .timecode */
-.timecode {
-	background-color: rgba(0, 0, 0, .8);
-	display: flex;
-	justify-content: center;
-	align-items: center;
-
-	z-index: 10;
-	grid-column: 1;
-	grid-row: 1;
-	align-self: flex-end;
-	justify-self: end;
-
-	border-radius: 5px;
-	padding: 0 4px;
-	margin: 2px;
-
-	/* To add a little space when the thumbnail image is disabled */
-	margin-top: 28px;
-
-	span {
-		color: #eff1f5;
-		display: inline-block;
-		font-size: 0.8em;
-		font-weight: 600;
-	}
-}
-
-/* #endregion */
-
+  /* #endregion */
 }
 
 /* #endregion */
