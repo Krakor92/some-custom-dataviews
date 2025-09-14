@@ -4,9 +4,6 @@
   "author": "",
   "main": "main.js",
   "devDependencies": {
-    "@types/bun": "^1.1.12",
-    "@types/luxon": "^3.4.2",
-    "builtin-modules": "^4.0.0",
     "esbuild": "^0.24.0",
     "esbuild-svelte": "^0.8.2",
     "eslint": "^9.13.0",
@@ -26,6 +23,7 @@
   "scripts": {
     "dev": "bun run esbuild.dev.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && bun run esbuild.config.mjs",
-    "lint": "eslint --max-warnings=0"
+    "lint": "eslint --max-warnings=0",
+    "svelte-check": "svelte-check --tsconfig tsconfig.json"
   }
 }

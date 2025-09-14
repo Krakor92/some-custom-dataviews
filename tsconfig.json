@@ -23,5 +23,9 @@
     "sourceMap": true,
     "types": ["obsidian-typings"]
   },
-  "include": ["**/*.ts", "**/*.js", "**/*.svelte*"]
+  "include": [
+    "**/*.ts",
+    "**/*.js",
+    "**/*.svelte*",
+  ]
 }
