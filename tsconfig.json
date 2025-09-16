@@ -21,7 +21,9 @@
     "resolveJsonModule": true,
     "moduleDetection": "force",
     "sourceMap": true,
-    "types": ["obsidian-typings"]
+    "types": [
+      "obsidian-typings"
+    ]
   },
   "include": [
     "**/*.ts",

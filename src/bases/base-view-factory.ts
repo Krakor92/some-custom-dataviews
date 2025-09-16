@@ -9,117 +9,104 @@
  * - Proper handling of missing/empty formula values
  * - Integration with Bases' view lifecycle management
  */
+import { mount, unmount } from 'svelte';
+
 import MyPlugin from '@/main';
-import { BasesDataItem, identifyTaskNotesFromBasesData, renderTaskNotesInBasesView } from '@/bases/helpers';
+import type {
+  BasesContainer,
+  BasesDataItem,
+  BasesViewObject,
+  FormulaOutput,
+} from '@/bases';
 
-export interface BasesContainerLike {
-  results?: Map<any, any>;
-  query?: { on?: (event: string, cb: () => void) => void; off?: (event: string, cb: () => void) => void };
-  viewContainerEl?: HTMLElement;
-  controller?: { results?: Map<any, any>; runQuery?: () => Promise<any>;[key: string]: any };
-}
+import GridVirtualizerDynamic from '@/components/GridVirtualizerDynamic.svelte';
+import GridTrackItem from '@/components/GridTrackItem.svelte';
+import Counter from '@/components/Counter.svelte';
 
-export interface ViewConfig {
-  errorPrefix: string;
-}
+import { BasesTrackFactory } from '@/models/Track';
+import { extractDataItems } from '@/bases/api';
 
-export function buildTasknotesBaseViewFactory(plugin: MyPlugin, config: ViewConfig) {
-  return function tasknotesBaseViewFactory(basesContainer: BasesContainerLike) {
+
+
+export function buildMyPluginJukeboxBasesViewFactory(plugin: MyPlugin) {
+  return function basesViewFactory(basesContainer: BasesContainer): BasesViewObject {
     let currentRoot: HTMLElement | null = null;
 
-    const viewContainerEl = (basesContainer as any)?.viewContainerEl as HTMLElement | undefined;
+    let counter: ReturnType<typeof Counter> | null = null;
+    let trackItem: ReturnType<typeof GridTrackItem> | null = null;
+
+    console.log("basesViewFactory")
+
+    const { viewContainerEl } = basesContainer;
     if (!viewContainerEl) {
-      console.error('[TaskNotes][BasesPOC] No viewContainerEl found');
+      console.error('[BasesPOC] No viewContainerEl found');
       return { destroy: () => { } } as any;
     }
 
     viewContainerEl.innerHTML = '';
 
-    // Root container for TaskNotes view
+    // Root container for view
     const root = document.createElement('div');
-    root.className = 'tn-bases-integration tasknotes-plugin tasknotes-container';
+    // root.className = 'tn-bases-integration tasknotes-plugin tasknotes-container';
     viewContainerEl.appendChild(root);
     currentRoot = root;
 
 
-    const itemsContainer = document.createElement('div');
-    itemsContainer.className = 'tn-bases-items-container';
-    itemsContainer.style.cssText = 'margin-top: 12px;';
-    root.appendChild(itemsContainer);
+    // const itemsContainer = document.createElement('div');
+    // itemsContainer.className = 'tn-bases-items-container';
+    // itemsContainer.style.cssText = 'margin-top: 12px;';
+    // root.appendChild(itemsContainer);
 
-    // Helper to extract items from Bases results
-    const extractDataItems = (): BasesDataItem[] => {
-      const dataItems: BasesDataItem[] = [];
-      const results = (basesContainer as any)?.results as Map<any, any> | undefined;
-
-      if (results && results instanceof Map) {
-        for (const [key, value] of results.entries()) {
-          const item = {
-            key,
-            data: value,
-            file: (value as any)?.file,
-            path: (value as any)?.file?.path || (value as any)?.path,
-            properties: (value as any)?.properties || (value as any)?.frontmatter,
-            basesData: value
-          };
-
-          dataItems.push(item);
-        }
+    const cleanup = () => {
+      if (counter) {
+        console.log("unmount counter")
+        unmount(counter)
       }
 
-      return dataItems;
-    };
+      if (trackItem) {
+        console.log("unmount trackItem")
+        unmount(trackItem)
+      }
+    }
 
+    /**
+     * Called 
+     */
     const render = async () => {
       if (!currentRoot) return;
+      console.log('Render!')
       try {
-        const dataItems = extractDataItems();
+        cleanup()
 
-        // Compute Bases formulas for TaskNotes items
-        // This ensures formulas have access to TaskNote-specific properties
-        const ctxFormulas = (basesContainer as any)?.ctx?.formulas;
-        if (ctxFormulas && dataItems.length > 0) {
-          for (let i = 0; i < dataItems.length; i++) {
-            const item = dataItems[i];
-            const itemFormulaResults = item.basesData?.formulaResults;
-            if (!itemFormulaResults?.cachedFormulaOutputs) continue;
+        const { results } = basesContainer
+        const dataItems = results ? extractDataItems(results) : [];
+        console.log(dataItems)
 
-            for (const formulaName of Object.keys(ctxFormulas)) {
-              const formula = ctxFormulas[formulaName];
-              if (formula && typeof formula.getValue === 'function') {
-                try {
-                  const baseData = item.basesData;
-                  const taskProperties = item.properties || {};
+        // itemsContainer.innerHTML = '';
+        // const emptyEl = document.createElement('div');
+        // emptyEl.style.cssText = 'padding: 20px; text-align: center; color: #666;';
+        // emptyEl.textContent = 'No notes found for this Base.';
+        // itemsContainer.appendChild(emptyEl);
 
-                  let result;
-
-                  // Temporarily merge TaskNote properties into frontmatter for formula access
-                  // This preserves Bases' internal object structure while providing item-specific data
-                  if (baseData.frontmatter && Object.keys(taskProperties).length > 0) {
-                    const originalFrontmatter = baseData.frontmatter;
-                    baseData.frontmatter = { ...originalFrontmatter, ...taskProperties };
-                    result = formula.getValue(baseData);
-                    baseData.frontmatter = originalFrontmatter; // Restore original state
-                  } else {
-                    result = formula.getValue(baseData);
-                  }
-
-                  // Store computed result for TaskCard rendering
-                  if (result !== undefined) {
-                    itemFormulaResults.cachedFormulaOutputs[formulaName] = result;
-                  }
-                } catch (e) {
-                  // Formulas may fail for various reasons (missing data, syntax errors, etc.)
-                  // This is expected behavior and doesn't require action
-                }
-              }
-            }
+        console.log("mount")
+        counter = mount(Counter, {
+          target: currentRoot,
+          props: {
+            startCount: dataItems.length,
           }
+        })
+
+        if (dataItems[0]) {
+          trackItem = mount(GridTrackItem, {
+            target: currentRoot,
+            props: {
+              item: BasesTrackFactory.create(dataItems[0]),
+            }
+          })
         }
 
-
+        /*
         const taskNotes = await identifyTaskNotesFromBasesData(dataItems, plugin);
-
 
         // Render body
         itemsContainer.innerHTML = '';
@@ -146,13 +133,14 @@ export function buildTasknotesBaseViewFactory(plugin: MyPlugin, config: ViewConf
           // Render tasks using existing helper
           await renderTaskNotesInBasesView(itemsContainer, taskNotes, plugin, basesContainer);
         }
+        */
       } catch (error: any) {
-        console.error(`[TaskNotes][BasesPOC] Error rendering Bases ${config.errorPrefix}:`, error);
+        console.error(`[BasesPOC] Error rendering Jukebox Bases View :`, error);
         const errorEl = document.createElement('div');
         errorEl.className = 'tn-bases-error';
         errorEl.style.cssText = 'padding: 20px; color: #d73a49; background: #ffeaea; border-radius: 4px; margin: 10px 0;';
-        errorEl.textContent = `Error loading ${config.errorPrefix} tasks: ${error.message || 'Unknown error'}`;
-        itemsContainer.appendChild(errorEl);
+        errorEl.textContent = `Error loading`;
+        // itemsContainer.appendChild(errorEl);
       }
     };
 
@@ -162,8 +150,11 @@ export function buildTasknotesBaseViewFactory(plugin: MyPlugin, config: ViewConf
     // Create view object with proper listener management
     let queryListener: (() => void) | null = null;
 
-    const viewObject = {
-      refresh: render,
+    const viewObject: BasesViewObject = {
+      refresh: async () => {
+        console.log("refresh")
+        await render();
+      },
       onResize: () => {
         // Handle resize - no-op for now
       },
@@ -179,9 +170,10 @@ export function buildTasknotesBaseViewFactory(plugin: MyPlugin, config: ViewConf
         }
       },
       destroy: () => {
-        if (queryListener && (basesContainer as any)?.query?.off) {
+        console.log("destroy")
+        if (queryListener && basesContainer.query?.off) {
           try {
-            (basesContainer as any).query.off('change', queryListener);
+            basesContainer.query.off('change', queryListener);
           } catch (e) {
             // Query listener removal may fail if already disposed
           }
@@ -193,29 +185,33 @@ export function buildTasknotesBaseViewFactory(plugin: MyPlugin, config: ViewConf
         queryListener = null;
       },
       load: () => {
-        if ((basesContainer as any)?.query?.on && !queryListener) {
+        console.log("load")
+
+        if (basesContainer.query?.on && !queryListener) {
           queryListener = () => void render();
           try {
-            (basesContainer as any).query.on('change', queryListener);
+            basesContainer.query.on('change', queryListener);
           } catch (e) {
             // Query listener registration may fail for various reasons
           }
         }
 
         // Trigger initial formula computation on load
-        const controller = (basesContainer as any)?.controller;
+        const controller = basesContainer.controller;
         if (controller?.runQuery) {
           controller.runQuery().then(() => {
             void render(); // Re-render with computed formulas
           }).catch((e: any) => {
-            console.warn('[TaskNotes][Bases] Initial formula computation failed:', e);
+            console.warn('[BasesPOC] Initial formula computation failed:', e);
           });
         }
       },
       unload: () => {
-        if (queryListener && (basesContainer as any)?.query?.off) {
+        console.log("unload")
+
+        if (queryListener && basesContainer.query?.off) {
           try {
-            (basesContainer as any).query.off('change', queryListener);
+            basesContainer.query.off('change', queryListener);
           } catch (e) {
             // Query listener removal may fail if already disposed
           }
@@ -225,6 +221,10 @@ export function buildTasknotesBaseViewFactory(plugin: MyPlugin, config: ViewConf
           currentRoot = null;
         }
         queryListener = null;
+      },
+
+      display() {
+        console.log("Called display method from Bases internal plugin")
       }
     };
 

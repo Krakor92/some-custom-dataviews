@@ -1,13 +1,20 @@
 import type { Blueprint } from "@/modules/Factory";
 import { Factory } from "@/modules/Factory";
+
 import type { DatacorePage, Link } from "@/types/api";
+import type { BasesDataItem } from "@/bases";
+
 import { convertTimecodeToDuration } from "@/utils";
 
 /**
  * Represents a music track. Most of the properties are optional.
  */
 export interface Track {
+  /**
+   * The name of the track
+   */
   title: string;
+
   artists?: string[];
 
   /**
@@ -52,7 +59,7 @@ export interface Track {
 
 export type TrackBlueprint<T> = Blueprint<T, Track>;
 
-export class TrackFactory<T> extends Factory<T, Track> {}
+export class TrackFactory<T> extends Factory<T, Track> { }
 
 const getPropFromDatacorePage = (prop: string, data: DatacorePage): unknown =>
   data?.$frontmatter?.[prop]?.value ?? data?.$infields?.[prop]?.value;
@@ -86,6 +93,33 @@ const datacoreTrackBlueprint: TrackBlueprint<DatacorePage> = (data) => {
   };
 };
 
+
+const basesTrackBlueprint: TrackBlueprint<BasesDataItem> = (data) => {
+  console.log({ data })
+  const {
+    url,
+    length,
+    artist,
+    tags_,
+    voice,
+  } = data.properties || {}
+  const duration = length ? convertTimecodeToDuration(length) : undefined
+
+  return {
+    title: data.name,
+    duration,
+    url: url.toString() ?? "",
+    thumbnail: data.formulas?.image,
+    // artists: artist,
+    // mood: tags_,
+    // voice,
+  }
+}
+
 export const DatacoreTrackFactory = new TrackFactory<DatacorePage>(
   datacoreTrackBlueprint
+);
+
+export const BasesTrackFactory = new TrackFactory<BasesDataItem>(
+  basesTrackBlueprint
 );

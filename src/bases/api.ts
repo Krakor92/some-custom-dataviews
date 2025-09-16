@@ -6,6 +6,7 @@
  */
 
 import { App } from 'obsidian';
+import type { BasesDataItem, FormulaOutput } from '@/bases/types';
 
 export interface BasesQuery {
   on?: (event: string, callback: () => void) => void;
@@ -51,19 +52,19 @@ export function getBasesAPI(app: App): BasesAPI | null {
     // Try the correct path for Bases plugin (internal plugins)
     const internalPlugins = (app as any).internalPlugins;
     if (!internalPlugins) {
-      console.debug('[TaskNotes][Bases] Internal plugins manager not available');
+      console.debug('[Bases] Internal plugins manager not available');
       return null;
     }
 
     const basesPlugin = internalPlugins.getEnabledPluginById?.('bases');
     if (!basesPlugin) {
-      console.debug('[TaskNotes][Bases] Bases plugin not found or not enabled');
+      console.debug('[Bases] Bases plugin not found or not enabled');
       return null;
     }
 
     // Check if the plugin has the expected API structure
     if (!basesPlugin.registrations || typeof basesPlugin.registrations !== 'object') {
-      console.warn('[TaskNotes][Bases] Bases plugin found but registrations API not available');
+      console.warn('[Bases] Bases plugin found but registrations API not available');
       return null;
     }
 
@@ -73,7 +74,7 @@ export function getBasesAPI(app: App): BasesAPI | null {
       version: basesPlugin.manifest?.version || 'unknown'
     };
   } catch (error) {
-    console.warn('[TaskNotes][Bases] Error accessing Bases plugin API:', error);
+    console.warn('[Bases] Error accessing Bases plugin API:', error);
     return null;
   }
 }
@@ -90,13 +91,13 @@ export function isBasesPluginAvailable(app: App): boolean {
  * Safely register a view with the Bases plugin
  */
 export function registerBasesView(
-  app: App, 
-  viewId: string, 
+  app: App,
+  viewId: string,
   registration: BasesViewRegistration
 ): boolean {
   const api = getBasesAPI(app);
   if (!api) {
-    console.warn('[TaskNotes][Bases] Cannot register view: Bases plugin not available');
+    console.warn('[Bases] Cannot register view: Bases plugin not available');
     return false;
   }
 
@@ -104,13 +105,13 @@ export function registerBasesView(
     // Only register if it doesn't already exist (like the original implementation)
     if (!api.registrations[viewId]) {
       api.registrations[viewId] = registration;
-      console.log(`[TaskNotes][Bases] Successfully registered view: ${viewId}`);
+      console.log(`[Bases] Successfully registered view: ${viewId}`);
     } else {
-      console.debug(`[TaskNotes][Bases] View ${viewId} already registered, skipping`);
+      console.debug(`[Bases] View ${viewId} already registered, skipping`);
     }
     return true;
   } catch (error) {
-    console.error(`[TaskNotes][Bases] Error registering view ${viewId}:`, error);
+    console.error(`[Bases] Error registering view ${viewId}:`, error);
     return false;
   }
 }
@@ -128,11 +129,11 @@ export function unregisterBasesView(app: App, viewId: string): boolean {
   try {
     if (api.registrations[viewId]) {
       delete api.registrations[viewId];
-      console.log(`[TaskNotes][Bases] Successfully unregistered view: ${viewId}`);
+      console.log(`[Bases] Successfully unregistered view: ${viewId}`);
     }
     return true;
   } catch (error) {
-    console.error(`[TaskNotes][Bases] Error unregistering view ${viewId}:`, error);
+    console.error(`[Bases] Error unregistering view ${viewId}:`, error);
     return false;
   }
 }
@@ -148,3 +149,36 @@ export function isValidBasesContainer(container: any): container is BasesContain
     (container.viewContainerEl instanceof HTMLElement || container.viewContainerEl === undefined)
   );
 }
+
+
+// Helper to extract items from Bases results
+export const extractDataItems = (results: Map<any, any>): BasesDataItem[] => {
+  const dataItems: BasesDataItem[] = [];
+
+
+  if (results instanceof Map) {
+    for (const [key, value] of results.entries()) {
+      const formulas: Record<string, any> = {}
+
+      for (const fkey in value?.formulaResults?.formulas) {
+        const t1 = value.formulaResults.cachedFormulaOutputs?.[fkey]?.data
+        const t2 = t1 ?? value.formulaResults.getFormulaValue(fkey)
+        formulas[fkey] = t2;
+      }
+
+      const item = {
+        key,
+        data: value,
+        file: value?.file,
+        path: value?.file?.path || value?.path,
+        properties: value?.properties || value?.frontmatter,
+        formulas,
+        basesData: value
+      } as BasesDataItem;
+
+      dataItems.push(item);
+    }
+  }
+
+  return dataItems;
+};

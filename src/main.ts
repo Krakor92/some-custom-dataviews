@@ -1,5 +1,9 @@
 import type { App, WorkspaceLeaf } from "obsidian";
 import { Plugin, PluginSettingTab, Setting } from "obsidian";
+
+import { registerBasesViews, unregisterBasesViews } from '@/bases'
+
+import { SvelteView } from "@/views";
 import { main as jukebox } from "@/views/jukebox";
 import { main as POC } from "@/views/proof-of-concept";
 import { main as sandbox } from "@/views/sandbox";
@@ -10,10 +14,10 @@ import {
   MY_PLUGIN_VIEW_TYPE,
   type MyPluginSettings
 } from "@/types";
-import { SvelteView } from "@/views";
 
 export default class MyPlugin extends Plugin {
-  settings: MyPluginSettings;
+  settings!: MyPluginSettings;
+
   jukebox: any;
   sandbox: any;
 
@@ -44,6 +48,14 @@ export default class MyPlugin extends Plugin {
   }
 
   onunload(): void {
+    if (this.settings.enableBases) {
+      try {
+        unregisterBasesViews(this);
+      } catch (e) {
+        console.debug('[Bases] Unregistration failed:', e);
+      }
+    }
+
     // Reset initialization flag for potential reload
     this.initializationComplete = false;
 
@@ -79,9 +91,7 @@ export default class MyPlugin extends Plugin {
 
   private getLeafOfType(viewType: string): WorkspaceLeaf | null {
     const { workspace } = this.app;
-    const test = workspace.getActiveViewOfType(SvelteView)
     const leaves = workspace.getLeavesOfType(viewType);
-    debugger
     // Find the first leaf with an actually loaded view (not deferred)
     for (const leaf of leaves) {
       if (leaf.view && leaf.view.getViewType() === viewType) {
@@ -111,14 +121,13 @@ export default class MyPlugin extends Plugin {
       );
 
 
-      // if (this.settings?.enableBases) {
-      //   try {
-      //     const { registerBasesTaskList } = await import('./bases/registration');
-      //     await registerBasesTaskList(this);
-      //   } catch (e) {
-      //     console.log('Registration failed:', e);
-      //   }
-      // }
+      if (this.settings?.enableBases) {
+        try {
+          await registerBasesViews(this);
+        } catch (e) {
+          console.log('Registration failed:', e);
+        }
+      }
 
       console.log('Kviews finished initializeAfterLayoutReady')
 
