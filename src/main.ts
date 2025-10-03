@@ -1,8 +1,6 @@
 import type { App, WorkspaceLeaf } from "obsidian";
 import { Plugin, PluginSettingTab, Setting } from "obsidian";
 
-import { registerBasesViews, unregisterBasesViews } from '@/bases'
-
 import { SvelteView } from "@/views";
 import { main as jukebox } from "@/views/jukebox";
 import { main as POC } from "@/views/proof-of-concept";
@@ -14,6 +12,8 @@ import {
   MY_PLUGIN_VIEW_TYPE,
   type MyPluginSettings
 } from "@/types";
+
+import { JUKEBOX_GRID_VIEW_TYPE, JukeboxView } from "@/bases/new/jukebox-view";
 
 export default class MyPlugin extends Plugin {
   settings!: MyPluginSettings;
@@ -39,6 +39,19 @@ export default class MyPlugin extends Plugin {
       return this.activateView(MY_PLUGIN_VIEW_TYPE);
     });
 
+    if (this.settings?.enableBases) {
+      try {
+        this.registerBasesView(JUKEBOX_GRID_VIEW_TYPE, {
+          name: 'Jukebox grid',
+          icon: 'disc-3',
+          factory: (controller, containerEl) => new JukeboxView(JUKEBOX_GRID_VIEW_TYPE, controller, containerEl),
+          options: () => JukeboxView.getViewOptions(),
+        });
+      } catch (e) {
+        console.log('Registration failed:', e);
+      }
+    }
+
     // Defer expensive initialization until layout is ready
     this.app.workspace.onLayoutReady(() => {
       this.initializeAfterLayoutReady();
@@ -48,14 +61,6 @@ export default class MyPlugin extends Plugin {
   }
 
   onunload(): void {
-    if (this.settings.enableBases) {
-      try {
-        unregisterBasesViews(this);
-      } catch (e) {
-        console.debug('[Bases] Unregistration failed:', e);
-      }
-    }
-
     // Reset initialization flag for potential reload
     this.initializationComplete = false;
 
@@ -119,15 +124,6 @@ export default class MyPlugin extends Plugin {
         MY_PLUGIN_VIEW_TYPE,
         (leaf) => new SvelteView(leaf)
       );
-
-
-      if (this.settings?.enableBases) {
-        try {
-          await registerBasesViews(this);
-        } catch (e) {
-          console.log('Registration failed:', e);
-        }
-      }
 
       console.log('Kviews finished initializeAfterLayoutReady')
 
