@@ -2,11 +2,31 @@ import type { BasesQueryResult, QueryController, Value } from 'obsidian';
 import type { BasesPropertyId, ViewOption } from 'obsidian';
 import { BasesView, DateValue, Events, NumberValue, StringValue } from 'obsidian';
 import Jukebox from '@/bases/new/Jukebox.svelte';
-import { mount, unmount } from 'svelte';
+import { mount, unmount, tick } from 'svelte';
 import type { Track } from '@/models';
 import { BasesEntryTrackFactory } from '@/models/Track'
 
 export const JUKEBOX_VIEW_TYPE = 'jukebox-grid';
+
+export const CONFIG_FIELDS = {
+  CARDS_MIN_WIDTH: {
+    key: 'cardMinWidth',
+    displayName: 'Cards min width (px)',
+  },
+  CARDS_BORDER_RADIUS: {
+    key: 'cardBorderRadius',
+    displayName: 'Cards border radius (px)',
+  },
+  GRID_GAP: {
+    key: 'gridGap',
+    displayName: 'Gap (px)',
+  },
+  THUMBNAIL_MAX_HEIGHT: {
+    key: 'thumbMaxHeight',
+    displayName: 'Thumbnail max height (px)',
+    default: '200px',
+  },
+}
 
 export const SPECIAL_FIELDS = {
   TITLE: {
@@ -52,12 +72,6 @@ export class JukeboxView extends BasesView {
   }
 
   onload(): void {
-    this.svelteComponent = mount(Jukebox, {
-      target: this.scrollEl,
-      props: {
-        view: this,
-      },
-    });
   }
 
   onunload(): void {
@@ -67,7 +81,20 @@ export class JukeboxView extends BasesView {
   }
 
   onDataUpdated(): void {
-    this.events.trigger('data-updated');
+    if (!this.svelteComponent) {
+      console.log("Svelte component hasn't been mounted yet")
+      this.svelteComponent = mount(Jukebox, {
+        target: this.scrollEl,
+        props: {
+          view: this,
+        },
+      });
+    }
+
+    // We must wait for the component to mount before triggering the event
+    tick().then(() => {
+      this.events.trigger('data-updated');
+    })
   }
 
   processData(): Track[] {
@@ -96,13 +123,38 @@ export class JukeboxView extends BasesView {
   static getViewOptions(): ViewOption[] {
     return [
       {
-        displayName: 'Cards min width',
-        type: 'slider',
-        key: 'cardMinWidth',
-        min: 160,
-        max: 640,
-        step: 10,
-        default: 200,
+        displayName: 'Appearance',
+        type: 'group',
+        items: [
+          {
+            ...CONFIG_FIELDS.CARDS_MIN_WIDTH,
+            type: 'slider',
+            min: 160,
+            max: 640,
+            step: 10,
+            default: 200,
+          },
+          {
+            ...CONFIG_FIELDS.CARDS_BORDER_RADIUS,
+            type: 'slider',
+            min: 0,
+            max: 20,
+            step: 1,
+            default: 6,
+          },
+          {
+            ...CONFIG_FIELDS.GRID_GAP,
+            type: 'slider',
+            min: 0,
+            max: 20,
+            step: 1,
+            default: 4,
+          },
+          {
+            ...CONFIG_FIELDS.THUMBNAIL_MAX_HEIGHT,
+            type: 'text',
+          },
+        ]
       },
       {
         displayName: 'Properties',

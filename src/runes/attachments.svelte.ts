@@ -13,8 +13,6 @@ export const printElementAttachment: Attachment = (element) => {
 export const obsdidianFileBehaviorAttachmentFactory =
   ({ app, file }: { app: App, file?: TFile }): Attachment<HTMLElement> => {
     return (node) => {
-      console.log(node);
-
       if (!file) {
         // We don't to associate behavior if there is no file
         return;
@@ -72,7 +70,6 @@ export const obsdidianFileBehaviorAttachmentFactory =
         node.removeEventListener('click', handleClick);
         node.removeEventListener('contextmenu', handleContextMenuClick);
         node.removeEventListener('mouseover', handleMouseOver);
-        console.log('(not) cleaning obsdidianFileBehaviorAttachment');
       }
     }
   }

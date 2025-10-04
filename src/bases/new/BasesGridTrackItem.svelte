@@ -20,7 +20,6 @@
 
 <article
   class="item"
-  {@attach printElementAttachment}
   {@attach obsdidianFileBehaviorAttachmentFactory({ app, file: item.file })}
 >
   <div class="thumb-stack">
@@ -60,11 +59,13 @@
 </article>
 
 <style>
+  .item {
+    min-width: var(--jukebox-cards-min-width);
+    max-width: 1fr;
+  }
+
   .thumb-stack {
     display: grid;
-
-    /* Hide Sanctum's img overflowing */
-    /* overflow: hidden; */
 
     /* When the thumbnail is wrapped in <a> */
     a {
@@ -72,10 +73,10 @@
       grid-column: 1;
       grid-row: 1;
 
+      max-height: var(--jukebox-cards-image-max-height);
       background-image: none;
       padding: 0;
     }
-    /* transition: transform .5s ease; */
 
     img {
       /* should be global */
@@ -84,7 +85,7 @@
       width: 100%;
 
       /* should be global */
-      max-height: 200px;
+      max-height: var(--jukebox-cards-image-max-height);
       border-radius: 6px;
 
       margin: 0;
