@@ -3,45 +3,61 @@ import type { BasesPropertyId, ViewOption } from 'obsidian';
 import { BasesView, DateValue, Events, NumberValue, StringValue } from 'obsidian';
 import Jukebox from '@/bases/new/Jukebox.svelte';
 import { mount, unmount } from 'svelte';
+import type { Track } from '@/models';
+import { BasesEntryTrackFactory } from '@/models/Track'
 
-export const JUKEBOX_GRID_VIEW_TYPE = 'jukebox-grid';
+export const JUKEBOX_VIEW_TYPE = 'jukebox-grid';
 
-export type JukeboxViewType = typeof JUKEBOX_GRID_VIEW_TYPE;
-
-export const THUMBNAIL_FIELD = 'thumbnail';
-export const AUDIO_FIELD = 'audio';
-export const LENGTH_FIELD = 'length';
-
-// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-export type ProcessedData = {
-  x: number | Date | string;
-  y: number;
-  label?: string;
-  group?: string;
-};
+export const SPECIAL_FIELDS = {
+  TITLE: {
+    key: "title",
+    default: "note.title",
+  },
+  THUMBNAIL: {
+    key: "thumbnail",
+    default: "note.thumbnail",
+  },
+  AUDIO_FILE: {
+    key: "audio-resource",
+    default: "note.audio",
+  },
+  URL: {
+    key: "url",
+    default: "note.url",
+  },
+  DURATION: {
+    key: "duration",
+    default: "note.duration",
+  },
+  VOLUME: {
+    key: "volume",
+    default: "note.volume",
+  },
+  ORPHANS: {
+    key: "orphans",
+    default: "note.orphans",
+  },
+} as Record<string, { key: string, default: BasesPropertyId }>
 
 export class JukeboxView extends BasesView {
-  readonly type: JukeboxViewType;
+  readonly type = JUKEBOX_VIEW_TYPE;
   readonly scrollEl: HTMLElement;
   readonly events: Events;
   svelteComponent: ReturnType<typeof Jukebox> | null = null;
 
-  constructor(type: JukeboxViewType, controller: QueryController, scrollEl: HTMLElement) {
+  constructor(controller: QueryController, scrollEl: HTMLElement) {
     super(controller);
-    this.type = type;
     this.scrollEl = scrollEl;
     this.events = new Events();
   }
 
   onload(): void {
-    if (this.type === JUKEBOX_GRID_VIEW_TYPE) {
-      this.svelteComponent = mount(Jukebox, {
-        target: this.scrollEl,
-        props: {
-          view: this,
-        },
-      });
-    }
+    this.svelteComponent = mount(Jukebox, {
+      target: this.scrollEl,
+      props: {
+        view: this,
+      },
+    });
   }
 
   onunload(): void {
@@ -54,81 +70,72 @@ export class JukeboxView extends BasesView {
     this.events.trigger('data-updated');
   }
 
-  processData(): ProcessedData[] {
-    const data: ProcessedData[] = [];
+  processData(): Track[] {
+    const dataToRender: Track[] = [];
 
     const queryResult: BasesQueryResult | null = this.data;
-    const xField = this.config.getAsPropertyId(X_FIELD);
-    const yField = this.config.getAsPropertyId(Y_FIELD);
-    const labelField = this.config.getAsPropertyId(LABEL_FIELD);
+    if (!queryResult) return [];
 
-    if (!xField || !yField) {
-      return data;
+    console.log(queryResult)
+
+    const fields = {} as Record<string, BasesPropertyId>
+    Object.values(SPECIAL_FIELDS).forEach(field => {
+      fields[field.key] = this.config.getAsPropertyId(field.key) ?? field.default
+    })
+
+    console.log(fields)
+
+    for (const entry of queryResult.data ?? []) {
+      dataToRender.push(BasesEntryTrackFactory.create(entry, fields))
     }
 
-    for (const group of queryResult?.groupedData ?? []) {
-      for (const entry of group.entries) {
-        try {
-          const x = entry.getValue(xField);
-          const y = entry.getValue(yField);
-          const label = labelField ? entry.getValue(labelField) : null;
-
-          const xValue = parseValueAsX(x);
-          const yValue = parseValueAsNumber(y);
-          const labelStr = label?.toString();
-
-          if (xValue !== null && yValue !== null) {
-            data.push({
-              x: xValue,
-              y: yValue,
-              label: labelStr,
-              group: group.key?.toString(),
-            });
-          }
-        } catch (e) {
-          console.warn('Error processing entry', entry, e);
-        }
-      }
-    }
-
-    return data;
+    console.log(dataToRender)
+    return dataToRender;
   }
 
   static getViewOptions(): ViewOption[] {
     return [
       {
-        displayName: 'Embedded height',
+        displayName: 'Cards min width',
         type: 'slider',
-        key: 'mapHeight',
-        min: 200,
-        max: 800,
-        step: 20,
-        default: 400,
+        key: 'cardMinWidth',
+        min: 160,
+        max: 640,
+        step: 10,
+        default: 200,
       },
       {
         displayName: 'Properties',
         type: 'group',
         items: [
           {
-            displayName: 'Thumbnail',
+            displayName: '🔗 Url',
             type: 'property',
-            key: 'thumbnail',
             filter: prop => !prop.startsWith('file.'),
             placeholder: 'Property',
+            ...SPECIAL_FIELDS.URL,
+          },
+
+          {
+            displayName: '🖼️ Thumbnail',
+            type: 'property',
+            filter: prop => !prop.startsWith('file.'),
+            placeholder: 'Property',
+            ...SPECIAL_FIELDS.THUMBNAIL,
           },
           {
-            displayName: 'Audio file/url',
+            displayName: '🎵 Audio file/url',
             type: 'property',
-            key: 'audio',
             filter: prop => !prop.startsWith('file.'),
             placeholder: 'Property',
+            ...SPECIAL_FIELDS.AUDIO_FILE,
           },
           {
-            displayName: 'Length metadata',
+            displayName: '⏱️ Duration metadata',
             type: 'property',
-            key: 'length',
             filter: prop => !prop.startsWith('file.'),
             placeholder: 'Property',
+            ...SPECIAL_FIELDS.DURATION,
           },
         ]
       },

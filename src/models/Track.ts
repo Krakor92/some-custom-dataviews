@@ -5,6 +5,7 @@ import type { DatacorePage, Link } from "@/types/api";
 import type { BasesDataItem } from "@/bases";
 
 import { convertTimecodeToDuration } from "@/utils";
+import type { BasesEntry, BasesPropertyId, TFile } from "obsidian";
 
 /**
  * Represents a music track. Most of the properties are optional.
@@ -15,6 +16,9 @@ export interface Track {
    */
   title: string;
 
+  /**
+   * The artists that worked on the track
+   */
   artists?: string[];
 
   /**
@@ -33,10 +37,21 @@ export interface Track {
   audio?: string;
 
   /**
-   * The path to the local file of the track
+   * The path to the local file of the track relative to the vault root
    */
   filepath?: string;
 
+  /**
+   * The actual local markdown file of the track
+   * Is optional because a track doesn't necessarly have a file associated to it
+   */
+  file?: TFile;
+
+  /**
+   * Either the path to the local file of the thumbnail or the direct URL to the thumbnail
+   * @example
+   * https://i.scdn.co/image/ab67616d0000b273e3f3b4b6f4f4b4f4b4f4b4f4
+   */
   thumbnail?: string;
 
   media?: string;
@@ -92,8 +107,9 @@ const datacoreTrackBlueprint: TrackBlueprint<DatacorePage> = (data) => {
     filepath: data.$path,
   };
 };
+export const DatacoreTrackFactory = new TrackFactory<DatacorePage>(datacoreTrackBlueprint);
 
-
+/*
 const basesTrackBlueprint: TrackBlueprint<BasesDataItem> = (data) => {
   console.log({ data })
   const {
@@ -115,11 +131,29 @@ const basesTrackBlueprint: TrackBlueprint<BasesDataItem> = (data) => {
     // voice,
   }
 }
+export const BasesTrackFactory = new TrackFactory<BasesDataItem>(basesTrackBlueprint);
+*/
 
-export const DatacoreTrackFactory = new TrackFactory<DatacorePage>(
-  datacoreTrackBlueprint
-);
+/**
+ * @param context - The file properties to retrieve from the basesEntry
+ */
+const basesEntryTrackBlueprint: TrackBlueprint<BasesEntry> = (data, context: Record<string, BasesPropertyId>) => {
+  const rawTitle = data.getValue(context.title);
+  const title = rawTitle?.isTruthy() ? rawTitle.toString() : data.file.basename
+  const url = data.getValue(context.url)
+  const thumbnail = data.getValue(context.thumbnail)
 
-export const BasesTrackFactory = new TrackFactory<BasesDataItem>(
-  basesTrackBlueprint
-);
+  const computedDuration = convertTimecodeToDuration(data.getValue(context.duration)?.toString() ?? '');
+
+  console.log(data)
+  const track: Track = {
+    title,
+    url: url?.toString() ?? "",
+    thumbnail: thumbnail?.toString(),
+    filepath: data.file.path,
+    file: data.file,
+    duration: !isNaN(computedDuration) ? computedDuration : undefined,
+  }
+  return track
+}
+export const BasesEntryTrackFactory = new TrackFactory<BasesEntry>(basesEntryTrackBlueprint);

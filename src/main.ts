@@ -13,7 +13,7 @@ import {
   type MyPluginSettings
 } from "@/types";
 
-import { JUKEBOX_GRID_VIEW_TYPE, JukeboxView } from "@/bases/new/jukebox-view";
+import { JUKEBOX_VIEW_TYPE, JukeboxView } from "@/bases/new/jukebox-view";
 
 export default class MyPlugin extends Plugin {
   settings!: MyPluginSettings;
@@ -41,10 +41,10 @@ export default class MyPlugin extends Plugin {
 
     if (this.settings?.enableBases) {
       try {
-        this.registerBasesView(JUKEBOX_GRID_VIEW_TYPE, {
+        this.registerBasesView(JUKEBOX_VIEW_TYPE, {
           name: 'Jukebox grid',
           icon: 'disc-3',
-          factory: (controller, containerEl) => new JukeboxView(JUKEBOX_GRID_VIEW_TYPE, controller, containerEl),
+          factory: (controller, containerEl) => new JukeboxView(controller, containerEl),
           options: () => JukeboxView.getViewOptions(),
         });
       } catch (e) {

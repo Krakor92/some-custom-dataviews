@@ -1,11 +1,7 @@
 <script lang="ts">
-  import {
-    JukeboxView,
-    AUDIO_FIELD,
-    LENGTH_FIELD,
-    THUMBNAIL_FIELD,
-    type ProcessedData,
-  } from "@/bases/new/jukebox-view";
+  import { JukeboxView } from "@/bases/new/jukebox-view";
+  import TrackItem from "@/bases/new/BasesGridTrackItem.svelte";
+  import type { Track } from "@/models";
   import { onMount } from "svelte";
 
   interface Props {
@@ -14,17 +10,11 @@
 
   let { view }: Props = $props();
 
-  let data: ProcessedData[] = $state([]);
+  let data: Track[] = $state([]);
   let xName: string = $state("");
   let yName: string = $state("");
 
   function onUpdate() {
-    const xField = view.config?.getAsPropertyId(X_FIELD);
-    const yField = view.config?.getAsPropertyId(Y_FIELD);
-
-    xName = xField ? `${view.config.getDisplayName(xField)} →` : "";
-    yName = yField ? `↑ ${view.config.getDisplayName(yField)}` : "";
-
     data = view.processData();
   }
 
@@ -40,10 +30,8 @@
   let width = $state(0);
 </script>
 
-<div
-  class="bases-chart-container"
-  bind:clientHeight={height}
-  bind:clientWidth={width}
->
-  Enorme
+<div class="bases-jukebox-container">
+  {#each data as item}
+    <TrackItem {item} app={view.app} />
+  {/each}
 </div>
