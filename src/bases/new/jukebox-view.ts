@@ -11,19 +11,27 @@ export const JUKEBOX_VIEW_TYPE = 'jukebox-grid';
 export const CONFIG_FIELDS = {
   CARDS_MIN_WIDTH: {
     key: 'cardMinWidth',
-    displayName: 'Cards min width (px)',
+    displayName: 'Cards min width',
+    default: '200px',
   },
   CARDS_BORDER_RADIUS: {
     key: 'cardBorderRadius',
     displayName: 'Cards border radius (px)',
+    default: 6,
   },
-  GRID_GAP: {
-    key: 'gridGap',
-    displayName: 'Gap (px)',
+  GRID_ROW_GAP: {
+    key: 'gridRowGap',
+    displayName: 'Row gap',
+    default: '0.5rem',
+  },
+  GRID_COLUMN_GAP: {
+    key: 'gridColumnGap',
+    displayName: 'Column gap',
+    default: '0.75rem',
   },
   THUMBNAIL_MAX_HEIGHT: {
     key: 'thumbMaxHeight',
-    displayName: 'Thumbnail max height (px)',
+    displayName: 'Thumbnail max height',
     default: '200px',
   },
 }
@@ -113,7 +121,13 @@ export class JukeboxView extends BasesView {
     console.log(fields)
 
     for (const entry of queryResult.data ?? []) {
-      dataToRender.push(BasesEntryTrackFactory.create(entry, fields))
+      dataToRender.push(BasesEntryTrackFactory.create(
+        entry,
+        {
+          app: this.app,
+          fields
+        }
+      ))
     }
 
     console.log(dataToRender)
@@ -128,11 +142,11 @@ export class JukeboxView extends BasesView {
         items: [
           {
             ...CONFIG_FIELDS.CARDS_MIN_WIDTH,
-            type: 'slider',
-            min: 160,
-            max: 640,
-            step: 10,
-            default: 200,
+            type: 'text',
+          },
+          {
+            ...CONFIG_FIELDS.THUMBNAIL_MAX_HEIGHT,
+            type: 'text',
           },
           {
             ...CONFIG_FIELDS.CARDS_BORDER_RADIUS,
@@ -140,19 +154,14 @@ export class JukeboxView extends BasesView {
             min: 0,
             max: 20,
             step: 1,
-            default: 6,
           },
           {
-            ...CONFIG_FIELDS.GRID_GAP,
-            type: 'slider',
-            min: 0,
-            max: 20,
-            step: 1,
-            default: 4,
+            ...CONFIG_FIELDS.GRID_ROW_GAP,
+            type: 'text'
           },
           {
-            ...CONFIG_FIELDS.THUMBNAIL_MAX_HEIGHT,
-            type: 'text',
+            ...CONFIG_FIELDS.GRID_COLUMN_GAP,
+            type: 'text'
           },
         ]
       },

@@ -60,8 +60,40 @@
 
 <style>
   .item {
+    z-index: 0;
+    /* needed for mobile ?*/
+    position: relative;
+    background-color: var(--jukebox-cards-background);
+    border: var(--jukebox-cards-border-width) solid
+      var(--jukebox-background-modifier-border);
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    border-radius: var(--jukebox-cards-border-radius);
+    overflow: hidden;
+    transition: box-shadow 0.15s linear;
     min-width: var(--jukebox-cards-min-width);
-    max-width: 1fr;
+    max-width: var(--jukebox-cards-max-width);
+
+    --jukebox-cards-link-inline-padding: 1.2em;
+  }
+
+  .file-link {
+    display: inline-block;
+    padding: calc(var(--jukebox-cards-link-inline-padding) / 2) 0;
+    border-bottom: none;
+    /* font-size: var(--table-text-size); */
+    line-height: normal;
+    width: calc(100% - var(--jukebox-cards-link-inline-padding));
+    margin: auto;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+    display: flex;
+    justify-content: space-between;
+
+    /* &>a {
+      font-weight: var(--jukebox-cards-link-weight);
+    } */
   }
 
   .thumb-stack {
@@ -79,14 +111,13 @@
     }
 
     img {
+      display: block;
       /* should be global */
       object-fit: cover;
 
       width: 100%;
 
-      /* should be global */
       max-height: var(--jukebox-cards-image-max-height);
-      border-radius: 6px;
 
       margin: 0;
       pointer-events: none;

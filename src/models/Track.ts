@@ -5,7 +5,9 @@ import type { DatacorePage, Link } from "@/types/api";
 import type { BasesDataItem } from "@/bases";
 
 import { convertTimecodeToDuration } from "@/utils";
-import type { BasesEntry, BasesPropertyId, TFile } from "obsidian";
+import type { App, BasesEntry, BasesPropertyId, TFile } from "obsidian";
+
+import { uriRegex } from "@/utils";
 
 /**
  * Represents a music track. Most of the properties are optional.
@@ -48,9 +50,10 @@ export interface Track {
   file?: TFile;
 
   /**
-   * Either the path to the local file of the thumbnail or the direct URL to the thumbnail
+   * The direct URL to the thumbnail
    * @example
-   * https://i.scdn.co/image/ab67616d0000b273e3f3b4b6f4f4b4f4b4f4b4f4
+   * External `https://i.scdn.co/image/ab67616d0000b273e3f3b4b6f4f4b4f4b4f4b4f4`
+   * Local: `app://7e66df2d361412512ae1f4174ad1b318b8eb/home/_assets/My_local_thumbnail.webp?1669583670227`
    */
   thumbnail?: string;
 
@@ -135,21 +138,32 @@ export const BasesTrackFactory = new TrackFactory<BasesDataItem>(basesTrackBluep
 */
 
 /**
- * @param context - The file properties to retrieve from the basesEntry
+ * @param ctx - The file properties to retrieve from the basesEntry
  */
-const basesEntryTrackBlueprint: TrackBlueprint<BasesEntry> = (data, context: Record<string, BasesPropertyId>) => {
-  const rawTitle = data.getValue(context.title);
+const basesEntryTrackBlueprint: TrackBlueprint<BasesEntry> = (data, ctx: { app: App, fields: Record<string, BasesPropertyId> }) => {
+  const rawTitle = data.getValue(ctx.fields.title);
   const title = rawTitle?.isTruthy() ? rawTitle.toString() : data.file.basename
-  const url = data.getValue(context.url)
-  const thumbnail = data.getValue(context.thumbnail)
+  const url = data.getValue(ctx.fields.url)
+  const thumbnail = data.getValue(ctx.fields.thumbnail)
+  let thumbnailPath = thumbnail?.toString() ?? ''
 
-  const computedDuration = convertTimecodeToDuration(data.getValue(context.duration)?.toString() ?? '');
 
-  console.log(data)
+  if (!uriRegex.test(thumbnailPath)) {
+    const file = ctx.app.metadataCache.getFirstLinkpathDest(thumbnailPath, "");
+    thumbnailPath = ctx.app.vault.adapter.getResourcePath(file?.path ?? '');
+  }
+
+  console.log({
+    formulaThumbnail: thumbnail,
+    thumbnailPath,
+  })
+
+  const computedDuration = convertTimecodeToDuration(data.getValue(ctx.fields.duration)?.toString() ?? '');
+
   const track: Track = {
     title,
     url: url?.toString() ?? "",
-    thumbnail: thumbnail?.toString(),
+    thumbnail: thumbnailPath,
     filepath: data.file.path,
     file: data.file,
     duration: !isNaN(computedDuration) ? computedDuration : undefined,
