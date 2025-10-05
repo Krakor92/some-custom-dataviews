@@ -1,8 +1,15 @@
-import type { BasesQueryResult, QueryController, Value } from 'obsidian';
-import type { BasesPropertyId, ViewOption } from 'obsidian';
-import { BasesView, DateValue, Events, NumberValue, StringValue } from 'obsidian';
-import Jukebox from '@/bases/new/Jukebox.svelte';
+import type {
+  BasesPropertyId,
+  BasesQueryResult,
+  QueryController,
+  ViewOption
+} from 'obsidian';
+import { BasesView, Events } from 'obsidian';
 import { mount, unmount, tick } from 'svelte';
+
+import Jukebox from '@/bases/new/Jukebox.svelte';
+import GridVirtualizer from '@/components/GridVirtualizerDynamic.svelte';
+
 import type { Track } from '@/models';
 import { BasesEntryTrackFactory } from '@/models/Track'
 
@@ -97,6 +104,9 @@ export class JukeboxView extends BasesView {
           view: this,
         },
       });
+      // this.svelteComponent = mount(GridVirtualizer, {
+      //   target: this.scrollEl,
+      // });
     }
 
     // We must wait for the component to mount before triggering the event

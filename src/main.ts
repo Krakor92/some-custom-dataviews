@@ -120,10 +120,10 @@ export default class MyPlugin extends Plugin {
 
     try {
       // Register view types (now safe after layout ready)
-      this.registerView(
-        MY_PLUGIN_VIEW_TYPE,
-        (leaf) => new SvelteView(leaf)
-      );
+      // this.registerView(
+      //   MY_PLUGIN_VIEW_TYPE,
+      //   (leaf) => new SvelteView(leaf)
+      // );
 
       console.log('Kviews finished initializeAfterLayoutReady')
 

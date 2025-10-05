@@ -9,6 +9,9 @@
   }
   let { view }: Props = $props();
 
+  /**
+   * Solely used to recompute the config refs
+   */
   let configVersion = $state(0);
 
   let data: Track[] = $state([]);
